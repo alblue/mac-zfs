@@ -19,27 +19,32 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ *
+ * Portions Copyright 2009 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)kernel.c	1.3	06/03/16 SMI"
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-#ifdef __APPLE__
-#import <maczfs-thread.h>
-#import <sys/mount.h>
-#endif /* __APPLE__ */
 #include <assert.h>
-#include <sys/zfs_context.h>
+#include <fcntl.h>
 #include <poll.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <string.h>
+#include <zlib.h>
 #include <sys/spa.h>
+#include <sys/stat.h>
 #ifndef __APPLE__
 #include <sys/processor.h>
+#endif
+#include <sys/zfs_context.h>
+#include <sys/zmod.h>
+#include <sys/utsname.h>
+#ifdef __APPLE__
+#include "zfs_osx_common.h"
 #endif
 
 /*
@@ -48,6 +53,13 @@
 
 uint64_t physmem;
 vnode_t *rootdir = (vnode_t *)0xabcd1234;
+char hw_serial[11];
+
+#ifndef __APPLE__
+struct utsname utsname = {
+	"userland", "libzpool", "1", "1", "na"
+};
+#endif
 
 /*
  * =========================================================================
@@ -66,6 +78,31 @@ zk_thread_create(void (*func)(), void *arg)
 	return ((void *)(uintptr_t)tid);
 }
 
+#ifndef __APPLE__
+/*
+ * =========================================================================
+ * kstats
+ * =========================================================================
+ */
+/*ARGSUSED*/
+kstat_t *
+kstat_create(char *module, int instance, char *name, char *class,
+    uchar_t type, ulong_t ndata, uchar_t ks_flag)
+{
+	return (NULL);
+}
+
+/*ARGSUSED*/
+void
+kstat_install(kstat_t *ksp)
+{}
+
+/*ARGSUSED*/
+void
+kstat_delete(kstat_t *ksp)
+{}
+#endif
+
 /*
  * =========================================================================
  * mutexes
@@ -75,23 +112,27 @@ void
 zmutex_init(kmutex_t *mp)
 {
 	mp->m_owner = NULL;
+	mp->initialized = B_TRUE;
 	(void) _mutex_init(&mp->m_lock, USYNC_THREAD, NULL);
 }
 
 void
 zmutex_destroy(kmutex_t *mp)
 {
+	ASSERT(mp->initialized == B_TRUE);
 	ASSERT(mp->m_owner == NULL);
 	(void) _mutex_destroy(&(mp)->m_lock);
 	mp->m_owner = (void *)-1UL;
+	mp->initialized = B_FALSE;
 }
 
 void
 mutex_enter(kmutex_t *mp)
 {
+	ASSERT(mp->initialized == B_TRUE);
 	ASSERT(mp->m_owner != (void *)-1UL);
 	ASSERT(mp->m_owner != curthread);
-	(void) mutex_lock(&mp->m_lock);
+	VERIFY(mutex_lock(&mp->m_lock) == 0);
 	ASSERT(mp->m_owner == NULL);
 	mp->m_owner = curthread;
 }
@@ -99,6 +140,7 @@ mutex_enter(kmutex_t *mp)
 int
 mutex_tryenter(kmutex_t *mp)
 {
+	ASSERT(mp->initialized == B_TRUE);
 	ASSERT(mp->m_owner != (void *)-1UL);
 	if (0 == mutex_trylock(&mp->m_lock)) {
 		ASSERT(mp->m_owner == NULL);
@@ -112,14 +154,16 @@ mutex_tryenter(kmutex_t *mp)
 void
 mutex_exit(kmutex_t *mp)
 {
+	ASSERT(mp->initialized == B_TRUE);
 	ASSERT(mutex_owner(mp) == curthread);
 	mp->m_owner = NULL;
-	(void) mutex_unlock(&mp->m_lock);
+	VERIFY(mutex_unlock(&mp->m_lock) == 0);
 }
 
 void *
 mutex_owner(kmutex_t *mp)
 {
+	ASSERT(mp->initialized == B_TRUE);
 	return (mp->m_owner);
 }
 
@@ -132,8 +176,17 @@ mutex_owner(kmutex_t *mp)
 void
 rw_init(krwlock_t *rwlp, char *name, int type, void *arg)
 {
+#ifdef __APPLE__
+	VERIFY(rwlock_init(&rwlp->rw_lock, USYNC_THREAD, NULL) == 0);
+#else
 	rwlock_init(&rwlp->rw_lock, USYNC_THREAD, NULL);
+#endif
 	rwlp->rw_owner = NULL;
+#ifdef __APPLE__
+	zmutex_init(&rwlp->mutex);
+	rwlp->reader_thr_count = 0;
+#endif
+	rwlp->initialized = B_TRUE;
 }
 
 void
@@ -141,30 +194,74 @@ rw_destroy(krwlock_t *rwlp)
 {
 	rwlock_destroy(&rwlp->rw_lock);
 	rwlp->rw_owner = (void *)-1UL;
+#ifdef __APPLE__
+	zmutex_destroy(&rwlp->mutex);
+	rwlp->reader_thr_count = -2;
+#endif
+	rwlp->initialized = B_FALSE;
 }
 
 void
 rw_enter(krwlock_t *rwlp, krw_t rw)
 {
+#ifndef __APPLE__
 	ASSERT(!RW_LOCK_HELD(rwlp));
+#endif
+	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
 	ASSERT(rwlp->rw_owner != curthread);
 
+#ifdef __APPLE__
+	if (rw == RW_READER) {
+		VERIFY(rw_rdlock(&rwlp->rw_lock) == 0);
+		
+		mutex_enter(&rwlp->mutex);
+		ASSERT(rwlp->reader_thr_count >= 0);
+		rwlp->reader_thr_count++;
+		mutex_exit(&rwlp->mutex);
+		ASSERT(rwlp->rw_owner == NULL);
+	} else {
+		VERIFY(rw_wrlock(&rwlp->rw_lock) == 0);
+		
+		ASSERT(rwlp->rw_owner == NULL);
+		ASSERT(rwlp->reader_thr_count == 0);
+		rwlp->reader_thr_count = -1;
+		rwlp->rw_owner = curthread;
+	}
+#else
 	if (rw == RW_READER)
 		(void) rw_rdlock(&rwlp->rw_lock);
 	else
 		(void) rw_wrlock(&rwlp->rw_lock);
 
 	rwlp->rw_owner = curthread;
+#endif
 }
 
 void
 rw_exit(krwlock_t *rwlp)
 {
+	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
 
+#ifdef __APPLE__
+	if(rwlp->rw_owner == curthread) {
+		/* Write locked */
+		ASSERT(rwlp->reader_thr_count == -1);
+		rwlp->reader_thr_count = 0;
+		rwlp->rw_owner = NULL;
+	} else {
+		/* Read locked */
+		ASSERT(rwlp->rw_owner == NULL);
+		mutex_enter(&rwlp->mutex);
+		ASSERT(rwlp->reader_thr_count >= 1);
+		rwlp->reader_thr_count--;
+		mutex_exit(&rwlp->mutex);
+	}
+#else
 	rwlp->rw_owner = NULL;
-	(void) rw_unlock(&rwlp->rw_lock);
+#endif
+	rw_unlock(&rwlp->rw_lock);
 }
 
 int
@@ -172,7 +269,11 @@ rw_tryenter(krwlock_t *rwlp, krw_t rw)
 {
 	int rv;
 
+	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
+#ifdef __APPLE__
+	ASSERT(rwlp->rw_owner != curthread);
+#endif
 
 	if (rw == RW_READER)
 		rv = rw_tryrdlock(&rwlp->rw_lock);
@@ -180,7 +281,22 @@ rw_tryenter(krwlock_t *rwlp, krw_t rw)
 		rv = rw_trywrlock(&rwlp->rw_lock);
 
 	if (rv == 0) {
+#ifdef __APPLE__
+		if(rw == RW_READER) {
+			mutex_enter(&rwlp->mutex);
+			ASSERT(rwlp->reader_thr_count >= 0);
+			rwlp->reader_thr_count++;
+			mutex_exit(&rwlp->mutex);
+			ASSERT(rwlp->rw_owner == NULL);
+		} else {
+			ASSERT(rwlp->rw_owner == NULL);
+			ASSERT(rwlp->reader_thr_count == 0);
+			rwlp->reader_thr_count = -1;
+			rwlp->rw_owner = curthread;
+		}
+#else
 		rwlp->rw_owner = curthread;
+#endif
 		return (1);
 	}
 
@@ -191,6 +307,7 @@ rw_tryenter(krwlock_t *rwlp, krw_t rw)
 int
 rw_tryupgrade(krwlock_t *rwlp)
 {
+	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
 
 	return (0);
@@ -205,13 +322,21 @@ rw_tryupgrade(krwlock_t *rwlp)
 void
 cv_init(kcondvar_t *cv, char *name, int type, void *arg)
 {
-	(void) cond_init(cv, type, NULL);
+#ifdef __APPLE__
+	ASSERT(type == CV_DEFAULT);
+#endif
+	VERIFY(cond_init(cv, type, NULL) == 0);
 }
 
 void
 cv_destroy(kcondvar_t *cv)
 {
-	(void) cond_destroy(cv);
+#ifdef __APPLE__
+	int ret = cond_destroy(cv);
+	VERIFY(ret == 0 || ret == EINVAL); /* XXX/ztest: ok to ignore EINVAL? */
+#else
+	VERIFY(cond_destroy(cv) == 0);
+#endif
 }
 
 void
@@ -219,7 +344,8 @@ cv_wait(kcondvar_t *cv, kmutex_t *mp)
 {
 	ASSERT(mutex_owner(mp) == curthread);
 	mp->m_owner = NULL;
-	(void) cond_wait(cv, &mp->m_lock);
+	int ret = cond_wait(cv, &mp->m_lock);
+	VERIFY(ret == 0 || ret == EINTR);
 	mp->m_owner = curthread;
 }
 
@@ -229,22 +355,50 @@ cv_timedwait(kcondvar_t *cv, kmutex_t *mp, clock_t abstime)
 	int error;
 	timestruc_t ts;
 	clock_t delta;
-
+#ifdef __APPLE__
+	struct timeval tv;
+	uint64_t dsec;
+#endif
+	
 top:
 	delta = abstime - lbolt;
 	if (delta <= 0)
 		return (-1);
 
+#ifdef __APPLE__
+	VERIFY(gettimeofday(&tv, NULL) == 0);
+	
+	dsec = MAX(1, delta / hz);
+	ASSERT(dsec >= 1);
+	ts.tv_sec = tv.tv_sec + dsec;
+	ts.tv_nsec = tv.tv_usec * 1000 + (delta % hz) * (NANOSEC / hz);
+	ASSERT(ts.tv_nsec >= 0);
+	
+	if (ts.tv_nsec >= NANOSEC) {
+		ts.tv_sec++;
+		ts.tv_nsec -= NANOSEC;
+	}
+#else
 	ts.tv_sec = delta / hz;
 	ts.tv_nsec = (delta % hz) * (NANOSEC / hz);
+#endif
 
 	ASSERT(mutex_owner(mp) == curthread);
 	mp->m_owner = NULL;
+#ifdef __APPLE__
+	error = cond_timedwait(cv, &mp->m_lock, &ts);
+#else
 	error = cond_reltimedwait(cv, &mp->m_lock, &ts);
+#endif
 	mp->m_owner = curthread;
 
+#ifdef __APPLE__
+	if (error == ETIMEDOUT)
+		return (-1);
+#else
 	if (error == ETIME)
 		return (-1);
+#endif
 
 	if (error == EINTR)
 		goto top;
@@ -257,13 +411,13 @@ top:
 void
 cv_signal(kcondvar_t *cv)
 {
-	(void) cond_signal(cv);
+	VERIFY(cond_signal(cv) == 0);
 }
 
 void
 cv_broadcast(kcondvar_t *cv)
 {
-	(void) cond_broadcast(cv);
+	VERIFY(cond_broadcast(cv) == 0);
 }
 
 /*
@@ -286,7 +440,11 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 	vnode_t *vp;
 	int old_umask;
 	char realpath[MAXPATHLEN];
+#if _DARWIN_FEATURE_64_BIT_INODE
+	struct stat st;
+#else
 	struct stat64 st;
+#endif
 
 	/*
 	 * If we're accessing a real disk from userland, we need to use
@@ -303,7 +461,11 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 		fd = open64(path, O_RDONLY);
 		if (fd == -1)
 			return (errno);
+#if _DARWIN_FEATURE_64_BIT_INODE
+		if (fstat(fd, &st) == -1) {
+#else
 		if (fstat64(fd, &st) == -1) {
+#endif
 			close(fd);
 			return (errno);
 		}
@@ -315,7 +477,11 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 			    dsk + 1);
 	} else {
 		(void) sprintf(realpath, "%s", path);
+#if _DARWIN_FEATURE_64_BIT_INODE
+		if (!(flags & FCREAT) && stat(realpath, &st) == -1)
+#else
 		if (!(flags & FCREAT) && stat64(realpath, &st) == -1)
+#endif
 			return (errno);
 	}
 
@@ -334,10 +500,28 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 	if (fd == -1)
 		return (errno);
 
+#if _DARWIN_FEATURE_64_BIT_INODE
+	if (fstat(fd, &st) == -1) {		
+#else
 	if (fstat64(fd, &st) == -1) {
+#endif
 		close(fd);
 		return (errno);
 	}
+
+/*
+ * OSX fstat on a block device will return an st_size of 0 instead of
+ * the actual size of the device.  So we need to ioctl directly to the disk
+ * instead in order to get its size
+ */
+#ifdef __APPLE__
+      if (S_ISBLK(st.st_mode)) {
+		  if ((st.st_size = get_disk_size(fd)) == -1) {
+			  st.st_size = 0;
+			  return (errno);
+		  }
+	  }
+#endif
 
 	(void) fcntl(fd, F_SETFD, FD_CLOEXEC);
 
@@ -504,8 +688,10 @@ __dprintf(const char *file, const char *func, int line, const char *fmt, ...)
 			(void) printf("%d ", getpid());
 		if (dprintf_find_string("tid"))
 			(void) printf("%u ", thr_self());
+		#ifndef __APPLE__
 		if (dprintf_find_string("cpu"))
 			(void) printf("%u ", getcpuid());
+		#endif
 		if (dprintf_find_string("time"))
 			(void) printf("%llu ", gethrtime());
 		if (dprintf_find_string("long"))
@@ -548,13 +734,9 @@ panic(const char *fmt, ...)
 	va_end(adx);
 }
 
-/*PRINTFLIKE2*/
 void
-cmn_err(int ce, const char *fmt, ...)
+vcmn_err(int ce, const char *fmt, va_list adx)
 {
-	va_list adx;
-
-	va_start(adx, fmt);
 	if (ce == CE_PANIC)
 		vpanic(fmt, adx);
 	if (ce != CE_NOTE) {	/* suppress noise in userland stress testing */
@@ -562,6 +744,16 @@ cmn_err(int ce, const char *fmt, ...)
 		(void) vfprintf(stderr, fmt, adx);
 		(void) fprintf(stderr, "%s", ce_suffix[ce]);
 	}
+}
+
+/*PRINTFLIKE2*/
+void
+cmn_err(int ce, const char *fmt, ...)
+{
+	va_list adx;
+
+	va_start(adx, fmt);
+	vcmn_err(ce, fmt, adx);
 	va_end(adx);
 }
 
@@ -581,7 +773,11 @@ kobj_open_file(char *name)
 		return ((void *)-1UL);
 
 	file = umem_zalloc(sizeof (struct _buf), UMEM_NOFAIL);
+#ifdef __APPLE__
+	file->_fd = vp;
+#else
 	file->_fd = (intptr_t)vp;
+#endif
 	return (file);
 }
 
@@ -593,7 +789,7 @@ kobj_read_file(struct _buf *file, char *buf, unsigned size, unsigned off)
 	vn_rdwr(UIO_READ, (vnode_t *)file->_fd, buf, size, (offset_t)off,
 	    UIO_SYSSPACE, 0, 0, 0, &resid);
 
-	return (0);
+	return (size - resid);
 }
 
 void
@@ -604,15 +800,24 @@ kobj_close_file(struct _buf *file)
 }
 
 int
-kobj_fstat(intptr_t fd, struct bootstat *bst)
+kobj_get_filesize(struct _buf *file, uint64_t *size)
 {
-	struct stat64 st;
-	vnode_t *vp = (vnode_t *)fd;
-	if (fstat64(vp->v_fd, &st) == -1) {
+#if _DARWIN_FEATURE_64_BIT_INODE
+    struct stat st;
+#else
+    struct stat64 st;
+#endif
+    vnode_t *vp = (vnode_t *)file->_fd;
+
+#if _DARWIN_FEATURE_64_BIT_INODE
+    if (fstat(vp->v_fd, &st) == -1) {	
+#else
+    if (fstat64(vp->v_fd, &st) == -1) {
+#endif
 		vn_close(vp);
 		return (errno);
 	}
-	bst->st_size = (uint64_t)st.st_size;
+	*size = st.st_size;
 	return (0);
 }
 
@@ -663,6 +868,7 @@ highbit(ulong_t i)
 	return (h);
 }
 
+
 static int
 random_get_bytes_common(uint8_t *ptr, size_t len, char *devname)
 {
@@ -680,7 +886,6 @@ random_get_bytes_common(uint8_t *ptr, size_t len, char *devname)
 	}
 
 	close(fd);
-
 	return (0);
 }
 
@@ -695,6 +900,19 @@ random_get_pseudo_bytes(uint8_t *ptr, size_t len)
 {
 	return (random_get_bytes_common(ptr, len, "/dev/urandom"));
 }
+
+#ifndef __APPLE__
+int
+ddi_strtoul(const char *hw_serial, char **nptr, int base, unsigned long *result)
+{
+	char *end;
+
+	*result = strtoul(hw_serial, &end, base);
+	if (*result == 0)
+		return (errno);
+	return (0);
+}
+#endif
 
 /*
  * =========================================================================
@@ -715,11 +933,28 @@ void
 kernel_init(int mode)
 {
 	umem_nofail_callback(umem_out_of_memory);
-
+#ifdef __APPLE__
+	int mib[2] = {CTL_HW, HW_MEMSIZE};
+	u_int mib_array_size = sizeof(mib)/sizeof(mib[0]);
+	uint64_t memsize;
+	size_t len = sizeof(memsize);
+	
+	if (sysctl(mib, mib_array_size, &memsize, &len, NULL, 0) == 0) {
+		physmem = memsize / sysconf(_SC_PAGE_SIZE);	
+		dprintf("physmem = %llu pages (%.2f GB)\n", physmem,
+	    (double)memsize / (1ULL << 30));
+	} else {
+		dprintf("Couldn't determine the physical memory with sysctl\n");
+	}
+#else
 	physmem = sysconf(_SC_PHYS_PAGES);
 
 	dprintf("physmem = %llu pages (%.2f GB)\n", physmem,
 	    (double)physmem * sysconf(_SC_PAGE_SIZE) / (1ULL << 30));
+#endif
+
+	snprintf(hw_serial, sizeof (hw_serial), "%ld", gethostid());
+
 
 	spa_init(mode);
 }
@@ -729,3 +964,76 @@ kernel_fini(void)
 {
 	spa_fini();
 }
+
+#ifndef __APPLE__
+int
+z_uncompress(void *dst, size_t *dstlen, const void *src, size_t srclen)
+{
+	int ret;
+	uLongf len = *dstlen;
+
+	if ((ret = uncompress(dst, &len, src, srclen)) == Z_OK)
+		*dstlen = (size_t)len;
+
+	return (ret);
+}
+
+int
+z_compress_level(void *dst, size_t *dstlen, const void *src, size_t srclen,
+    int level)
+{
+	int ret;
+	uLongf len = *dstlen;
+
+	if ((ret = compress2(dst, &len, src, srclen, level)) == Z_OK)
+		*dstlen = (size_t)len;
+
+	return (ret);
+}
+#endif
+
+uid_t
+crgetuid(cred_t *cr)
+{
+	return (0);
+}
+
+gid_t
+crgetgid(cred_t *cr)
+{
+	return (0);
+}
+
+#ifndef __APPLE__
+int
+crgetngroups(cred_t *cr)
+{
+	return (0);
+}
+
+gid_t *
+crgetgroups(cred_t *cr)
+{
+	return (NULL);
+}
+#endif
+
+int
+zfs_secpolicy_snapshot_perms(const char *name, cred_t *cr)
+{
+	return (0);
+}
+
+int
+zfs_secpolicy_rename_perms(const char *from, const char *to, cred_t *cr)
+{
+	return (0);
+}
+
+#ifndef __APPLE__
+int
+zfs_secpolicy_destroy_perms(const char *name, cred_t *cr)
+{
+	return (0);
+}
+#endif
