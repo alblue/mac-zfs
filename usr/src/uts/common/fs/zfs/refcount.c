@@ -21,21 +21,20 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
- * Portions Copyright 2007 Apple Inc. All rights reserved.
+ * Portions Copyright 2007-2008 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-#ifdef _KERNEL
 
 #include <sys/zfs_context.h>
 #include <sys/refcount.h>
 
-/* Only enable reference tracking on DEBUG builds */
 #ifdef ZFS_DEBUG
+/* Only enable reference tracking on DEBUG builds */
 int reference_tracking_enable = TRUE;
-#else
+#ifndef __APPLE__
 int reference_tracking_enable = FALSE;
 #endif
 int reference_history = 4; /* tunable */
@@ -195,4 +194,4 @@ refcount_remove(refcount_t *rc, void *holder)
 	return (refcount_remove_many(rc, 1, holder));
 }
 
-#endif /* _KERNEL */
+#endif /* ZFS_DEBUG */

@@ -47,8 +47,10 @@ extern "C" {
 #define	_SYS_CALLB_H
 
   /* by BjoKa */
+#if 0
 #define _SYS_CRED_H
 #define _SYS_ATOMIC_H
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,7 +92,27 @@ extern "C" {
 #include <sys/sysevent/eventdefs.h>
 #endif
 
-
+#ifdef __APPLE__
+  /*
+   * Apple's zfs_znode.c needs access to (a subset of) znode_t even
+   * when build in userland mode.  To define that subset, we need
+   * znode_phys_t (the whole thing) which is in zfs_znode.h.
+   *
+   * Note that almost all of zfs_znode.h is 'ifdef _KERNEL ...'
+   * protected, so it will really only define znode_phys_t here.  The
+   * subset of znode_t is define below.  Note that we can not easily
+   * include the full zfs_znode.h (by temporarily defining _KERNEL),
+   * because that would pull in a lot of vfs stuff not easily emulated
+   * in userland.
+   */
+#if 0
+#define _SYS_ZIL_H
+#define _SYS_DMU_H
+#include <sys/zfs_znode.h>
+#undef _SYS_DMU_H
+#undef _SYS_ZIL_H
+#endif
+#endif
 
 #ifdef __APPLE__	
 #include <va_list.h>
@@ -158,7 +180,7 @@ enum uio_seg {
 #define ERESTART (-1)
 	
 typedef int cred_t;
-	
+#define kcred (cred_t *)NOCRED
 
 /* Modified from atomic.h */
 /* We need the userspace atomic operations. */
@@ -194,7 +216,10 @@ extern UInt8	OSBitOrAtomic8(UInt32 mask, volatile UInt8 * address);
 extern SInt64	OSAtomicAdd64(int64_t theAmount, volatile int64_t *address);
 extern SInt64	OSAtomicIncrement64(volatile int64_t *address);
 #endif	
-	
+
+	/* needed to emulate some atomic function not available in userspace. */
+extern pthread_mutex_t zfs_global_atomic_mutex;
+
 /* Constants for sysevents framework*/
 #define ESC_ZFS_VDEV_CLEAR      "ESC_ZFS_vdev_clear"
 #define ESC_ZFS_VDEV_REMOVE     "ESC_ZFS_vdev_remove"
@@ -319,7 +344,35 @@ struct vfs_context {
 
 typedef struct vfs_context * vfs_context_t;
 
-/* From vnode.h */
+/*
+ * From sys/vnode.h
+ *
+ *  We need IO_APPEND, but for completeness I copied all IO_* defines -- BjoKaSH
+ */
+/*
+ * Flags for ioflag.
+ */
+#define IO_UNIT         0x0001          /* do I/O as atomic unit */
+#define IO_APPEND       0x0002          /* append write to end */
+#define IO_SYNC         0x0004          /* do I/O synchronously */
+#define IO_NODELOCKED   0x0008          /* underlying node already locked */
+#define IO_NDELAY       0x0010          /* FNDELAY flag set in file table */
+#define IO_NOZEROFILL   0x0020          /* F_SETSIZE fcntl uses to prevent zero filling */
+#define IO_TAILZEROFILL 0x0040          /* zero fills at the tail of write */
+#define IO_HEADZEROFILL 0x0080          /* zero fills at the head of write */
+#define IO_NOZEROVALID  0x0100          /* do not zero fill if valid page */
+#define IO_NOZERODIRTY  0x0200          /* do not zero fill if page is dirty */
+#define IO_CLOSE        0x0400          /* I/O issued from close path */
+#define IO_NOCACHE      0x0800          /* same effect as VNOCACHE_DATA, but only for this 1 I/O */
+#define IO_RAOFF        0x1000          /* same effect as VRAOFF, but only for this 1 I/O */
+#define IO_DEFWRITE     0x2000          /* defer write if vfs.defwrite is set */
+#define IO_PASSIVE      0x4000          /* this I/O is marked as background I/O so it won't throttle Throttleable I/O */
+#define IO_BACKGROUND IO_PASSIVE /* used for backward compatibility.  to be removed after IO_BACKGROUND is no longer
+                                                                  * used by DiskImages in-kernel mode */
+#define IO_NOAUTH       0x8000          /* No authorization checks. */
+
+
+
 /* A subset of the kernel vnode_attr structure. */ 
 struct vnode_attr {
 	/* bitfields */
@@ -357,6 +410,116 @@ int vfs_context_rele(vfs_context_t ctx);
 #define	vnode_getattr(vp, vap, co)	((vap)->va_data_size = (vp)->v_size, 0)
 #define	vnode_close(vp, f, c)	0
 
+
+/*
+ * a subset of struct znode.
+ *
+ * needed by znode.c :
+ * - zfs_getbsdflags()
+ * - zfs_setbsdflags()
+ */
+#if 0
+typedef struct znode {
+	struct zfsvfs	*z_zfsvfs;
+
+#ifdef __APPLE__
+	struct vnode	*z_vnode;
+	uint32_t	z_vid;
+	kcondvar_t	z_cv;		/* wait for vnode to be attached */
+#else
+	vnode_t		*z_vnode;
+#endif
+	uint64_t	z_id;		/* object ID for this znode */
+	kmutex_t	z_lock;		/* znode modification lock */
+	krwlock_t	z_map_lock;	/* page map lock */
+	krwlock_t	z_parent_lock;	/* parent lock for directories */
+	krwlock_t	z_name_lock;	/* "master" lock for dirent locks */
+	zfs_dirlock_t	*z_dirlocks;	/* directory entry lock list */
+	kmutex_t	z_range_lock;	/* protects changes to z_range_avl */
+	avl_tree_t	z_range_avl;	/* avl tree of file range locks */
+	uint8_t		z_unlinked;	/* file has been unlinked */
+	uint8_t		z_atime_dirty;	/* atime needs to be synced */
+	uint8_t		z_dbuf_held;	/* Is z_dbuf already held? */
+	uint8_t		z_zn_prefetch;	/* Prefetch znodes? */
+#ifdef __APPLE__
+	uint8_t		z_mmapped;	/* file has been memory mapped */
+#endif
+	uint_t		z_blksz;	/* block size in bytes */
+	uint_t		z_seq;		/* modification sequence number */
+#ifndef __APPLE__
+	uint64_t	z_mapcnt;	/* number of pages mapped to file */
+#endif
+	uint64_t	z_last_itx;	/* last ZIL itx on this znode */
+	uint32_t	z_sync_cnt;	/* synchronous open count */
+	kmutex_t	z_acl_lock;	/* acl data lock */
+	list_node_t	z_link_node;	/* all znodes in fs link */
+
+#if defined (__APPLE__) && defined (ZFS_DEBUG)
+	list_t		z_stalker;	/* vnode life tracker */
+#endif
+	/*
+	 * These are dmu managed fields.
+	 */
+	znode_phys_t	*z_phys;	/* pointer to persistent znode */
+	dmu_buf_t	*z_dbuf;	/* buffer containing the z_phys */
+} znode_t;
+#endif
+#if 0
+typedef struct znode {
+	struct zfsvfs	*z_zfsvfs;
+
+#ifdef __APPLE__
+	struct vnode	*z_vnode;
+	uint32_t	z_vid;
+  //	kcondvar_t	z_cv;		/* wait for vnode to be attached */
+#else
+	vnode_t		*z_vnode;
+#endif
+#if defined (__APPLE__) && defined (ZFS_DEBUG)
+	list_t		z_stalker;	/* vnode life tracker */
+#endif
+	/*
+	 * These are dmu managed fields.
+	 */
+	znode_phys_t	*z_phys;	/* pointer to persistent znode */
+} znode_t;
+
+/*
+ * a subset of whereami_t, from zfs_znode.h:168
+ *
+ * needed by znode.c :
+ * - n_event_to_str()
+ * - znode_stalker()
+ * - znode_stalker_fini()
+ */
+
+#if defined (__APPLE__) && defined (ZFS_DEBUG)
+/* 
+ * Track the zfs life cycle of the vnode. Events added to z_stalker below 
+ * Oh the places we'll go
+*/
+typedef enum whereami {
+	N_znode_alloc = 0,
+	N_vnop_inactive,
+	N_zinactive,
+	N_zreclaim,
+	N_vnop_reclaim,
+	N_znode_delete,
+	N_znode_pageout,
+	N_zfs_nolink_add,
+	N_mknode_err,
+	N_zinact_retearly,
+	N_zfs_rmnode,
+	N_vnop_fsync_zil
+}whereami_t;
+
+typedef struct findme {
+	whereami_t event;
+	list_node_t n_elem;
+} findme_t;
+#endif
+#endif
+
 struct vmem {
 	int vm_quantum;
 	int vm_qcache_max;
@@ -377,6 +540,7 @@ typedef struct umem_cache {
 	int			(*cache_constructor)(void *, void *, int);
 	void		(*cache_destructor)(void *, void *);
 	void		*cache_private;		/* opaque arg to callbacks */
+	int			cache_objcount;		/* number of object in cache. */
 } umem_cache_t;
 
 /* From umem.h */
@@ -389,17 +553,23 @@ extern void umem_free(void * buf, size_t size);
 #define	UMEM_NOFAIL	0x0100	/* Never fails -- may call exit(2) */
 #define	UMC_NODEBUG	0x00020000
 
+typedef int umem_constructor_t(void *, void *, int);
+typedef void umem_destructor_t(void *, void *);
+typedef void umem_reclaim_t(void *);
+
 typedef int umem_nofail_callback_t(void);
+#define UMEM_CALLBACK_RETRY             0
+#define UMEM_CALLBACK_EXIT(status)      (0x100 | ((status) & 0xFF))
 
 extern void umem_nofail_callback(umem_nofail_callback_t *);
 
 extern umem_cache_t *umem_cache_create(char *name, size_t bufsize,
-    size_t align, int (*constructor)(void *, void *, int), void (*destructor)(void *, void *),
-	void (*reclaim)(void *), void *private, void *vmp, int cflags);
+    size_t align, umem_constructor_t *constructor, umem_destructor_t *destructor,
+	umem_reclaim_t *reclaim, void *private, void *vmp, int cflags);
 extern void umem_cache_destroy(umem_cache_t *cp);
 
-extern void *umem_cache_alloc(umem_cache_t *, int);
-extern void umem_cache_free(umem_cache_t *, void *);
+extern void *umem_cache_alloc(umem_cache_t *cp, int);
+extern void umem_cache_free(umem_cache_t *cp, void *);
 	
 #endif /* __APPLE__ */
 	
@@ -814,9 +984,9 @@ extern void delay(clock_t ticks);
 #else /* !__APPLE__ */
 #define	CPU_SEQID	(thr_self() & (max_ncpus - 1))
 
-#define	kcred		NULL
-#define	CRED()		NULL
 #endif
+/*#define	kcred		NULL*/
+#define	CRED()		NULL
 
 extern uint64_t physmem;
 

@@ -1445,6 +1445,8 @@ zfs_obj_to_path(objset_t *osp, uint64_t obj, char *buf, int len)
 }
 
 #ifdef __APPLE__
+#ifndef LIBZPOOL_HACK
+
 uint32_t
 zfs_getbsdflags(znode_t *zp)
 {
@@ -1504,9 +1506,11 @@ zfs_setbsdflags(znode_t *zp, uint32_t bsdflags)
 
 	zp->z_phys->zp_flags = zflags;
 }
+#endif
 #endif /* __APPLE__ */
 
 #ifdef ZFS_DEBUG
+#ifndef LIBZPOOL_HACK
 char *
 n_event_to_str(whereami_t event); // the prototype that removes gcc warning
 char *
@@ -1566,4 +1570,5 @@ znode_stalker_fini(znode_t *zp)
         }
 	list_destroy(&zp->z_stalker);
 }
+#endif
 #endif

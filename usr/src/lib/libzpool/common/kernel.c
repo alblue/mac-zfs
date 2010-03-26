@@ -43,8 +43,10 @@
 #include <sys/zfs_context.h>
 #include <sys/zmod.h>
 #include <sys/utsname.h>
+#if 0
 #ifdef __APPLE__
 #include "zfs_osx_common.h"
+#endif
 #endif
 
 /*
@@ -932,6 +934,8 @@ umem_out_of_memory(void)
 void
 kernel_init(int mode)
 {
+	pthread_mutex_init(&zfs_global_atomic_mutex, 0);
+
 	umem_nofail_callback(umem_out_of_memory);
 #ifdef __APPLE__
 	int mib[2] = {CTL_HW, HW_MEMSIZE};

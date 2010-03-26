@@ -21,7 +21,7 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
- * Portions Copyright 2007 Apple Inc. All rights reserved.
+ * Portions Copyright 2007-2008 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -30,10 +30,11 @@
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-#ifdef _KERNEL
 
 #include <sys/zfs_context.h>
+#ifdef _KERNEL
 #include <kern/locks.h>
+#endif
 
 #ifdef	__cplusplus
 extern "C" {
@@ -46,18 +47,14 @@ extern "C" {
  */
 #define	FTAG ((char *)__func__)
 
-#ifdef __APPLE__ 
+#ifdef ZFS_DEBUG 
 /*
- * In Mac OS X we use a mutex to protect access to rc_count.
- * This is due to two things:
- * 1) the fact that there is no native atomic add 64 support on PPC.
- * 2) different behavior of Mac OSX atomic 64 bit add and Solaris
- *    atomic 64 bit add.  See note below.
- *
- * NOTE: there is support for atomic add on i386 however
+ * NOTE:
  * Mac OSX atomic add will return the number before it was incremented.
  * Solairs atomic add will return the number AFTER it was incremented, 
  * so using atomic add currently will break all ZFS code assumptions.
+ * Hence atomic add is wrapped in OSX to return the correct value. If 
+ * you add any atomic uses, make sure to use wrapped version!
  */
 typedef struct reference {
 	list_node_t ref_link;
@@ -90,7 +87,7 @@ void refcount_init(void);
 void refcount_fini(void);
 
 
-#else	/* APPLE */
+#else	/* ZFS_DEBUG */
 
 typedef struct refcount {
 	uint64_t rc_count;
@@ -111,12 +108,11 @@ typedef struct refcount {
 #define	refcount_init()
 #define	refcount_fini()
 
-#endif /* APPLE */
+#endif /* ZFS_DEBUG */
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif /* _KERNEL */
 
 #endif /* _SYS_REFCOUNT_H */

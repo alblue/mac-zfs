@@ -77,9 +77,7 @@
  * from plain old race conditions.
  */
 
-#ifdef __APPLE__
-#import <maczfs-thread.h>
-#endif /* __APPLE__ */
+
 #include <sys/zfs_context.h>
 #include <sys/spa.h>
 #include <sys/dmu.h>
