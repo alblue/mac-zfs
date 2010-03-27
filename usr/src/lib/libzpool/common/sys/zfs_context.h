@@ -1055,6 +1055,8 @@ extern int zfs_secpolicy_rename_perms(const char *from, const char *to,
     cred_t *cr);
 extern int zfs_secpolicy_destroy_perms(const char *name, cred_t *cr);
 
+#define get_disk_size get_disk_size_libzpool
+
 #ifndef __APPLE__
 extern zoneid_t getzoneid(void);
 

@@ -155,7 +155,9 @@ void umem_free(void *mem, size_t _)
 /* umem_zalloc(size_t size, int flags) */
 void *umem_zalloc(size_t size, int _) 
 {
-	return malloc(size);
+	void *p = malloc(size);
+	bzero(p, size);
+	return p;
 }
 
 umem_cache_t *
@@ -232,13 +234,15 @@ void *umem_cache_alloc(umem_cache_t *cp, int umflag) {
 				exit(UMEM_CALLBACK_EXIT(255));
 			}
 
-			if (cp->cache_constructor)
-				cp->cache_constructor(buf, cp->cache_private, UMEM_DEFAULT);
-			cp->cache_objcount++;
 		}
 		/* reached if (1) got our memory, or (2) ran out of memory and
 		   were allowed to fail. */
+		return buf;
 	}
+
+	if (cp->cache_constructor)
+		cp->cache_constructor(buf, cp->cache_private, UMEM_DEFAULT);
+	cp->cache_objcount++;
 	return buf;
 }
 
@@ -484,7 +488,7 @@ zfs_memory_stats_t zfs_footprint;
 
 /* copied from usr/src/lib/libzfs/common/libzfs_util.c */
 off_t
-get_disk_size(int fd)
+get_disk_size_libzpool(int fd)
 {
         uint32_t blksize;
         uint64_t blkcnt;
