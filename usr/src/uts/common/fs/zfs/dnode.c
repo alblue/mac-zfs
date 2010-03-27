@@ -55,12 +55,14 @@ dnode_cons_ext(dnode_t *dn, int init_locks)
 	int i;
 	krwlock_t struct_rwlock;
 	kmutex_t mtx, dbufs_mtx;
+	kcondvar_t dn_notxholds;
 
 	if (!init_locks) {
 		/* save the mutexes since we do not want to reinitialize them */
 		struct_rwlock = dn->dn_struct_rwlock;
 		mtx = dn->dn_mtx;
 		dbufs_mtx = dn->dn_dbufs_mtx;
+		dn_notxholds = dn->dn_notxholds;
 	}
 
 	bzero(dn, sizeof (dnode_t));
@@ -69,10 +71,12 @@ dnode_cons_ext(dnode_t *dn, int init_locks)
 		rw_init(&dn->dn_struct_rwlock, NULL, RW_DEFAULT, NULL);
 		mutex_init(&dn->dn_mtx, NULL, MUTEX_DEFAULT, NULL);
 		mutex_init(&dn->dn_dbufs_mtx, NULL, MUTEX_DEFAULT, NULL);
+		cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
 	} else {
 		dn->dn_struct_rwlock = struct_rwlock;
 		dn->dn_mtx = mtx;
 		dn->dn_dbufs_mtx = dbufs_mtx;
+		dn->dn_notxholds = dn_notxholds;
 	}
 
 	refcount_create(&dn->dn_holds);
@@ -110,6 +114,7 @@ dnode_dest(void *arg, void *unused)
 	rw_destroy(&dn->dn_struct_rwlock);
 	mutex_destroy(&dn->dn_mtx);
 	mutex_destroy(&dn->dn_dbufs_mtx);
+	cv_destroy(&dn->dn_notxholds);
 	refcount_destroy(&dn->dn_holds);
 	refcount_destroy(&dn->dn_tx_holds);
 
