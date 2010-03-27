@@ -139,6 +139,8 @@ static int zopt_maxfaults;
 static uint64_t zopt_seed = 0;
 #endif
 
+volatile int ztest_forever = 0;
+
 typedef struct ztest_args {
 	char		*za_pool;
 	objset_t	*za_os;
@@ -454,6 +456,7 @@ usage(boolean_t requested)
 	    "\t[-z zil failure rate (default: fail every 2^%llu allocs)]\n"
 #ifdef __APPLE__
 	    "\t[-S random seed (default: randomly chosen)]\n"
+	    "\t[-D] wait in child process for GDB to attach.  (After attaching say 'set ztest_forever=0')\n"
 #endif
 	    "\t[-h] (print help)\n"
 	    "",
@@ -518,7 +521,7 @@ process_options(int argc, char **argv)
 
 	while ((opt = getopt(argc, argv,
 #ifdef __APPLE__	    
-		"v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:z:h:S")) != EOF) {
+		"v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:z:h:S:D")) != EOF) {
 #else
 	    "v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:z:h")) != EOF) {
 #endif
@@ -602,6 +605,9 @@ process_options(int argc, char **argv)
 		    case 'S':
 			zopt_seed = value;
 			break;
+		case 'D':
+		  ztest_forever = 1;
+		  break;
 #endif
 		case 'h':
 			usage(B_TRUE);
@@ -2930,6 +2936,10 @@ ztest_replace_one_disk(spa_t *spa, uint64_t vdev)
 	nvlist_free(root);
 }
 
+/* fake getexecname() by just saving Arg0, which is supposed to be the
+   full path to the executable. */
+char *getexecname_fake=0;
+
 static void
 ztest_verify_blocks(char *pool)
 {
@@ -2944,10 +2954,24 @@ ztest_verify_blocks(char *pool)
 	
 	#ifdef __APPLE__
 	/* Assume zdb is always located at /usr/sbin/zdb */
-	snprintf(zdb, 15, "%s", "/usr/bin/ztest");
+	/* snprintf(zdb, 15, "%s", "/usr/bin/ztest"); */
+	(void) realpath(getexecname_fake, zdb);
+
+	ztest = strstr(zdb, "/ztest");
+	strcpy(ztest, "/zdb");
+	if (access(zdb, F_OK) != 0) {
+		/* zdb not found in same path as ztest. */
+		printf("Failed to find zdb as '%s'\n", zdb);
+		strcpy(zdb,"/usr/sbin/zdb");
+	}
+	bin = strdup(zdb);
+	(void) sprintf(zdb, "%s -bc%s%s -U -O %s %s",
+	    bin,
+	    zopt_verbose >= 3 ? "s" : "",
+	    zopt_verbose >= 4 ? "v" : "",
+	    ztest_random(2) == 0 ? "pre" : "post", pool);
 	#else
 	(void) realpath(getexecname(), zdb);
-	#endif
 
 	/* zdb lives in /usr/sbin, while ztest lives in /usr/bin */
 	bin = strstr(zdb, "/usr/bin/");
@@ -2963,9 +2987,11 @@ ztest_verify_blocks(char *pool)
 	    zopt_verbose >= 4 ? "v" : "",
 	    ztest_random(2) == 0 ? "pre" : "post", pool);
 	free(isa);
+	#endif
 
 	if (zopt_verbose >= 5)
-		(void) printf("Executing %s\n", strstr(zdb, "zdb "));
+	  (void) printf("Executing '%s'\n", zdb);
+	  /*		(void) printf("Executing %s\n", strstr(zdb, "zdb ")); */
 
 	fp = popen(zdb, "r");
 
@@ -3472,6 +3498,12 @@ main(int argc, char **argv)
 	ztest_random_fd = open("/dev/urandom", O_RDONLY);
 #endif
 
+#ifdef __APPLE__
+	/* fake getexecname() by just saving Arg0, which is supposed
+	   to be the full path to the executable. */
+	getexecname_fake = strdup(argv[0]);
+#endif
+
 	process_options(argc, argv);
 
 #ifdef __APPLE__
@@ -3561,11 +3593,10 @@ main(int argc, char **argv)
 		if (pid == 0) {	/* child */
 			/* To debug the child with gdb, uncomment these lines
 			 * and then attach and do "set variable forever=0" */
-			/*
-			volatile int forever = 1;
-			printf("forever=%d\n", forever);
-			while (forever) {}
-			*/
+			
+			printf("forever=%d\n", ztest_forever);
+			while (ztest_forever) {}
+			
 			struct rlimit rl = { 1024, 1024 };
 			(void) setrlimit(RLIMIT_NOFILE, &rl);
 			(void) enable_extended_FILE_stdio(-1, -1);
