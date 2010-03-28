@@ -87,7 +87,6 @@
 		200D3D51115EE55E00026CE6 /* zfs_prop.h in Headers */ = {isa = PBXBuildFile; fileRef = FA9376A610A38FB500754C9E /* zfs_prop.h */; };
 		200D3D52115EE55E00026CE6 /* zvol.h in Headers */ = {isa = PBXBuildFile; fileRef = FA93760B10A38E6300754C9E /* zvol.h */; };
 		200D3D5E115EE65D00026CE6 /* arc.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DB10A38E6300754C9E /* arc.c */; };
-		200D3D5F115EE65D00026CE6 /* avl.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93765A10A38E6300754C9E /* avl.c */; };
 		200D3D60115EE65D00026CE6 /* bplist.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DD10A38E6300754C9E /* bplist.c */; };
 		200D3D61115EE65D00026CE6 /* dbuf.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93760910A38E6300754C9E /* dbuf.c */; };
 		200D3D62115EE65D00026CE6 /* dmu.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DF10A38E6300754C9E /* dmu.c */; };
@@ -149,10 +148,16 @@
 		200D3D9A115EE65D00026CE6 /* zio_checksum.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375F510A38E6300754C9E /* zio_checksum.c */; };
 		200D3D9B115EE65D00026CE6 /* zio_compress.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93760510A38E6300754C9E /* zio_compress.c */; };
 		200D3D9C115EE65D00026CE6 /* zio_inject.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375D810A38E6300754C9E /* zio_inject.c */; };
-		200D3D9F115EE6A400026CE6 /* libnvpair.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2044CCB8115D481600DDED8C /* libnvpair.a */; };
 		200D3DB4115EEA6900026CE6 /* ztest.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93766610A38E6300754C9E /* ztest.c */; };
 		200D3DCA115EEB8D00026CE6 /* zdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 2062BE33115D6D4E00890BEB /* zdb.c */; };
 		200D3DCB115EEB8D00026CE6 /* zdb_il.c in Sources */ = {isa = PBXBuildFile; fileRef = 2062BE34115D6D4E00890BEB /* zdb_il.c */; };
+		20200F77115F27FF002365B2 /* libnvpair.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2044CCB8115D481600DDED8C /* libnvpair.a */; };
+		20200F80115F2856002365B2 /* avl.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93765A10A38E6300754C9E /* avl.c */; };
+		20200F98115F2A7B002365B2 /* xdr.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93756910A38E6300754C9E /* xdr.c */; };
+		20200F99115F2A7B002365B2 /* xdr_array.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93756A10A38E6300754C9E /* xdr_array.c */; };
+		20200F9A115F2A7B002365B2 /* xdr_mem.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93756810A38E6300754C9E /* xdr_mem.c */; };
+		20200FA1115F2AB6002365B2 /* libnsl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 20200F90115F29C4002365B2 /* libnsl.a */; };
+		20200FBA115F321A002365B2 /* libnsl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 20200F90115F29C4002365B2 /* libnsl.a */; };
 		2044CC56115D44BF00DDED8C /* arc.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DB10A38E6300754C9E /* arc.c */; };
 		2044CC57115D44BF00DDED8C /* bplist.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DD10A38E6300754C9E /* bplist.c */; };
 		2044CC58115D44BF00DDED8C /* dbuf.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93760910A38E6300754C9E /* dbuf.c */; };
@@ -391,71 +396,99 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2044CBFA115D3F4100DDED8C /* libzpool */;
+			remoteGlobalIDString = 2044CBFA115D3F4100DDED8C;
 			remoteInfo = libzpool;
 		};
 		200D3CBF115EE0B200026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2044CCB7115D481600DDED8C /* libnvpair */;
+			remoteGlobalIDString = 2044CCB7115D481600DDED8C;
 			remoteInfo = libnvpair;
 		};
 		200D3CC1115EE0BE00026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2696406B0AACEAD20073456B /* libzfs */;
+			remoteGlobalIDString = 2696406B0AACEAD20073456B;
 			remoteInfo = libzfs;
 		};
 		200D3CC3115EE0CC00026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2044CBFA115D3F4100DDED8C /* libzpool */;
+			remoteGlobalIDString = 2044CBFA115D3F4100DDED8C;
 			remoteInfo = libzpool;
 		};
 		200D3DBC115EEA8900026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200D3D59115EE5E300026CE6 /* libzpool-static */;
+			remoteGlobalIDString = 200D3D59115EE5E300026CE6;
 			remoteInfo = "libzpool-static";
 		};
 		200D3DD6115EEBD200026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200D3D59115EE5E300026CE6 /* libzpool-static */;
+			remoteGlobalIDString = 200D3D59115EE5E300026CE6;
 			remoteInfo = "libzpool-static";
 		};
 		200D3DD8115EEBD900026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200D3D17115EE49000026CE6 /* libzfs-static */;
+			remoteGlobalIDString = 200D3D17115EE49000026CE6;
 			remoteInfo = "libzfs-static";
 		};
 		200D3DE0115EEE1900026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2062BE35115D6D5C00890BEB /* zdb */;
+			remoteGlobalIDString = 2062BE35115D6D5C00890BEB;
 			remoteInfo = zdb;
 		};
 		200D3DE2115EEE1E00026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = FA93776E10A3924300754C9E /* ztest */;
+			remoteGlobalIDString = FA93776E10A3924300754C9E;
 			remoteInfo = ztest;
 		};
 		200D3DF9115EF19200026CE6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200D3DC4115EEB8D00026CE6 /* zdb static */;
+			remoteGlobalIDString = 200D3DC4115EEB8D00026CE6;
 			remoteInfo = "zdb static";
+		};
+		20200F26115F1352002365B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2062BE35115D6D5C00890BEB /* zdb */;
+			remoteInfo = zdb;
+		};
+		20200F9D115F2A94002365B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 20200F85115F29C4002365B2 /* libnsl */;
+			remoteInfo = libnsl;
+		};
+		20200F9F115F2A99002365B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2044CCB7115D481600DDED8C /* libnvpair */;
+			remoteInfo = libnvpair;
+		};
+		20200FB8115F3209002365B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 20200F85115F29C4002365B2 /* libnsl */;
+			remoteInfo = libnsl;
 		};
 		2611F76A0ACDD5C900E5D4E2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -625,6 +658,7 @@
 		200D3D5A115EE5E300026CE6 /* libzpool.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libzpool.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		200D3DBA115EEA6900026CE6 /* ztest-static */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "ztest-static"; sourceTree = BUILT_PRODUCTS_DIR; };
 		200D3DD2115EEB8D00026CE6 /* zdb-static */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "zdb-static"; sourceTree = BUILT_PRODUCTS_DIR; };
+		20200F90115F29C4002365B2 /* libnsl.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libnsl.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2044CC38115D3F4100DDED8C /* libzpool.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libzpool.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		2044CC43115D3FDA00DDED8C /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
 		2044CC45115D3FDA00DDED8C /* zfs_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_context.h; sourceTree = "<group>"; };
@@ -882,10 +916,6 @@
 		FA93766310A38E6300754C9E /* zpool_util.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zpool_util.c; sourceTree = "<group>"; };
 		FA93766410A38E6300754C9E /* zpool_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zpool_main.c; sourceTree = "<group>"; };
 		FA93766610A38E6300754C9E /* ztest.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ztest.c; sourceTree = "<group>"; };
-		FA93766710A38E6300754C9E /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
-		FA93766910A38E6300754C9E /* zfs_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_context.h; sourceTree = "<group>"; };
-		FA93766A10A38E6300754C9E /* util.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = util.c; sourceTree = "<group>"; };
-		FA93766B10A38E6300754C9E /* taskq.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = taskq.c; sourceTree = "<group>"; };
 		FA93766D10A38E6300754C9E /* zfs_util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_util.h; sourceTree = "<group>"; };
 		FA93766E10A38E6300754C9E /* zfs_iter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfs_iter.c; sourceTree = "<group>"; };
 		FA93766F10A38E6300754C9E /* zfs_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfs_main.c; sourceTree = "<group>"; };
@@ -913,7 +943,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				200D3D9F115EE6A400026CE6 /* libnvpair.a in Frameworks */,
+				20200F77115F27FF002365B2 /* libnvpair.a in Frameworks */,
+				20200FA1115F2AB6002365B2 /* libnsl.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -931,11 +962,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		20200F8C115F29C4002365B2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2044CC34115D3F4100DDED8C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				2044CCC3115D491A00DDED8C /* libnvpair.a in Frameworks */,
+				20200FBA115F321A002365B2 /* libnsl.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1043,14 +1082,15 @@
 				2611F75E0ACDD4E100E5D4E2 /* zfs.fs */,
 				26E59EBF0B87AA2700CFC573 /* zoink */,
 				DAD6B3CF109409E4008A0395 /* fix-nofs */,
-				FA93776F10A3924300754C9E /* ztest */,
-				2044CC38115D3F4100DDED8C /* libzpool.dylib */,
+				20200F90115F29C4002365B2 /* libnsl.a */,
 				2044CCB8115D481600DDED8C /* libnvpair.a */,
-				2062BE3D115D6D5C00890BEB /* zdb */,
 				200D3D18115EE49000026CE6 /* libzfs.a */,
 				200D3D5A115EE5E300026CE6 /* libzpool.a */,
-				200D3DBA115EEA6900026CE6 /* ztest-static */,
+				2044CC38115D3F4100DDED8C /* libzpool.dylib */,
+				2062BE3D115D6D5C00890BEB /* zdb */,
 				200D3DD2115EEB8D00026CE6 /* zdb-static */,
+				FA93776F10A3924300754C9E /* ztest */,
+				200D3DBA115EEA6900026CE6 /* ztest-static */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1162,12 +1202,12 @@
 		FA93755D10A38E6300754C9E /* src */ = {
 			isa = PBXGroup;
 			children = (
+				FA93764710A38E6300754C9E /* head */,
+				FA93765E10A38E6300754C9E /* cmd */,
+				FA93764A10A38E6300754C9E /* common */,
 				FA93755E10A38E6300754C9E /* lib */,
 				FA93758A10A38E6300754C9E /* libgen */,
 				FA93758D10A38E6300754C9E /* uts */,
-				FA93764710A38E6300754C9E /* head */,
-				FA93764A10A38E6300754C9E /* common */,
-				FA93765E10A38E6300754C9E /* cmd */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -1175,12 +1215,12 @@
 		FA93755E10A38E6300754C9E /* lib */ = {
 			isa = PBXGroup;
 			children = (
-				2044CC41115D3F9600DDED8C /* libzpool */,
-				FA93755F10A38E6300754C9E /* libnvpair */,
-				FA93756310A38E6300754C9E /* libnsl */,
-				FA93756B10A38E6300754C9E /* libzfs */,
 				FA93757910A38E6300754C9E /* libdevid */,
+				FA93756310A38E6300754C9E /* libnsl */,
+				FA93755F10A38E6300754C9E /* libnvpair */,
 				FA93757C10A38E6300754C9E /* libuutil */,
+				FA93756B10A38E6300754C9E /* libzfs */,
+				2044CC41115D3F9600DDED8C /* libzpool */,
 			);
 			path = lib;
 			sourceTree = "<group>";
@@ -1216,9 +1256,9 @@
 			isa = PBXGroup;
 			children = (
 				FA93756710A38E6300754C9E /* rpc_mt.h */,
-				FA93756810A38E6300754C9E /* xdr_mem.c */,
 				FA93756910A38E6300754C9E /* xdr.c */,
 				FA93756A10A38E6300754C9E /* xdr_array.c */,
+				FA93756810A38E6300754C9E /* xdr_mem.c */,
 			);
 			path = rpc;
 			sourceTree = "<group>";
@@ -1253,8 +1293,8 @@
 		FA93757910A38E6300754C9E /* libdevid */ = {
 			isa = PBXGroup;
 			children = (
-				FA93757A10A38E6300754C9E /* libdevid.h */,
 				FA93757B10A38E6300754C9E /* deviceid.c */,
+				FA93757A10A38E6300754C9E /* libdevid.h */,
 			);
 			path = libdevid;
 			sourceTree = "<group>";
@@ -1270,18 +1310,18 @@
 		FA93757D10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
-				FA93757E10A38E6300754C9E /* uu_list.c */,
-				FA93757F10A38E6300754C9E /* uu_misc.c */,
-				FA93758010A38E6300754C9E /* libuutil_impl.h */,
+				FA93758910A38E6300754C9E /* libuutil.h */,
 				FA93758110A38E6300754C9E /* libuutil_common.h */,
+				FA93758010A38E6300754C9E /* libuutil_impl.h */,
 				FA93758210A38E6300754C9E /* uu_alloc.c */,
-				FA93758310A38E6300754C9E /* uu_strtoint.c */,
-				FA93758410A38E6300754C9E /* uu_pname.c */,
-				FA93758510A38E6300754C9E /* uu_ident.c */,
 				FA93758610A38E6300754C9E /* uu_avl.c */,
 				FA93758710A38E6300754C9E /* uu_dprintf.c */,
+				FA93758510A38E6300754C9E /* uu_ident.c */,
+				FA93757E10A38E6300754C9E /* uu_list.c */,
+				FA93757F10A38E6300754C9E /* uu_misc.c */,
 				FA93758810A38E6300754C9E /* uu_open.c */,
-				FA93758910A38E6300754C9E /* libuutil.h */,
+				FA93758410A38E6300754C9E /* uu_pname.c */,
+				FA93758310A38E6300754C9E /* uu_strtoint.c */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -1313,11 +1353,11 @@
 		FA93758E10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
-				FA93759C10A38E6300754C9E /* vm */,
-				FA93758F10A38E6300754C9E /* rpc */,
-				FA93759510A38E6300754C9E /* sys */,
 				FA9375C910A38E6300754C9E /* fs */,
 				FA93764210A38E6300754C9E /* os */,
+				FA93758F10A38E6300754C9E /* rpc */,
+				FA93759510A38E6300754C9E /* sys */,
+				FA93759C10A38E6300754C9E /* vm */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -1574,8 +1614,8 @@
 		FA93764710A38E6300754C9E /* head */ = {
 			isa = PBXGroup;
 			children = (
-				FA93764810A38E6300754C9E /* libintl.h */,
 				FA93764910A38E6300754C9E /* devid.h */,
+				FA93764810A38E6300754C9E /* libintl.h */,
 			);
 			path = head;
 			sourceTree = "<group>";
@@ -1583,11 +1623,11 @@
 		FA93764A10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
-				FA93764B10A38E6300754C9E /* zfs */,
-				FA93765310A38E6300754C9E /* nvpair */,
-				FA93765610A38E6300754C9E /* util */,
 				FA93765910A38E6300754C9E /* avl */,
 				FA93765B10A38E6300754C9E /* devid */,
+				FA93765310A38E6300754C9E /* nvpair */,
+				FA93765610A38E6300754C9E /* util */,
+				FA93764B10A38E6300754C9E /* zfs */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -1595,11 +1635,11 @@
 		FA93764B10A38E6300754C9E /* zfs */ = {
 			isa = PBXGroup;
 			children = (
-				FA9376A110A38FB500754C9E /* zfs_prop.c */,
+				FA9376A510A38FB500754C9E /* zfs_deleg.c */,
 				FA9376A210A38FB500754C9E /* zfs_deleg.h */,
 				FA9376A310A38FB500754C9E /* zfs_namecheck.c */,
 				FA9376A410A38FB500754C9E /* zfs_namecheck.h */,
-				FA9376A510A38FB500754C9E /* zfs_deleg.c */,
+				FA9376A110A38FB500754C9E /* zfs_prop.c */,
 				FA9376A610A38FB500754C9E /* zfs_prop.h */,
 			);
 			path = zfs;
@@ -1644,9 +1684,9 @@
 			isa = PBXGroup;
 			children = (
 				2062BE32115D6D3100890BEB /* zdb */,
+				FA93766C10A38E6300754C9E /* zfs */,
 				FA93765F10A38E6300754C9E /* zpool */,
 				FA93766510A38E6300754C9E /* ztest */,
-				FA93766C10A38E6300754C9E /* zfs */,
 			);
 			path = cmd;
 			sourceTree = "<group>";
@@ -1667,20 +1707,8 @@
 			isa = PBXGroup;
 			children = (
 				FA93766610A38E6300754C9E /* ztest.c */,
-				FA93766710A38E6300754C9E /* kernel.c */,
-				FA93766810A38E6300754C9E /* sys */,
-				FA93766A10A38E6300754C9E /* util.c */,
-				FA93766B10A38E6300754C9E /* taskq.c */,
 			);
 			path = ztest;
-			sourceTree = "<group>";
-		};
-		FA93766810A38E6300754C9E /* sys */ = {
-			isa = PBXGroup;
-			children = (
-				FA93766910A38E6300754C9E /* zfs_context.h */,
-			);
-			path = sys;
 			sourceTree = "<group>";
 		};
 		FA93766C10A38E6300754C9E /* zfs */ = {
@@ -1736,6 +1764,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		200D3D56115EE5E300026CE6 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		20200F86115F29C4002365B2 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1816,6 +1851,8 @@
 			buildRules = (
 			);
 			dependencies = (
+				20200FA0115F2A99002365B2 /* PBXTargetDependency */,
+				20200F9E115F2A94002365B2 /* PBXTargetDependency */,
 			);
 			name = "libzpool-static";
 			productName = "libzpool-static";
@@ -1858,6 +1895,23 @@
 			productReference = 200D3DD2115EEB8D00026CE6 /* zdb-static */;
 			productType = "com.apple.product-type.tool";
 		};
+		20200F85115F29C4002365B2 /* libnsl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 20200F8D115F29C4002365B2 /* Build configuration list for PBXNativeTarget "libnsl" */;
+			buildPhases = (
+				20200F86115F29C4002365B2 /* Headers */,
+				20200F87115F29C4002365B2 /* Sources */,
+				20200F8C115F29C4002365B2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = libnsl;
+			productName = libnvpair;
+			productReference = 20200F90115F29C4002365B2 /* libnsl.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 		2044CBFA115D3F4100DDED8C /* libzpool */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2044CC35115D3F4100DDED8C /* Build configuration list for PBXNativeTarget "libzpool" */;
@@ -1870,6 +1924,7 @@
 			);
 			dependencies = (
 				200D3CC0115EE0B200026CE6 /* PBXTargetDependency */,
+				20200FB9115F3209002365B2 /* PBXTargetDependency */,
 			);
 			name = libzpool;
 			productName = libzfs;
@@ -2062,6 +2117,7 @@
 			);
 			dependencies = (
 				200D3CC4115EE0CC00026CE6 /* PBXTargetDependency */,
+				20200F27115F1352002365B2 /* PBXTargetDependency */,
 			);
 			name = ztest;
 			productName = ztest;
@@ -2090,6 +2146,7 @@
 				2611F75D0ACDD4E100E5D4E2 /* zfs.fs */,
 				26E59EBE0B87AA2700CFC573 /* zoink */,
 				DAD6B3CE109409E4008A0395 /* fix-nofs */,
+				20200F85115F29C4002365B2 /* libnsl */,
 				2044CCB7115D481600DDED8C /* libnvpair */,
 				2044CBFA115D3F4100DDED8C /* libzpool */,
 				200D3D59115EE5E300026CE6 /* libzpool-static */,
@@ -2165,8 +2222,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20200F80115F2856002365B2 /* avl.c in Sources */,
 				200D3D5E115EE65D00026CE6 /* arc.c in Sources */,
-				200D3D5F115EE65D00026CE6 /* avl.c in Sources */,
 				200D3D60115EE65D00026CE6 /* bplist.c in Sources */,
 				200D3D61115EE65D00026CE6 /* dbuf.c in Sources */,
 				200D3D62115EE65D00026CE6 /* dmu.c in Sources */,
@@ -2245,6 +2302,16 @@
 			files = (
 				200D3DCA115EEB8D00026CE6 /* zdb.c in Sources */,
 				200D3DCB115EEB8D00026CE6 /* zdb_il.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		20200F87115F29C4002365B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				20200F98115F2A7B002365B2 /* xdr.c in Sources */,
+				20200F99115F2A7B002365B2 /* xdr_array.c in Sources */,
+				20200F9A115F2A7B002365B2 /* xdr_mem.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2571,6 +2638,26 @@
 			target = 200D3DC4115EEB8D00026CE6 /* zdb static */;
 			targetProxy = 200D3DF9115EF19200026CE6 /* PBXContainerItemProxy */;
 		};
+		20200F27115F1352002365B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2062BE35115D6D5C00890BEB /* zdb */;
+			targetProxy = 20200F26115F1352002365B2 /* PBXContainerItemProxy */;
+		};
+		20200F9E115F2A94002365B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 20200F85115F29C4002365B2 /* libnsl */;
+			targetProxy = 20200F9D115F2A94002365B2 /* PBXContainerItemProxy */;
+		};
+		20200FA0115F2A99002365B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2044CCB7115D481600DDED8C /* libnvpair */;
+			targetProxy = 20200F9F115F2A99002365B2 /* PBXContainerItemProxy */;
+		};
+		20200FB9115F3209002365B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 20200F85115F29C4002365B2 /* libnsl */;
+			targetProxy = 20200FB8115F3209002365B2 /* PBXContainerItemProxy */;
+		};
 		2611F76B0ACDD5C900E5D4E2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 2611F7350ACDD13900E5D4E2 /* zfs.util */;
@@ -2725,6 +2812,7 @@
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				LIBRARY_SEARCH_PATHS = "$(TARGET_BUILD_DIR)";
 				OTHER_CFLAGS = (
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
@@ -2770,6 +2858,7 @@
 			buildSettings = {
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				LIBRARY_SEARCH_PATHS = "$(TARGET_BUILD_DIR)";
 				OTHER_CFLAGS = (
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
@@ -3190,6 +3279,100 @@
 			};
 			name = Release;
 		};
+		20200F8E115F29C4002365B2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_PREFIX = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				OTHER_CFLAGS = (
+					"-isystem",
+					"$(SRCROOT)/usr/src/head",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libnvpair",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/libgen/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common/zfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs/zfs/",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/sys",
+					"-v",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = libnsl;
+			};
+			name = Debug;
+		};
+		20200F8F115F29C4002365B2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = "";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				OTHER_CFLAGS = (
+					"-isystem",
+					"$(SRCROOT)/usr/src/head",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libnvpair",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/libgen/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common/zfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs/zfs/",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/sys",
+					"-v",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = libnsl;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
 		2044CC36115D3F4100DDED8C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -3208,6 +3391,7 @@
 					"NAMEDSTREAMS=1",
 				);
 				INSTALL_PATH = /usr/lib;
+				LD_DYLIB_INSTALL_NAME = "$(EXECUTABLE_PATH)";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/build/Debug\"",
@@ -3330,6 +3514,37 @@
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALL_PATH = /usr/local/lib;
+				OTHER_CFLAGS = (
+					"-isystem",
+					"$(SRCROOT)/usr/src/head",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libnvpair",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/libgen/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common/zfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs/zfs/",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/sys",
+					"-v",
+				);
 				PREBINDING = NO;
 				PRODUCT_NAME = libnvpair;
 			};
@@ -3345,6 +3560,37 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
 				INSTALL_PATH = /usr/local/lib;
+				OTHER_CFLAGS = (
+					"-isystem",
+					"$(SRCROOT)/usr/src/head",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libuutil/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libnvpair",
+					"-isystem",
+					"$(SRCROOT)/usr/src/lib/libzfs/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/libgen/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/common/zfs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/fs/zfs/",
+					"-isystem",
+					"$(SRCROOT)/usr/src/uts/common/sys",
+					"-v",
+				);
 				PREBINDING = NO;
 				PRODUCT_NAME = libnvpair;
 				ZERO_LINK = NO;
@@ -3540,6 +3786,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = "TEXT_DOMAIN=0";
 				INSTALL_PATH = /usr/lib;
+				LD_DYLIB_INSTALL_NAME = "$(EXECUTABLE_PATH)";
 				PREBINDING = NO;
 				PRODUCT_NAME = libzfs;
 				ZERO_LINK = NO;
@@ -3871,6 +4118,15 @@
 			buildConfigurations = (
 				200D3DD0115EEB8D00026CE6 /* Debug */,
 				200D3DD1115EEB8D00026CE6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		20200F8D115F29C4002365B2 /* Build configuration list for PBXNativeTarget "libnsl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				20200F8E115F29C4002365B2 /* Debug */,
+				20200F8F115F29C4002365B2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
