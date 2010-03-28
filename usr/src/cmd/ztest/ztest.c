@@ -2958,11 +2958,19 @@ ztest_verify_blocks(char *pool)
 	(void) realpath(getexecname_fake, zdb);
 
 	ztest = strstr(zdb, "/ztest");
+#ifdef ZDB_STATIC
+	strcpy(ztest, "/" ZDB_STATIC);
+#else
 	strcpy(ztest, "/zdb");
+#endif
 	if (access(zdb, F_OK) != 0) {
 		/* zdb not found in same path as ztest. */
 		printf("Failed to find zdb as '%s'\n", zdb);
+#ifdef ZDB_STATIC
+		strcpy(zdb,"/usr/sbin/" ZDB_STATIC);
+#else
 		strcpy(zdb,"/usr/sbin/zdb");
+#endif
 	}
 	bin = strdup(zdb);
 	(void) sprintf(zdb, "%s -bc%s%s -U -O %s %s",
