@@ -29,6 +29,8 @@
 #ifndef _SYS_ZFS_CONTEXT_H
 #define	_SYS_ZFS_CONTEXT_H
 
+/* This is the zfs_context for the *userland* implementation libzpool! */
+
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #ifdef	__cplusplus
@@ -45,12 +47,6 @@ extern "C" {
 #define	_SYS_VFS_H
 #define	_SYS_SUNDDI_H
 #define	_SYS_CALLB_H
-
-  /* by BjoKa */
-#if 0
-#define _SYS_CRED_H
-#define _SYS_ATOMIC_H
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,13 +101,6 @@ extern "C" {
    * because that would pull in a lot of vfs stuff not easily emulated
    * in userland.
    */
-#if 0
-#define _SYS_ZIL_H
-#define _SYS_DMU_H
-#include <sys/zfs_znode.h>
-#undef _SYS_DMU_H
-#undef _SYS_ZIL_H
-#endif
 #endif
 
 #ifdef __APPLE__	
@@ -409,116 +398,6 @@ int vfs_context_rele(vfs_context_t ctx);
 
 #define	vnode_getattr(vp, vap, co)	((vap)->va_data_size = (vp)->v_size, 0)
 #define	vnode_close(vp, f, c)	0
-
-
-/*
- * a subset of struct znode.
- *
- * needed by znode.c :
- * - zfs_getbsdflags()
- * - zfs_setbsdflags()
- */
-#if 0
-typedef struct znode {
-	struct zfsvfs	*z_zfsvfs;
-
-#ifdef __APPLE__
-	struct vnode	*z_vnode;
-	uint32_t	z_vid;
-	kcondvar_t	z_cv;		/* wait for vnode to be attached */
-#else
-	vnode_t		*z_vnode;
-#endif
-	uint64_t	z_id;		/* object ID for this znode */
-	kmutex_t	z_lock;		/* znode modification lock */
-	krwlock_t	z_map_lock;	/* page map lock */
-	krwlock_t	z_parent_lock;	/* parent lock for directories */
-	krwlock_t	z_name_lock;	/* "master" lock for dirent locks */
-	zfs_dirlock_t	*z_dirlocks;	/* directory entry lock list */
-	kmutex_t	z_range_lock;	/* protects changes to z_range_avl */
-	avl_tree_t	z_range_avl;	/* avl tree of file range locks */
-	uint8_t		z_unlinked;	/* file has been unlinked */
-	uint8_t		z_atime_dirty;	/* atime needs to be synced */
-	uint8_t		z_dbuf_held;	/* Is z_dbuf already held? */
-	uint8_t		z_zn_prefetch;	/* Prefetch znodes? */
-#ifdef __APPLE__
-	uint8_t		z_mmapped;	/* file has been memory mapped */
-#endif
-	uint_t		z_blksz;	/* block size in bytes */
-	uint_t		z_seq;		/* modification sequence number */
-#ifndef __APPLE__
-	uint64_t	z_mapcnt;	/* number of pages mapped to file */
-#endif
-	uint64_t	z_last_itx;	/* last ZIL itx on this znode */
-	uint32_t	z_sync_cnt;	/* synchronous open count */
-	kmutex_t	z_acl_lock;	/* acl data lock */
-	list_node_t	z_link_node;	/* all znodes in fs link */
-
-#if defined (__APPLE__) && defined (ZFS_DEBUG)
-	list_t		z_stalker;	/* vnode life tracker */
-#endif
-	/*
-	 * These are dmu managed fields.
-	 */
-	znode_phys_t	*z_phys;	/* pointer to persistent znode */
-	dmu_buf_t	*z_dbuf;	/* buffer containing the z_phys */
-} znode_t;
-#endif
-#if 0
-typedef struct znode {
-	struct zfsvfs	*z_zfsvfs;
-
-#ifdef __APPLE__
-	struct vnode	*z_vnode;
-	uint32_t	z_vid;
-  //	kcondvar_t	z_cv;		/* wait for vnode to be attached */
-#else
-	vnode_t		*z_vnode;
-#endif
-#if defined (__APPLE__) && defined (ZFS_DEBUG)
-	list_t		z_stalker;	/* vnode life tracker */
-#endif
-	/*
-	 * These are dmu managed fields.
-	 */
-	znode_phys_t	*z_phys;	/* pointer to persistent znode */
-} znode_t;
-
-/*
- * a subset of whereami_t, from zfs_znode.h:168
- *
- * needed by znode.c :
- * - n_event_to_str()
- * - znode_stalker()
- * - znode_stalker_fini()
- */
-
-#if defined (__APPLE__) && defined (ZFS_DEBUG)
-/* 
- * Track the zfs life cycle of the vnode. Events added to z_stalker below 
- * Oh the places we'll go
-*/
-typedef enum whereami {
-	N_znode_alloc = 0,
-	N_vnop_inactive,
-	N_zinactive,
-	N_zreclaim,
-	N_vnop_reclaim,
-	N_znode_delete,
-	N_znode_pageout,
-	N_zfs_nolink_add,
-	N_mknode_err,
-	N_zinact_retearly,
-	N_zfs_rmnode,
-	N_vnop_fsync_zil
-}whereami_t;
-
-typedef struct findme {
-	whereami_t event;
-	list_node_t n_elem;
-} findme_t;
-#endif
-#endif
 
 struct vmem {
 	int vm_quantum;
@@ -1059,21 +938,6 @@ extern int zfs_secpolicy_destroy_perms(const char *name, cred_t *cr);
 
 #ifndef __APPLE__
 extern zoneid_t getzoneid(void);
-
-#else
-
-#if 0
-	
-#include <sys/txg_impl.h>
-#include <sys/dbuf.h>
-
-/*
- * Returns true if any vdevs in the hierarchy is a disk
- */
-#include <sys/vdev_impl.h>
-typedef struct vdev vdev_t;
-extern int vdev_contains_disks(vdev_t *);
-#endif /* 0 */
 	
 #endif
 

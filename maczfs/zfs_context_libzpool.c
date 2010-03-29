@@ -303,54 +303,6 @@ dmu_buf_refcount(dmu_buf_t *db)
  * MUTEX LOCKS
  */
 
-#if 0
-/* most of this is now in kernel.c */
-
-void
-zmutex_init(kmutex_t *mp)
-{
-	pthread_mutex_init(&mp->m_lock, 0);
-	mp->initialized = TRUE;
-	mp->m_owner = NULL;
-}
-
-void
-zmutex_destroy(kmutex_t *mp)
-{
-	pthread_mutex_destroy(&mp->m_lock);
-}
-
-void
-mutex_enter(kmutex_t *mp)
-{
-	if (mp->m_owner == thr_self())
-		panic("mutex_enter: locking against myself!");
-		
-	mutex_lock(&mp->m_lock);
-	mp->m_owner = thr_self();
-}
-
-void
-mutex_exit(kmutex_t *mp)
-{
-	mp->m_owner = NULL;
-	mutex_unlock(&mp->m_lock);
-}
-
-int
-mutex_tryenter(kmutex_t *mp)
-{
-	int held;
-
-	if (mp->m_owner == thr_self())
-		panic("mutex_tryenter: locking against myself!");
-
-	held = mutex_trylock(&mp->m_lock);
-	if (held == 0)
-		mp->m_owner = thr_self();
-	 return (held);
-}
-#endif
 
 int
 mutex_owned(kmutex_t *mp)
@@ -359,101 +311,10 @@ mutex_owned(kmutex_t *mp)
 	return (mp->m_owner == thr_self());
 }
 
-#if 0
-kthread_t *
-mutex_owner(kmutex_t *mp)
-{
-	return (mp->m_owner);
-}
-#endif
 
 /*
  * READER/WRITER LOCKS
  */
-#if 0
-/* most of this is now in kernel.c */
-void
-rw_init(krwlock_t *rwlp, char *name, int type, __unused void *arg)
-{
-	ASSERT(type != RW_DRIVER);
-
-	lck_rw_init((lck_rw_t *)&rwlp->rw_lock[0],
-	            zfs_rwlock_group, zfs_lock_attr);
-	rwlp->rw_owner = NULL;
-	rwlp->rw_readers = 0;
-}
-
-void
-rw_destroy(krwlock_t *rwlp)
-{
-	lck_rw_destroy((lck_rw_t *)&rwlp->rw_lock[0], zfs_rwlock_group);
-}
-
-void
-rw_enter(krwlock_t *rwlp, krw_t rw)
-{
-	if (rw == RW_READER) {
-		lck_rw_lock_shared((lck_rw_t *)&rwlp->rw_lock[0]);
-		OSIncrementAtomic((volatile SInt32 *)&rwlp->rw_readers);
-	} else {
-		if (rwlp->rw_owner == current_thread())
-			panic("rw_enter: locking against myself!");
-		lck_rw_lock_exclusive((lck_rw_t *)&rwlp->rw_lock[0]);
-		rwlp->rw_owner = current_thread();
-	}
-}
-
-/*
- * kernel private from osfmk/kern/locks.h
- */
-extern boolean_t lck_rw_try_lock(lck_rw_t *lck, lck_rw_type_t lck_rw_type);
-
-
-int
-rw_tryenter(krwlock_t *rwlp, krw_t rw)
-{
-	int held = 0;
-
-	if (rw == RW_READER) {
-		held = lck_rw_try_lock((lck_rw_t *)&rwlp->rw_lock[0],
-		                       LCK_RW_TYPE_SHARED);
-		if (held)
-			OSIncrementAtomic((volatile SInt32 *)&rwlp->rw_readers);
-	} else {
-		if (rwlp->rw_owner == current_thread())
-			panic("rw_tryenter: locking against myself!");
-		held = lck_rw_try_lock((lck_rw_t *)&rwlp->rw_lock[0],
-		                       LCK_RW_TYPE_EXCLUSIVE);
-		if (held)
-			rwlp->rw_owner = current_thread();
-	}
-
-	return (held);
-}
-
-/*
- * Not supported in Mac OS X kernel.
- */
-int
-rw_tryupgrade(krwlock_t *rwlp)
-{
-	return (0);
-}
-
-void
-rw_exit(krwlock_t *rwlp)
-{
-	if (rwlp->rw_owner == current_thread()) {
-		rwlp->rw_owner = NULL;
-		lck_rw_unlock_exclusive((lck_rw_t *)&rwlp->rw_lock[0]);
-	} else {
-		OSDecrementAtomic((volatile SInt32 *)&rwlp->rw_readers);
-		lck_rw_unlock_shared((lck_rw_t *)&rwlp->rw_lock[0]);
-	}
-}
-
-#endif
-
 int
 rw_lock_held(krwlock_t *rwlp)
 {

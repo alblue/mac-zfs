@@ -43,11 +43,6 @@
 #include <sys/zfs_context.h>
 #include <sys/zmod.h>
 #include <sys/utsname.h>
-#if 0
-#ifdef __APPLE__
-#include "zfs_osx_common.h"
-#endif
-#endif
 
 /*
  * Emulation of kernel services in userland.
