@@ -137,9 +137,9 @@ static uint64_t zopt_time = 300;	/* 5 minutes */
 static int zopt_maxfaults;
 #ifdef __APPLE__
 static uint64_t zopt_seed = 0;
-#endif
-
 volatile int ztest_forever = 0;
+int zdb_forever = 0;
+#endif
 
 typedef struct ztest_args {
 	char		*za_pool;
@@ -602,12 +602,17 @@ process_options(int argc, char **argv)
 			zio_zil_fail_shift = MIN(value, 16);
 			break;
 #ifdef __APPLE__
-		    case 'S':
+	    case 'S':
 			zopt_seed = value;
 			break;
 		case 'D':
-		  ztest_forever = 1;
-		  break;
+			if (ztest_forever == 0) {
+				ztest_forever = 1;
+			} else {
+				zdb_forever = 1;
+				ztest_forever = 0;
+			}
+			break;
 #endif
 		case 'h':
 			usage(B_TRUE);
@@ -2997,6 +3002,12 @@ ztest_verify_blocks(char *pool)
 	free(isa);
 	#endif
 
+#ifdef __APPLE__
+	if (zdb_forever) {
+		strcat(zdb, " -D");
+	}
+#endif
+
 	if (zopt_verbose >= 5)
 	  (void) printf("Executing '%s'\n", zdb);
 	  /*		(void) printf("Executing %s\n", strstr(zdb, "zdb ")); */
@@ -3596,15 +3607,16 @@ main(int argc, char **argv)
 		pid = fork();
 
 		if (pid == -1)
-			fatal(1, "fork failed");
+			fatal(1, "fork of ztest failed");
 
 		if (pid == 0) {	/* child */
 			/* To debug the child with gdb, uncomment these lines
 			 * and then attach and do "set variable forever=0" */
-			
+#ifdef __APPLE__
 			printf("forever=%d\n", ztest_forever);
 			while (ztest_forever) {}
-			
+#endif
+
 			struct rlimit rl = { 1024, 1024 };
 			(void) setrlimit(RLIMIT_NOFILE, &rl);
 			(void) enable_extended_FILE_stdio(-1, -1);
@@ -3618,21 +3630,21 @@ main(int argc, char **argv)
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status) != 0) {
 				(void) fprintf(stderr,
-				    "child exited with code %d\n",
-				    WEXITSTATUS(status));
+				    "child %s exited with code %d\n",
+				    argv[0], WEXITSTATUS(status));
 				exit(2);
 			}
 		} else if (WIFSIGNALED(status)) {
 			if (WTERMSIG(status) != SIGKILL) {
 				(void) fprintf(stderr,
-				    "child died with signal %d\n",
-				    WTERMSIG(status));
+				    "child %s died with signal %d\n",
+				    argv[0], WTERMSIG(status));
 				exit(3);
 			}
 			kills++;
 		} else {
 			(void) fprintf(stderr, "something strange happened "
-			    "to child\n");
+			    "to child %s\n", argv[0]);
 			exit(4);
 		}
 

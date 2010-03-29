@@ -2225,6 +2225,10 @@ main(int argc, char **argv)
 	int exported = 0;
 	char *vdev_dir = NULL;
 
+#ifdef __APPLE__
+	volatile int zdb_forever = 0;
+#endif
+
 	(void) setrlimit(RLIMIT_NOFILE, &rl);
 	(void) enable_extended_FILE_stdio(-1, -1);
 
@@ -2299,6 +2303,11 @@ main(int argc, char **argv)
 		case 'p':
 			vdev_dir = optarg;
 			break;
+#ifdef __APPLE__
+		case 'D':
+			zdb_forever = 1;
+			break;
+#endif
 		default:
 			usage();
 			break;
@@ -2307,6 +2316,11 @@ main(int argc, char **argv)
 
 	if (vdev_dir != NULL && exported == 0)
 		(void) fatal("-p option requires use of -e\n");
+
+#ifdef __APPLE__
+	/* to attach gdb, run zdb with "-D" and say in gdb "set zdb_forever = 0" */
+	while (zdb_forever) {}
+#endif
 
 	kernel_init(FREAD);
 	g_zfs = libzfs_init();
