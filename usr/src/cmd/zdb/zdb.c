@@ -2234,7 +2234,13 @@ main(int argc, char **argv)
 
 	dprintf_setup(&argc, argv);
 
-	while ((c = getopt(argc, argv, "udibcsvCLO:B:UlRep:")) != -1) {
+	while ((c = getopt(argc, argv,
+#ifdef __APPLE__
+					   "udibcsvCLO:B:UlRep:D"
+#else
+					   "udibcsvCLO:B:UlRep:"
+#endif
+					   )) != -1) {
 		switch (c) {
 		case 'u':
 		case 'd':
