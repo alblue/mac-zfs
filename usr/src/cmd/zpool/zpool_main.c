@@ -183,41 +183,6 @@ static zpool_command_t command_table[] = {
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
 
-#ifdef __APPLE__
-/*
- * The read-only zfs kext has limited zpool command functionality
- */
-static int zfs_read_only_command[] = {
-	0,	/* create */
-	0,	/* destroy */
-	0,	/* NULL */
-	0,	/* add */
-	0,	/* remove */
-	0,	/* NULL */
-	1,	/* list */
-	1,	/* iostat */
-	1,	/* status */
-	1,	/* NULL */
-	1,	/* online */
-	1,	/* offline */
-	0,	/* clear */
-	1,	/* NULL */
-	0,	/* attach */
-	0,	/* detach */
-	0,	/* replace */
-	0,	/* NULL */
-	1,	/* scrub */
-	1,	/* NULL */
-	1,	/* import */
-	0,	/* export */
-	0,	/* upgrade */
-	1,	/* NULL */
-	1	/* history */
-};
-
-extern int zfs_readonly_kext;
-
-#endif /* __APPLE__ */
 
 zpool_command_t *current_command;
 
@@ -363,10 +328,6 @@ usage(boolean_t requested)
 		    gettext("where 'command' is one of the following:\n\n"));
 
 		for (i = 0; i < NCOMMAND; i++) {
-#ifdef __APPLE__
-			if (zfs_readonly_kext && !zfs_read_only_command[i])
-				continue;
-#endif
 			if (command_table[i].name == NULL)
 				(void) fprintf(fp, "\n");
 			else
@@ -1512,7 +1473,7 @@ zpool_do_import(int argc, char **argv)
 			(void) fprintf(stderr, gettext("too many arguments\n"));
 			usage(B_FALSE);
 		}
-#if 0
+#ifndef __APPLE__ 
 		/*
 		 * Check for the SYS_CONFIG privilege.  We do this explicitly
 		 * here because otherwise any attempt to discover pools will
@@ -3819,10 +3780,6 @@ find_command_idx(char *command, int *idx)
 	int i;
 
 	for (i = 0; i < NCOMMAND; i++) {
-#ifdef __APPLE__
-		if (zfs_readonly_kext && !zfs_read_only_command[i])
-			continue;
-#endif
 		if (command_table[i].name == NULL)
 			continue;
 
@@ -3860,10 +3817,6 @@ main(int argc, char **argv)
 	 * Make sure the user has specified some command.
 	 */
 	if (argc < 2) {
-#ifdef __APPLE__
-		if (zfs_readonly_kext)
-			(void) fprintf(stderr, "Read-Only ZFS Implementation\n");
-#endif
 		(void) fprintf(stderr, gettext("missing command\n"));
 		usage(B_FALSE);
 	}
@@ -3902,10 +3855,6 @@ main(int argc, char **argv)
 		(void) strcpy((void *)buf, argv[2]);
 		return (!!ioctl(fd, ZFS_IOC_POOL_FREEZE, buf));
 	} else {
-#ifdef __APPLE__
-		if (zfs_readonly_kext)
-			(void) fprintf(stderr, "Read-Only ZFS Implementation\n");
-#endif
 		(void) fprintf(stderr, gettext("unrecognized "
 		    "command '%s'\n"), cmdname);
 		usage(B_FALSE);

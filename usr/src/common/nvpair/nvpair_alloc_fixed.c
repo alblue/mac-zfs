@@ -26,12 +26,14 @@
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)nvpair_alloc_fixed.c	1.3	06/10/02 SMI"
 
 #ifndef __APPLE__
 #include <sys/stropts.h>
 #include <sys/isa_defs.h>
 #endif /*!__APPLE__*/
+
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
+
 #include <sys/nvpair.h>
 #include <sys/sysmacros.h>
 #if defined(_KERNEL) && !defined(_BOOT)

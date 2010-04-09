@@ -363,7 +363,7 @@ vdev_disk_close(vdev_t *vd)
 
 	if (dvd->vd_lh != NULL)
 		(void) ldi_close(dvd->vd_lh, spa_mode, kcred);
-#endif
+#endif /* __APPLE__ */
 
 	kmem_free(dvd, sizeof (vdev_disk_t));
 	vd->vdev_tsd = NULL;
@@ -372,9 +372,13 @@ vdev_disk_close(vdev_t *vd)
 static void
 #ifdef __APPLE__
 
-vdev_disk_io_intr(struct buf *bp, void *callback_arg)
+vdev_disk_io_intr(struct buf *bp, void *arg)
+#else
+vdev_disk_io_intr(buf_t *bp)
+#endif /* __APPLE__ */
 {
-	zio_t *zio = (zio_t *)callback_arg;
+#ifdef __APPLE__
+	zio_t *zio = (zio_t *)arg;
 
 	if ((zio->io_error = buf_error(bp)) == 0 && buf_resid(bp) != 0) {
 		zio->io_error = EIO;
@@ -382,12 +386,7 @@ vdev_disk_io_intr(struct buf *bp, void *callback_arg)
 	buf_free(bp);
 
 	zio_next_stage_async(zio);
-}
-
 #else
-
-vdev_disk_io_intr(buf_t *bp)
-{
 	vdev_disk_buf_t *vdb = (vdev_disk_buf_t *)bp;
 	zio_t *zio = vdb->vdb_io;
 
@@ -396,9 +395,9 @@ vdev_disk_io_intr(buf_t *bp)
 
 	kmem_free(vdb, sizeof (vdev_disk_buf_t));
 
+#endif /* __APPLE__ */
 	zio_next_stage_async(zio);
 }
-#endif
 
 static void
 vdev_disk_ioctl_done(void *zio_arg, int error)
@@ -461,7 +460,7 @@ vdev_disk_io_start(zio_t *zio)
 			error = ldi_ioctl(dvd->vd_lh, zio->io_cmd,
 			    (uintptr_t)&zio->io_dk_callback,
 			    FKIOCTL, kcred, NULL);
-#endif
+#endif /* __APPLE__ */
 			if (error == 0) {
 				/*
 				 * The ioctl will be done asychronously,
@@ -502,7 +501,7 @@ vdev_disk_io_start(zio_t *zio)
 flags |= B_NOCACHE;
 #else
 	flags |= B_BUSY | B_NOCACHE;
-#endif
+#endif /* __APPLE__ */
 	if (zio->io_flags & ZIO_FLAG_FAILFAST)
 		flags |= B_FAILFAST;
 
@@ -535,14 +534,7 @@ flags |= B_NOCACHE;
 		panic("vdev_disk_io_start: buf_setcallback failed\n");
 	
 	if (zio->io_type == ZIO_TYPE_WRITE) {
-#ifdef ZFS_READONLY_KEXT
-		buf_seterror(bp, 0);
-		buf_setresid(bp, 0);
-		vdev_disk_io_intr(bp, zio);
-		return;
-#else
 		vnode_startwrite(dvd->vd_devvp);
-#endif /*ZFS_READONLY_KEXT*/
 	}
 	error = VNOP_STRATEGY(bp);
 #else
@@ -606,7 +598,7 @@ vdev_disk_io_done(zio_t *zio)
 			spa_async_request(zio->io_spa, SPA_ASYNC_REMOVE);
 		}
 	}
-#endif
+#endif /* !__APPLE__ */
 
 	zio_next_stage(zio);
 }

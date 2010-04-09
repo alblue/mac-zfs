@@ -27,7 +27,7 @@
 #ifndef	_DEVID_H
 #define	_DEVID_H
 
-#pragma ident	"@(#)devid.h	1.14	05/06/08 SMI"
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #ifndef	_KERNEL
 #include <sys/types.h>

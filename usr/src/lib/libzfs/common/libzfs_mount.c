@@ -1452,5 +1452,5 @@ hasmntopt(struct mnttab *mnt, char *opt)
 	}
 	return (NULL);
 }
-#endif
+#endif /* __APPLE__ */
 

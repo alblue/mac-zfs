@@ -41,7 +41,7 @@
 #ifndef _RPC_XDR_H
 #define	_RPC_XDR_H
 
-#pragma ident	"@(#)xdr.h	1.54	05/06/10 SMI"
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #include <sys/byteorder.h>	/* For all ntoh* and hton*() kind of macros */
 #include <rpc/types.h>	/* For all ntoh* and hton*() kind of macros */

@@ -35,12 +35,18 @@
 #include <sys/kmem.h>
 #include <sys/vmem.h>
 #include <sys/thread.h>
-//#include <sys/t_lock.h>
+#ifndef __APPLE__
+#include <sys/t_lock.h>
+#endif /* __APPLE__ */
 #include <sys/time.h>
-//#include <sys/kstat.h>
-//#include <sys/cpuvar.h>
+#ifndef __APPLE__
+#include <sys/kstat.h>
+#include <sys/cpuvar.h>
+#endif /* __APPLE__ */
 #include <sys/systm.h>
-//#include <vm/page.h>
+#ifndef __APPLE__
+#include <vm/page.h>
+#endif /* __APPLE__ */
 
 #ifdef	__cplusplus
 extern "C" {

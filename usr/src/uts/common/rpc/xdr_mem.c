@@ -36,7 +36,7 @@
  * Use is subject to license terms.
  */
  
-#pragma ident	"@(#)xdr_mem.c	1.19	05/10/30 SMI"
+#pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 /*
  * xdr_mem.c, XDR implementation using memory buffers.

@@ -27,16 +27,20 @@
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-
 #include <sys/zfs_context.h>
 #include <sys/refcount.h>
 
+#if defined(__APPLE__) || defined(DEBUG) || !defined(_KERNEL)
+
+#ifdef _KERNEL
+int reference_tracking_enable = FALSE; /* runs out of memory too easily */
+#else
 #ifdef ZFS_DEBUG
-/* Only enable reference tracking on DEBUG builds */
 int reference_tracking_enable = TRUE;
-#ifndef __APPLE__
+#else
 int reference_tracking_enable = FALSE;
-#endif
+#endif /* ZFS_DEBUG */
+#endif /* _KERNEL */
 int reference_history = 4; /* tunable */
 
 static kmem_cache_t *reference_cache;
@@ -194,4 +198,4 @@ refcount_remove(refcount_t *rc, void *holder)
 	return (refcount_remove_many(rc, 1, holder));
 }
 
-#endif /* ZFS_DEBUG */
+#endif /* __APPLE__ || DEBUG || !_KERNEL */

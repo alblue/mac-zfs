@@ -234,6 +234,7 @@ backup_cb(traverse_blk_cache_t *bc, spa_t *spa, void *arg)
 	return (err);
 }
 
+// Issue 27
 int
 #ifdef __APPLE__
 dmu_sendbackup(objset_t *tosnap, objset_t *fromsnap, struct vnode *vp)
@@ -308,6 +309,7 @@ dmu_sendbackup(objset_t *tosnap, objset_t *fromsnap, vnode_t *vp)
 struct restorearg {
 	int err;
 	int byteswap;
+// Issue 27
 #ifdef __APPLE__
 	struct vnode *vp;
 #else
@@ -765,11 +767,13 @@ restore_free(struct restorearg *ra, objset_t *os,
 	return (err);
 }
 
+// Issue 27
 int
-dmu_recvbackup(char *tosnap, struct drr_begin *drrb, uint64_t *sizep,
 #ifdef __APPLE__
+dmu_recvbackup(char *tosnap, struct drr_begin *drrb, uint64_t *sizep,
     boolean_t force, struct vnode *vp, uint64_t voffset)
 #else
+dmu_recvbackup(char *tosnap, struct drr_begin *drrb, uint64_t *sizep,
     boolean_t force, vnode_t *vp, uint64_t voffset)
 #endif
 {

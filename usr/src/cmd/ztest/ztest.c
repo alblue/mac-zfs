@@ -108,9 +108,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#ifndef __APPLE__
 #include <umem.h>
-#endif
 #include <dlfcn.h>
 #include <ctype.h>
 #include <math.h>
@@ -3222,22 +3220,11 @@ ztest_run(char *pool)
 	spa_t *spa;
 	char name[100];
 
-#ifdef __APPLE__
-	bzero(&zs->zs_vdev_lock, sizeof(zs->zs_vdev_lock));
-	VERIFY(_mutex_init(&zs->zs_vdev_lock, USYNC_THREAD, NULL) == 0);
-	bzero(&zs->zs_name_lock, sizeof(zs->zs_name_lock));
-	VERIFY(rwlock_init(&zs->zs_name_lock, USYNC_THREAD, NULL) == 0);
-#else
 	(void) _mutex_init(&zs->zs_vdev_lock, USYNC_THREAD, NULL);
 	(void) rwlock_init(&zs->zs_name_lock, USYNC_THREAD, NULL);
-#endif
 
 	for (t = 0; t < ZTEST_SYNC_LOCKS; t++)
-#ifdef __APPLE__
-		VERIFY(_mutex_init(&zs->zs_sync_lock[t], USYNC_THREAD, NULL) == 0);
-#else
 		(void) _mutex_init(&zs->zs_sync_lock[t], USYNC_THREAD, NULL);
-#endif
 
 	/*
 	 * Destroy one disk before we even start.
