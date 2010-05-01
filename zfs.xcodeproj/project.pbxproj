@@ -231,6 +231,8 @@
 		2062BE43115D6DD900890BEB /* libzfs.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2696406C0AACEAD20073456B /* libzfs.dylib */; };
 		2062BE46115D6E1400890BEB /* zdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 2062BE33115D6D4E00890BEB /* zdb.c */; };
 		2062BE47115D6E1400890BEB /* zdb_il.c in Sources */ = {isa = PBXBuildFile; fileRef = 2062BE34115D6D4E00890BEB /* zdb_il.c */; };
+		20D2428B116FDFBA00A5A50D /* assfail.c in Sources */ = {isa = PBXBuildFile; fileRef = 20D24289116FDF9A00A5A50D /* assfail.c */; };
+		20D24290116FE00500A5A50D /* assfail.c in Sources */ = {isa = PBXBuildFile; fileRef = 20D24289116FDF9A00A5A50D /* assfail.c */; };
 		2611F7400ACDD29E00E5D4E2 /* zfsutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 2611F73F0ACDD29E00E5D4E2 /* zfsutil.c */; };
 		2611F7F60ACDE5F200E5D4E2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2611F7F50ACDE5F200E5D4E2 /* InfoPlist.strings */; };
 		2611F8040ACDE72900E5D4E2 /* zfs.util in CopyFiles */ = {isa = PBXBuildFile; fileRef = 2611F7360ACDD13900E5D4E2 /* zfs.util */; };
@@ -670,6 +672,9 @@
 		2062BE33115D6D4E00890BEB /* zdb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zdb.c; path = zdb/zdb.c; sourceTree = "<group>"; };
 		2062BE34115D6D4E00890BEB /* zdb_il.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zdb_il.c; path = zdb/zdb_il.c; sourceTree = "<group>"; };
 		2062BE3D115D6D5C00890BEB /* zdb */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = zdb; sourceTree = BUILT_PRODUCTS_DIR; };
+		20D2427F116FDE8000A5A50D /* types32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types32.h; sourceTree = "<group>"; };
+		20D24289116FDF9A00A5A50D /* assfail.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = assfail.c; path = maczfs/assfail.c; sourceTree = "<group>"; };
+		20D2428A116FDF9A00A5A50D /* assfail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = assfail.h; path = maczfs/assfail.h; sourceTree = "<group>"; };
 		2611F7360ACDD13900E5D4E2 /* zfs.util */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = zfs.util; sourceTree = BUILT_PRODUCTS_DIR; };
 		2611F73F0ACDD29E00E5D4E2 /* zfsutil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfsutil.c; sourceTree = "<group>"; };
 		2611F75E0ACDD4E100E5D4E2 /* zfs.fs */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zfs.fs; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1377,6 +1382,7 @@
 		FA93759510A38E6300754C9E /* sys */ = {
 			isa = PBXGroup;
 			children = (
+				20D2427F116FDE8000A5A50D /* types32.h */,
 				FA93759610A38E6300754C9E /* zmod.h */,
 				FA93759710A38E6300754C9E /* vfs.h */,
 				FA93759810A38E6300754C9E /* sunddi.h */,
@@ -1725,6 +1731,8 @@
 		FAB331B210BFD5ED00BF4948 /* maczfs */ = {
 			isa = PBXGroup;
 			children = (
+				20D24289116FDF9A00A5A50D /* assfail.c */,
+				20D2428A116FDF9A00A5A50D /* assfail.h */,
 				2044CCAF115D47D000DDED8C /* zfs_context_libzpool.c */,
 				FAB331B510BFD6A000BF4948 /* zfs_context.c */,
 			);
@@ -2182,6 +2190,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20D24290116FE00500A5A50D /* assfail.c in Sources */,
 				200D3D1C115EE54B00026CE6 /* avl.c in Sources */,
 				200D3D1D115EE54B00026CE6 /* deviceid.c in Sources */,
 				200D3D1E115EE54B00026CE6 /* devid.c in Sources */,
@@ -2417,6 +2426,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20D2428B116FDFBA00A5A50D /* assfail.c in Sources */,
 				FA0D29FF10A39F8000C63936 /* avl.c in Sources */,
 				FA0D2A0F10A39F8000C63936 /* deviceid.c in Sources */,
 				FA0D2A1010A39F8000C63936 /* devid.c in Sources */,

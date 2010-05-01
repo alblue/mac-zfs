@@ -107,7 +107,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <umem.h>
+//#include <umem.h>
 #include <dlfcn.h>
 #include <ctype.h>
 #include <math.h>
