@@ -60,7 +60,7 @@ dnode_cons(void *arg, void *unused, int kmflag)
 	rw_init(&dn->dn_struct_rwlock, NULL, RW_DEFAULT, NULL);
 // This is from the 10a286 bits
 #ifdef __APPLE__
-        cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
+	cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
 #endif
 
 	mutex_init(&dn->dn_mtx, NULL, MUTEX_DEFAULT, NULL);

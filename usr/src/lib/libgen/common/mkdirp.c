@@ -26,11 +26,15 @@
 /*
  * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
+ * Portions Copyright 2007 Apple Inc. All rights reserved.
+ * Use is subject to license terms.
  */
 
-#pragma ident	"%Z%%M%	%I%	%E% SMI"
+#pragma ident	"@(#)mkdirp.c	1.15	06/01/04 SMI"
 
+#ifndef __APPLE__
 #pragma weak mkdirp = _mkdirp
+#endif
 
 /*
  * Creates directory and it's parents if the parents do not

@@ -21,6 +21,9 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
+ *
+ * Portions Copyright 2009 Apple Inc. All rights reserved.
+ * Use is subject to license terms.
  */
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
@@ -29,12 +32,22 @@
 
 int taskq_now;
 
+#ifdef __APPLE__
+struct task {
+#else
 typedef struct task {
+#endif
 	struct task	*task_next;
 	struct task	*task_prev;
 	task_func_t	*task_func;
 	void		*task_arg;
+#ifndef __APPLE__
 } task_t;
+#else /* __APPLE__ */
+};
+/* XXX/ztest: workaround for type conflict from including mach/mach_time.h */
+#define task_t struct task
+#endif
 
 #define	TASKQ_ACTIVE	0x00010000
 

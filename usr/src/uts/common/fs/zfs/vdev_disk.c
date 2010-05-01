@@ -340,6 +340,10 @@ vdev_disk_close(vdev_t *vd)
 	if (dvd == NULL)
 		return;
 
+	dprintf("removing disk %s, devid %s\n",
+	    vd->vdev_path ? vd->vdev_path : "<none>",
+	    vd->vdev_devid ? vd->vdev_devid : "<none>");
+
 #ifdef __APPLE__
 	if (dvd->vd_devvp != NULL) {
 		vfs_context_t context;
