@@ -26,6 +26,7 @@
  */
 
 #ifndef __APPLE__
+
 #ifndef _SYS_SUNDDI_H
 #define	_SYS_SUNDDI_H
 
@@ -2154,6 +2155,6 @@ int ddi_parse(const char *, char *, uint_t *);
 }
 #endif
 
-#endif /* _SYS_SUNDDI_H */
+#endif	/* _SYS_SUNDDI_H */
 
 #endif  /* !__APPLE__ */

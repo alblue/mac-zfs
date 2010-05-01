@@ -31,7 +31,6 @@
  * Portions of this source code were derived from Berkeley 4.3 BSD
  * under license from the Regents of the University of California.
  */
- 
 /* Portions Copyright 2007 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */

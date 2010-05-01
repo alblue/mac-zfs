@@ -102,6 +102,7 @@ txg_fini(dsl_pool_t *dp)
 			cv_destroy(&tx->tx_cpu[c].tc_cv[cv]);
 		}
 	}
+
 	kmem_free(tx->tx_cpu, max_ncpus * sizeof (tx_cpu_t));
 
 	bzero(tx, sizeof (tx_state_t));

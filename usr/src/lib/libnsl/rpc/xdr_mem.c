@@ -36,7 +36,6 @@
  * Use is subject to license terms.
  */
 
-
 /*
  * xdr_mem.h, XDR implementation using memory buffers.
  *

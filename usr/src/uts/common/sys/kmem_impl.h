@@ -26,7 +26,6 @@
  * Use is subject to license terms.
  */
 
-
 #ifndef _SYS_KMEM_IMPL_H
 #define	_SYS_KMEM_IMPL_H
 
@@ -182,7 +181,6 @@ typedef struct kmem_buftag_lite {
 	    (cp)->cache_magtype->mt_cache)
 #endif /* __APPLE__ */
 
-
 #define	KMEM_SLAB_MEMBER(sp, buf)	\
 	((size_t)(buf) - (size_t)(sp)->slab_base < \
 	    (sp)->slab_cache->cache_slabsize)
@@ -296,7 +294,6 @@ struct kmem_cache {
 #else
 	kstat_t		*cache_kstat;		/* exported statistics */
 #endif /* __APPLE__ */
-
 	kmem_cache_t	*cache_next;		/* forward cache linkage */
 	kmem_cache_t	*cache_prev;		/* backward cache linkage */
 

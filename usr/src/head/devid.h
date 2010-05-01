@@ -49,7 +49,6 @@ typedef struct devid_nmlist {
  */
 typedef struct __ddi_devid *ddi_devid_t;
 
-
 extern int	devid_get(int fd, ddi_devid_t *retdevid);
 extern void	devid_free(ddi_devid_t devid);
 extern int	devid_get_minor_name(int fd, char **retminor_name);

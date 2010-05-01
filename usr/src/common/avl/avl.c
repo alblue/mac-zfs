@@ -27,7 +27,6 @@
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-
 /*
  * AVL - generic AVL tree implementation for kernel use
  *

@@ -30,6 +30,7 @@
  * Portions of this source code were derived from Berkeley 4.3 BSD
  * under license from the Regents of the University of California.
  */
+
 #ifndef _SYS_PATHNAME_H
 #define	_SYS_PATHNAME_H
 

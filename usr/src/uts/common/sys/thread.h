@@ -664,4 +664,5 @@ caddr_t	thread_stk_init(caddr_t);	/* init thread stack */
 #endif
 
 #endif /* __APPLE__ */
+
 #endif /* _SYS_THREAD_H */

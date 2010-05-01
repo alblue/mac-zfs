@@ -30,6 +30,7 @@
 /*	  All Rights Reserved  	*/
 
 #ifndef __APPLE__
+
 #ifndef _SYS_SYSTEMINFO_H
 #define	_SYS_SYSTEMINFO_H
 

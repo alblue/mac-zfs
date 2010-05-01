@@ -371,7 +371,6 @@ vdev_disk_close(vdev_t *vd)
 
 static void
 #ifdef __APPLE__
-
 vdev_disk_io_intr(struct buf *bp, void *arg)
 #else
 vdev_disk_io_intr(buf_t *bp)
@@ -498,7 +497,7 @@ vdev_disk_io_start(zio_t *zio)
 
 	flags = (zio->io_type == ZIO_TYPE_READ ? B_READ : B_WRITE);
 #ifdef __APPLE__
-flags |= B_NOCACHE;
+	flags |= B_NOCACHE;
 #else
 	flags |= B_BUSY | B_NOCACHE;
 #endif /* __APPLE__ */
@@ -563,7 +562,6 @@ flags |= B_NOCACHE;
 
 	error = ldi_strategy(dvd->vd_lh, bp);
 	/* ldi_strategy() will return non-zero only on programming errors */
-
 #endif /*__APPLE__*/
 	ASSERT(error == 0);
 }

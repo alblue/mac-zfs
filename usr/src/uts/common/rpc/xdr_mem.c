@@ -55,7 +55,6 @@
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 
-
 static struct xdr_ops *xdrmem_ops(void);
 
 /*

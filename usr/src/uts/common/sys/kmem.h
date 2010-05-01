@@ -64,6 +64,7 @@ extern void *kmem_zalloc(size_t size, int kmflags);
 extern void kmem_free(void *buf, size_t size);
 extern void *kmem_alloc_tryhard(size_t size, size_t *alloc_size, int kmflags);
 #endif /* !__APPLE__ */
+
 #endif	/* _KERNEL */
 
 /*

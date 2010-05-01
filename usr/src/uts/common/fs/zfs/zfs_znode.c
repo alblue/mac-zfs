@@ -160,7 +160,6 @@ zfs_znode_cache_destructor(void *buf, void *cdarg)
 	mutex_destroy(&zp->z_range_lock);
 
 	ASSERT(zp->z_dbuf_held == 0);
-
 #ifdef __APPLE__
 	cv_destroy(&zp->z_cv);
 #else
@@ -190,7 +189,6 @@ zfs_znode_fini(void)
 #ifndef __APPLE__
 	zfs_remove_op_tables();
 #endif /*!__APPLE__*/
-
 	/*
 	 * Cleanup zcache
 	 */
@@ -357,7 +355,6 @@ zfs_init_fs(zfsvfs_t *zfsvfs, znode_t **zpp, cred_t *cr)
 	zfsvfs->z_vfs->vfs_fsid.val[1] = ((fsid_guid>>32) << 8) |
 	    zfsfstype & 0xFF;
 #endif /*!__APPLE__*/
-
 	error = zap_lookup(os, MASTER_NODE_OBJ, ZFS_ROOT_OBJ, 8, 1,
 	    &zfsvfs->z_root);
 	if (error)
@@ -458,7 +455,6 @@ static znode_t *
 zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, uint64_t obj_num, int blksz)
 {
 	znode_t	*zp;
-
 #ifndef __APPLE__
 	vnode_t *vp;
 #endif
@@ -855,9 +851,11 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	int err;
 
 	*zpp = NULL;
+
 #ifdef __APPLE__
 again:
 #endif
+
 	ZFS_OBJ_HOLD_ENTER(zfsvfs, obj_num);
 
 	err = dmu_bonus_hold(zfsvfs->z_os, obj_num, NULL, &db);
@@ -929,6 +927,7 @@ again:
 #else
 		ASSERT3U(zp->z_id, ==, obj_num);
 #endif /* __APPLE__ */
+
 		if (zp->z_unlinked) {
 #ifdef __APPLE__
 			vnode_put(ZTOV(zp));
@@ -1034,11 +1033,10 @@ zfs_zinactive(znode_t *zp)
 #else
 	ASSERT(zp->z_dbuf_held && zp->z_phys);
 #endif
-
 	/*
 	 * Don't allow a zfs_zget() while were trying to release this znode
 	 */
-		ZFS_OBJ_HOLD_ENTER(zfsvfs, z_id);
+	ZFS_OBJ_HOLD_ENTER(zfsvfs, z_id);
 
 	mutex_enter(&zp->z_lock);
 #ifndef __APPLE__
@@ -1063,7 +1061,7 @@ zfs_zinactive(znode_t *zp)
 	}
 	mutex_exit(&vp->v_lock);
 #endif /* !__APPLE__ */
-	
+
 	/*
 	 * If this was the last reference to a file with no links,
 	 * remove the file from the file system.
@@ -1071,25 +1069,23 @@ zfs_zinactive(znode_t *zp)
 	if (zp->z_unlinked) {
 		mutex_exit(&zp->z_lock);
 		ZFS_OBJ_HOLD_EXIT(zfsvfs, z_id);
-
 		zfs_rmnode(zp);
 #ifdef __APPLE__
 		zfs_znode_free(zp);
 #else
-                VFS_RELE(zfsvfs->z_vfs);
+		VFS_RELE(zfsvfs->z_vfs);
 #endif /* __APPLE__ */
 		return;
 	}
-	
 #ifndef __APPLE__
 	ASSERT(zp->z_phys);
 	ASSERT(zp->z_dbuf_held);
+
 	zp->z_dbuf_held = 0;
 #endif /* __APPLE__ */
+
 	mutex_exit(&zp->z_lock);
-
 	dmu_buf_rele(zp->z_dbuf, NULL);
-
 	ZFS_OBJ_HOLD_EXIT(zfsvfs, z_id);
 #ifdef __APPLE__
 	zfs_znode_free(zp);
@@ -1130,6 +1126,7 @@ zfs_znode_free(znode_t *zp)
 #endif /* ZFS_DEBUG */
 
 #endif __APPLE__
+
 	kmem_cache_free(znode_cache, zp);
 
 #ifdef __APPLE__
@@ -1270,6 +1267,7 @@ zfs_no_putpage(vnode_t *vp, page_t *pp, u_offset_t *offp, size_t *lenp,
 	return (0);
 }
 #endif /* !__APPLE__ */
+
 /*
  * Free space in a file.
  *
@@ -1502,6 +1500,7 @@ zfs_create_fs(objset_t *os, cred_t *cr, uint64_t version, dmu_tx_t *tx)
 	vn_reinit(vp);
 	vp->v_type = VDIR;
 #endif
+
 	bzero(&zfsvfs, sizeof (zfsvfs_t));
 
 	zfsvfs.z_os = os;

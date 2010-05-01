@@ -46,7 +46,6 @@
 
 #ifdef __APPLE__
 static hrtime_t gethrtime_uu(void);
-
 #endif
 
 /*ARGSUSED*/

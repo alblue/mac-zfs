@@ -627,7 +627,6 @@ load_zfs_kext(const char *kextpath)
 	}
 }
 
-
 #endif
 
 
@@ -728,7 +727,6 @@ zfs_handle_t *
 zfs_path_to_zhandle(libzfs_handle_t *hdl, char *path, zfs_type_t argtype)
 {
 #if _DARWIN_FEATURE_64_BIT_INODE
-	
 	struct stat statbuf;
 #else
 	struct stat64 statbuf;
@@ -1048,7 +1046,6 @@ libzfs_print_one_property(const char *name, libzfs_get_cbdata_t *cbp,
 
 	(void) printf("\n");
 }
-
 
 #ifdef __APPLE__
 

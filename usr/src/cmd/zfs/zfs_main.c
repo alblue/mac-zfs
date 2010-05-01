@@ -177,7 +177,6 @@ static zfs_command_t command_table[] = {
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
 
-
 zfs_command_t *current_command;
 
 static const char *

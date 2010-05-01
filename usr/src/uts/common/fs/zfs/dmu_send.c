@@ -45,7 +45,6 @@
 
 struct backuparg {
 	dmu_replay_record_t *drr;
-
 #ifdef __APPLE__
 	struct vnode *vp;
 #else
@@ -505,12 +504,11 @@ restore_read(struct restorearg *ra, int len)
 		    ra->voff, UIO_SYSSPACE, IO_APPEND,
 		    RLIM64_INFINITY, CRED(), &resid);
 #else	
-	ra->err = vn_rdwr(UIO_READ, ra->vp,
+		ra->err = vn_rdwr(UIO_READ, ra->vp,
 		    (caddr_t)ra->buf + leftover, ra->bufsize - leftover,
 		    ra->voff, UIO_SYSSPACE, FAPPEND,
 		    RLIM64_INFINITY, CRED(), &resid);
 #endif
-		
 		ra->voff += ra->bufsize - leftover - resid;
 		ra->buflen = ra->bufsize - resid;
 		ra->bufoff = 0;

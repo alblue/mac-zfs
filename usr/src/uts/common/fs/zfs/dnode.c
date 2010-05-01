@@ -55,8 +55,6 @@ dnode_cons(void *arg, void *unused, int kmflag)
 {
 	int i;
 	dnode_t *dn = arg;
-
-
 	bzero(dn, sizeof (dnode_t));
 
 	rw_init(&dn->dn_struct_rwlock, NULL, RW_DEFAULT, NULL);
@@ -64,9 +62,9 @@ dnode_cons(void *arg, void *unused, int kmflag)
 #ifdef __APPLE__
 	cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
 #endif
+
 	mutex_init(&dn->dn_mtx, NULL, MUTEX_DEFAULT, NULL);
 	mutex_init(&dn->dn_dbufs_mtx, NULL, MUTEX_DEFAULT, NULL);
-
 	refcount_create(&dn->dn_holds);
 	refcount_create(&dn->dn_tx_holds);
 
@@ -81,8 +79,10 @@ dnode_cons(void *arg, void *unused, int kmflag)
 
 	list_create(&dn->dn_dbufs, sizeof (dmu_buf_impl_t),
 	    offsetof(dmu_buf_impl_t, db_link));
+
 	return (0);
 }
+
 
 /* ARGSUSED */
 static void
@@ -647,9 +647,8 @@ dnode_hold_impl(objset_impl_t *os, uint64_t object, int flag,
 		return (type == DMU_OT_NONE ? ENOENT : EEXIST);
 	}
 	mutex_exit(&dn->dn_mtx);
-	
 
-	if (refcount_add(&dn->dn_holds, tag) == 1) 
+	if (refcount_add(&dn->dn_holds, tag) == 1)
 		dbuf_add_ref(db, dn);
 
 	DNODE_VERIFY(dn);
@@ -742,7 +741,6 @@ dnode_setdirty(dnode_t *dn, dmu_tx_t *tx)
 	 * dnode will hang around after we finish processing its
 	 * children.
 	 */
-
 	dnode_add_ref(dn, (void *)(uintptr_t)tx->tx_txg);
 
 	(void) dbuf_dirty(dn->dn_dbuf, tx);

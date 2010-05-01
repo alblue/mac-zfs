@@ -33,6 +33,7 @@
 #include <sys/kmem.h>
 
 #ifdef _KERNEL
+
 static void *
 nv_alloc_sys(nv_alloc_t *nva, size_t size)
 {

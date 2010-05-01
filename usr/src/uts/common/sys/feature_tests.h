@@ -26,6 +26,7 @@
  */
 
 #ifndef __APPLE__
+
 #ifndef _SYS_FEATURE_TESTS_H
 #define	_SYS_FEATURE_TESTS_H
 

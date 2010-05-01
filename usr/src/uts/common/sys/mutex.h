@@ -27,6 +27,7 @@
 
 #ifndef _SYS_MUTEX_H
 #define	_SYS_MUTEX_H
+
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 /* In Darwin, mutex locks are defined by "kern/locks.h" */

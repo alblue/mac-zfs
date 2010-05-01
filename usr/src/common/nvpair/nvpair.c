@@ -26,7 +26,6 @@
  * Use is subject to license terms.
  */
 
-
 #ifndef __APPLE__
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"

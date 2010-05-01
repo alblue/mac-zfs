@@ -29,6 +29,7 @@
  */
 
 #ifndef __APPLE__
+
 #ifndef _SYS_UTSNAME_H
 #define	_SYS_UTSNAME_H
 
@@ -142,6 +143,6 @@ extern char *uts_nodename(void);
 }
 #endif
 
-#endif /* _SYS_UTSNAME_H */
+#endif	/* _SYS_UTSNAME_H */
 
 #endif /* !__APPLE__ */

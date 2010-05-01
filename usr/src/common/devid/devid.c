@@ -40,7 +40,6 @@
 #endif
 #include "devid_impl.h"
 
-
 #ifdef __APPLE__
 /*
  * Device id types
@@ -606,6 +605,7 @@ devid_str_compare(char *id1_str, char *id2_str)
 #ifdef	_KERNEL
 	mutex_exit(&id_lock);
 #endif	/* _KERNEL */
+
 	return (rval);
 }
 #endif /* !__APPLE__ */

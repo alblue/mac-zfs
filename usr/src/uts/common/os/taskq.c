@@ -385,7 +385,6 @@
 #include <sys/debug.h>
 #include <sys/vmsystm.h>	/* For throttlefree */
 #include <sys/sysmacros.h>
-
 #ifndef __APPLE__
 #include <sys/cpuvar.h>
 #include <sys/sdt.h>
@@ -668,7 +667,6 @@ taskq_ent_constructor(void *buf, void *cdrarg, int kmflags)
 	mutex_init(&tqe->tqent_thread_lock, NULL, MUTEX_DEFAULT, NULL);
 	cv_init(&tqe->tqent_thread_cv, NULL, CV_DEFAULT, NULL);
 #endif /*__APPLE*/
-
 	return (0);
 }
 
@@ -863,17 +861,17 @@ taskq_dispatch(taskq_t *tq, task_func_t func, void *arg, uint_t flags)
 		 * TQ_NOQUEUE flag can't be used with non-dynamic task queues.
 		 */
 		ASSERT(! (flags & TQ_NOQUEUE));
-	/*
-	 * Enqueue the task to the underlying queue.
-	 */
-	mutex_enter(&tq->tq_lock);
+		/*
+		 * Enqueue the task to the underlying queue.
+		 */
+		mutex_enter(&tq->tq_lock);
 
-	TASKQ_S_RANDOM_DISPATCH_FAILURE(tq, flags);
+		TASKQ_S_RANDOM_DISPATCH_FAILURE(tq, flags);
 
-	if ((tqe = taskq_ent_alloc(tq, flags)) == NULL) {
-		mutex_exit(&tq->tq_lock);
+		if ((tqe = taskq_ent_alloc(tq, flags)) == NULL) {
+			mutex_exit(&tq->tq_lock);
 			return (NULL);
-	}
+		}
 		TQ_ENQUEUE(tq, tqe, func, arg);
 		mutex_exit(&tq->tq_lock);
 		return ((taskqid_t)tqe);

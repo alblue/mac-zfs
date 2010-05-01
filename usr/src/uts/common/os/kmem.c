@@ -709,13 +709,11 @@ kmem_slab_create(kmem_cache_t *cp, int kmflag)
 			goto slab_alloc_failure;
 		chunks = (slabsize - color) / chunksize;
 	} else {
-
 #ifdef __APPLE__
 		sp = ((kmem_slab_t *)((char *)slab + slabsize)) - 1;
 #else
 		sp = KMEM_SLAB(cp, slab);
 #endif /* __APPLE__ */
-
 		chunks = (slabsize - sizeof (kmem_slab_t) - color) / chunksize;
 	}
 
@@ -731,7 +729,6 @@ kmem_slab_create(kmem_cache_t *cp, int kmflag)
 			bcp = kmem_cache_alloc(cp->cache_bufctl_cache, kmflag);
 			if (bcp == NULL)
 				goto bufctl_alloc_failure;
-
 #ifndef __APPLE__
 			if (cache_flags & KMF_AUDIT) {
 				kmem_bufctl_audit_t *bcap =
@@ -911,7 +908,6 @@ kmem_slab_free(kmem_cache_t *cp, void *buf)
 		sp = KMEM_SLAB(cp, buf);
 		ASSERT(sp->slab_cache == cp);
 #endif /* __APPLE__ */
-
 	}
 
 	if (bcp == NULL || sp->slab_cache != cp || !KMEM_SLAB_MEMBER(sp, buf)) {
@@ -1345,7 +1341,6 @@ kmem_cache_alloc(kmem_cache_t *cp, int kmflag)
 		kmem_slab_free(cp, buf);
 		return (NULL);
 	}
-
 	return (buf);
 }
 
@@ -1661,6 +1656,7 @@ kmem_alloc_tryhard(size_t size, size_t *asize, int kmflag)
 }
 
 #endif
+
 /*
  * Reclaim all unused memory from a cache.
  */
@@ -2012,6 +2008,7 @@ kmem_update(void *dummy)
 	if (!taskq_dispatch(kmem_taskq, kmem_update_timeout, dummy, TQ_NOSLEEP))
 		kmem_update_timeout(NULL);
 }
+
 static int
 kmem_cache_kstat_update(kstat_t *ksp, int rw)
 {
@@ -2160,7 +2157,7 @@ kmem_debugging(void)
 {
 	return (kmem_flags & (KMF_AUDIT | KMF_REDZONE));
 }
-#endif /*!__APPLE__*/
+#endif /* !__APPLE__ */
 
 kmem_cache_t *
 kmem_cache_create(
@@ -2480,6 +2477,7 @@ kmem_cache_create(
 		kstat_install(cp->cache_kstat);
 	}
 #endif
+
 	/*
 	 * Add the cache to the global list.  This makes it visible
 	 * to kmem_update(), so the cache must be ready for business.

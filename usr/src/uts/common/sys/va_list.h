@@ -34,6 +34,7 @@
 #define	_SYS_VA_LIST_H
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
+
 #include <stdarg.h> 
 
 typedef va_list __va_list;

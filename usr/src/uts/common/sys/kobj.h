@@ -25,7 +25,6 @@
  * Use is subject to license terms.
  */
 
-
 #ifndef _SYS_KOBJ_H
 #define	_SYS_KOBJ_H
 
@@ -229,4 +228,5 @@ extern void kobj_textwin_free(struct module *);
 #endif
 
 #endif  /* __APPLE__ */
+
 #endif /* !_SYS_KOBJ_H */

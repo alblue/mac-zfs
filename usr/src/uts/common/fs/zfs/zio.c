@@ -1450,7 +1450,6 @@ zio_vdev_io_start(zio_t *zio)
 	ASSERT(P2PHASE(zio->io_size, align) == 0);
 	ASSERT(bp == NULL ||
 	    P2ROUNDUP(ZIO_GET_IOSIZE(zio), align) == zio->io_size);
-
 	ASSERT(zio->io_type != ZIO_TYPE_WRITE || (spa_mode & FWRITE));
 
 	vdev_io_start(zio);

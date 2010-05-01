@@ -40,6 +40,7 @@
  */
 
 #ifndef __APPLE__
+
 #ifndef _SYS_VMSYSTM_H
 #define	_SYS_VMSYSTM_H
 

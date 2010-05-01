@@ -47,17 +47,14 @@
 #include <sys/mntent.h>
 #include <sys/mnttab.h>
 #include <sys/mount.h>
-
 #include <sys/avl.h>
 #ifndef __APPLE__
 #include <priv.h>
 #endif
 #include <pwd.h>
 #include <grp.h>
-
 #include <stddef.h>
 #include <sys/ucred.h>
-
 #include <sys/spa.h>
 #include <sys/zio.h>
 #include <sys/zap.h>
@@ -894,7 +891,6 @@ zfs_validate_properties(libzfs_handle_t *hdl, zfs_type_t type, char *pool_name,
 
 			break;
 #endif /* __APPLE__ */
-
 		case ZFS_PROP_MOUNTPOINT:
 		{
 			namecheck_err_t why;
@@ -2722,7 +2718,6 @@ check_parents(libzfs_handle_t *hdl, const char *path, uint64_t *zoned,
 	}
 
 	*zoned = zfs_prop_get_int(zhp, ZFS_PROP_ZONED);
-
 #ifndef	__APPLE__
 	/* we are in a non-global zone, but parent is in the global zone */
 	if (getzoneid() != GLOBAL_ZONEID && !(*zoned)) {
@@ -4271,7 +4266,6 @@ zvol_create_link_common(libzfs_handle_t *hdl, const char *dataset, int ifexists)
 	di_devlink_handle_t dhdl;
 	priv_set_t *priv_effective;
 #endif
-	
 	int privileged;
 
 	(void) strlcpy(zc.zc_name, dataset, sizeof (zc.zc_name));

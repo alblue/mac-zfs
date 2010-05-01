@@ -22,6 +22,7 @@
  * Copyright 2010 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
+
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/
 /*	  All Rights Reserved	*/
 
@@ -104,9 +105,9 @@ extern "C" {
  * have the same relationship as above.
  */
 #define	VERIFY3_IMPL(LEFT, OP, RIGHT, TYPE) do { \
-	const TYPE __left = (TYPE)(LEFT);                                                             \
-	const TYPE __right = (TYPE)(RIGHT);                                                           \
-	if (!(__left OP __right))                                                                     \
+	const TYPE __left = (TYPE)(LEFT); \
+	const TYPE __right = (TYPE)(RIGHT); \
+	if (!(__left OP __right)) \
 		assfail3(#LEFT " " #OP " " #RIGHT, \
 			(uintmax_t)__left, #OP, (uintmax_t)__right, \
 			__FILE__, __LINE__); \
@@ -145,6 +146,5 @@ extern void debug_enter(char *);
 #ifdef	__cplusplus
 }
 #endif
-
 
 #endif	/* _SYS_DEBUG_H */

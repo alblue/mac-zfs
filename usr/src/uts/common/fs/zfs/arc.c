@@ -1098,6 +1098,7 @@ arc_buf_destroy(arc_buf_t *buf, boolean_t recycle, boolean_t all)
 		ASSERT3U(state->arcs_size, >=, size);
 // XXX There's an atomic_add_64 - should we use that instead?
 // Issue 26
+
 #ifdef __APPLE__
 		if (!MUTEX_HELD(&state->arcs_mtx)) {
 			mutex_enter(&state->arcs_mtx);
@@ -1688,7 +1689,6 @@ arc_kmem_reap_now(arc_reclaim_strategy_t strat)
 	}
 	kmem_cache_reap_now(buf_cache);
 	kmem_cache_reap_now(hdr_cache);
-
 #ifdef __APPLE__
 	/*
 	 * Go after these mega caches as well
@@ -1834,7 +1834,6 @@ arc_evict_needed(arc_buf_contents_t type)
 		return (1);
 #endif /* _KERNEL */
 #endif /* !__APPLE__ */
-
 	if (arc_reclaim_needed())
 		return (1);
 
@@ -1886,7 +1885,6 @@ arc_get_data_buf(arc_buf_t *buf)
 			buf->b_data = zio_data_buf_alloc(size);
 			atomic_add_64(&arc_size, size);
 		}
-
 #ifdef __APPLE__
 		if (arc_size > arc_c_peak)
 			arc_c_peak = arc_size;
@@ -1922,7 +1920,6 @@ arc_get_data_buf(arc_buf_t *buf)
 			buf->b_data = zio_data_buf_alloc(size);
 			atomic_add_64(&arc_size, size);
 		}
-
 #ifdef __APPLE__
 		if (arc_size > arc_c_peak)
 			arc_c_peak = arc_size;

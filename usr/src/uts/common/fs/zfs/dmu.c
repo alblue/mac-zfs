@@ -644,6 +644,7 @@ dmu_write_pages(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 			bufoff += PAGESIZE;
 		}
 #endif
+
 		if (tocpy == db->db_size)
 			dmu_buf_fill_done(db, tx);
 

@@ -57,7 +57,6 @@
 #define	DI_SECONDARY_LINK	0x02
 #define	DI_LINK_TYPES		0x03
 
-
 #else
 #include <synch.h>
 #include <sys/modctl.h>

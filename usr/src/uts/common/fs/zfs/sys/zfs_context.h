@@ -35,7 +35,6 @@
 extern "C" {
 #endif
 
-
 #ifdef __APPLE__ 
 
 #define _SYS_KERNEL_H_
@@ -746,8 +745,7 @@ extern void dprint_stack_internal(char func_name[], char file_name[], int line);
 #include <sys/sysevent/eventdefs.h>
 
 #define	CPU_SEQID	(CPU->cpu_seqid)
-#endif /*__APPLE__*/
-
+#endif /* __APPLE__ */
 
 #ifdef	__cplusplus
 }

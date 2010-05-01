@@ -31,6 +31,7 @@
 #ifndef __APPLE__
 #include <sys/types.h>
 #endif /* !__APPLE__ */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 
@@ -42,11 +43,12 @@
 #include <sys/vfs_opreg.h>
 #include <sys/mntent.h>
 #endif /* !__APPLE__ */
+
 #include <sys/mount.h>
 #include <sys/vnode.h>
+
 #ifdef __APPLE__
 #include <sys/zfs_context.h>
-
 #include <sys/zfs_vfsops.h>
 #endif /* __APPLE__ */
 
@@ -54,8 +56,10 @@
 #include <sys/cmn_err.h>
 #include "fs/fs_subr.h"
 #endif /* !__APPLE__ */
+
 #include <sys/zfs_znode.h>
 #include <sys/zfs_dir.h>
+
 #ifdef __APPLE__
 #include <sys/zfs_ctldir.h>
 #include <sys/refcount.h>
@@ -65,6 +69,7 @@
 #include <sys/dmu.h>
 #include <sys/dsl_prop.h>
 #endif /* __APPLE__ */
+
 #include <sys/dsl_dataset.h>
 #include <sys/dsl_deleg.h>
 #include <sys/spa.h>
@@ -326,6 +331,7 @@ zfs_sync(vfs_t *vfsp, short flag, cred_t *cr)
 
 	return (0);
 }
+
 static int
 zfs_create_unique_device(dev_t *dev)
 {
@@ -680,7 +686,6 @@ zfs_domount(vfs_t *vfsp, char *osname, cred_t *cr)
 	znode_t *zp = NULL;
 #ifdef __APPLE__
 	struct timeval tv;
-
 #endif
 	ASSERT(vfsp);
 	ASSERT(osname);
@@ -714,6 +719,7 @@ zfs_domount(vfs_t *vfsp, char *osname, cred_t *cr)
 		goto out;
 	}
 	ASSERT(vfs_devismounted(mount_dev) == 0);
+
 	if (error = dsl_prop_get_integer(osname, "recordsize", &recordsize,
 	    NULL))
 		goto out;
@@ -737,6 +743,7 @@ zfs_domount(vfs_t *vfsp, char *osname, cred_t *cr)
 	}
 	else
 		mode = DS_MODE_PRIMARY;
+
 	error = dmu_objset_open(osname, DMU_OST_ZFS, mode, &zfsvfs->z_os);
 	if (error == EROFS) {
 		mode = DS_MODE_PRIMARY | DS_MODE_READONLY;
@@ -781,7 +788,7 @@ zfs_domount(vfs_t *vfsp, char *osname, cred_t *cr)
 		error = zfs_register_callbacks(vfsp);
 		if (error)
 			goto out;
-		
+
 		if (!(zfsvfs->z_vfs->vfs_flag & VFS_RDONLY))
 			zfs_unlinked_drain(zfsvfs);
 
@@ -957,7 +964,7 @@ parse_bootpath(char *bpath, char *outpath)
 static int
 zfs_mountroot(vfs_t *vfsp, enum whymountroot why)
 {
-	int		error = 0;
+	int error = 0;
 	int ret = 0;
 	static int zfsrootdone = 0;
 	zfsvfs_t *zfsvfs = NULL;
@@ -969,11 +976,12 @@ zfs_mountroot(vfs_t *vfsp, enum whymountroot why)
 
 	/*
 	 * The filesystem that we mount as root is defined in the
-	 * "zfs-bootfs" property. 
+	 * "zfs-bootfs" property.
 	 */
 	if (why == ROOT_INIT) {
 		if (zfsrootdone++)
 			return (EBUSY);
+
 		if (ddi_prop_lookup_string(DDI_DEV_T_ANY, ddi_root_node(),
 		    DDI_PROP_DONTPASS, "zfs-bootfs", &zfs_bootpath) !=
 		    DDI_SUCCESS)
@@ -981,6 +989,7 @@ zfs_mountroot(vfs_t *vfsp, enum whymountroot why)
 
 		error = parse_bootpath(zfs_bootpath, rootfs.bo_name);
 		ddi_prop_free(zfs_bootpath);
+
 		if (error)
 			return (error);
 
@@ -1066,22 +1075,21 @@ zfs_mount(vfs_t *vfsp, vnode_t *mvp, struct mounta *uap, cred_t *cr)
         if (data) {
 		// 10a286 renames fspec to datasetpath
                 user_addr_t fspec = USER_ADDR_NULL;
-		osname = kmem_alloc(MAXPATHLEN, KM_SLEEP);
+                osname = kmem_alloc(MAXPATHLEN, KM_SLEEP);
 
-		if (vfs_context_is64bit(context)) {
-			if ( (error = copyin(data, (caddr_t)&fspec, sizeof(fspec))) )
-				goto out;	
-		} else {
-			user32_addr_t tmp;
-			if ( (error = copyin(data, (caddr_t)&tmp, sizeof(tmp))) )
-				goto out;	
-			/* munge into LP64 addr */
-			fspec = CAST_USER_ADDR_T(tmp);
-		}
-		if ( (error = copyinstr(fspec, osname, MAXPATHLEN, &osnamelen)) )
-			goto out;
-	}
-
+                if (vfs_context_is64bit(context)) {
+                        if ( (error = copyin(data, (caddr_t)&fspec, sizeof(fspec))) )
+                                goto out;
+                } else {
+                        user32_addr_t tmp;
+                        if ( (error = copyin(data, (caddr_t)&tmp, sizeof(tmp))) )
+                                goto out;
+                        /* munge into LP64 addr */
+                        fspec = CAST_USER_ADDR_T(tmp);
+                }
+                if ( (error = copyinstr(fspec, osname, MAXPATHLEN, &osnamelen)) )
+                        goto out;
+        }
 #else /* OpenSolaris */
 	if (mvp->v_type != VDIR)
 		return (ENOTDIR);
@@ -1570,7 +1578,6 @@ zfs_statvfs(vfs_t *vfsp, struct statvfs64 *statp)
 #endif /* __APPLE__ */
 
 	ZFS_EXIT(zfsvfs);
-
 	return (0);
 }
 
@@ -1697,7 +1704,6 @@ zfs_umount(vfs_t *vfsp, int fflag, cred_t *cr)
 		 * own, and any active references underneath are
 		 * reflected in the vnode count.
 		 */
-		
 #ifdef __APPLE__
 		if (ret)
 			return (EBUSY);
@@ -1764,6 +1770,7 @@ zfs_umount(vfs_t *vfsp, int fflag, cred_t *cr)
 	if (!dmu_objset_is_snapshot(os))
 		zfs_unregister_callbacks(zfsvfs);
 #endif
+
 	/*
 	 * Close the zil. NB: Can't close the zil while zfs_inactive
 	 * threads are blocked as zil_close can call zfs_inactive.
@@ -1811,13 +1818,11 @@ zfs_umount(vfs_t *vfsp, int fflag, cred_t *cr)
 	return (0);
 }
 
-
 #ifdef __APPLE__
 struct vnode* vnode_getparent(struct vnode *vp);  /* sys/vnode_internal.h */
 #endif /* __APPLE__ */
- 
-#ifdef __APPLE__
 
+#ifdef __APPLE__
 static int
 zfs_vget_internal(zfsvfs_t *zfsvfs, ino64_t ino, struct vnode **vpp)
 {
@@ -1883,7 +1888,6 @@ zfs_vget_internal(zfsvfs_t *zfsvfs, ino64_t ino, struct vnode **vpp)
 out:
 	return (error);
 }
-
 #endif /* __APPLE__ */
 
 #ifdef __APPLE__
@@ -2091,7 +2095,6 @@ zfs_vfs_sysctl(int *name, __unused u_int namelen, user_addr_t oldp, size_t *oldl
 		return (error);
 	    }
 
-
 	case ZFS_SYSCTL_CONFIG_DEBUGMSG:
 		error = sysctl_int(oldp, oldlenp, newp, newlen, &zfs_msg_buf_enabled);
 		return error;
@@ -2107,7 +2110,6 @@ zfs_vfs_sysctl(int *name, __unused u_int namelen, user_addr_t oldp, size_t *oldl
 
 	return (ENOTSUP);
 }
-
 #endif /* __APPLE__ */
 
 #ifdef __APPLE__
@@ -2131,7 +2133,6 @@ int
 zfs_module_start(__unused kmod_info_t *ki, __unused void *data)
 {
 	struct vfs_fsentry vfe;
-
 
 	zfs_init();
 

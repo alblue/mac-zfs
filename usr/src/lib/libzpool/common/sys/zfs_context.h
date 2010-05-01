@@ -782,12 +782,10 @@ typedef struct vnode {
 } vnode_t;
 #endif /* !__APPLE__ */
 
-
 typedef struct vattr {
 	uint_t		va_mask;	/* bit-mask of attributes */
 	u_offset_t	va_size;	/* file size in bytes */
 } vattr_t;
-
 
 #define	AT_TYPE		0x0001
 #define	AT_MODE		0x0002
@@ -922,7 +920,6 @@ struct _buf {
 struct bootstat {
 	uint64_t st_size;
 };
-
 
 extern struct _buf *kobj_open_file(char *name);
 extern int kobj_read_file(struct _buf *file, char *buf, unsigned size,

@@ -1001,7 +1001,6 @@ zfsctl_snapshot_inactive(vnode_t *vp, cred_t *cr)
 #else
 	vnode_t *dvp;
 #endif
-
 	VERIFY(gfs_dir_lookup(vp, "..", &dvp) == 0);
 	sdp = dvp->v_data;
 

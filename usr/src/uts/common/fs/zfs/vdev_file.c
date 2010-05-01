@@ -74,7 +74,6 @@ vdev_file_open(vdev_t *vd, uint64_t *psize, uint64_t *ashift)
 #endif
 	error = vn_openat(vd->vdev_path + 1, UIO_SYSSPACE, spa_mode | FOFFMAX,
 	    0, &vp, 0, 0, rootdir);
-	
 	if (error) {
 		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
 		return (error);
@@ -209,7 +208,6 @@ vdev_file_io_start(zio_t *zio)
 		zio_next_stage_async(zio);
 		return;
 	}
-
 
 	zio->io_error = vn_rdwr(zio->io_type == ZIO_TYPE_READ ?
 	    UIO_READ : UIO_WRITE, vf->vf_vnode, zio->io_data,

@@ -40,6 +40,7 @@
  * Volumes are persistent through reboot.  No user command needs to be
  * run before opening and using a device.
  */
+
 #if 0
 
 #include <sys/types.h>
@@ -71,7 +72,6 @@
 #include <sys/mkdev.h>
 #include <sys/zil.h>
 #include <sys/refcount.h>
-
 #include <sys/zfs_znode.h>
 #include <sys/zfs_rlock.h>
 

@@ -22,7 +22,7 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
-  * Portions Copyright 2007 Apple Inc. All rights reserved.
+ * Portions Copyright 2007 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -54,7 +54,6 @@
 
 #include <sys/stat.h>
 #include <pwd.h>
-
 
 #include <libzfs.h>
 
@@ -182,7 +181,6 @@ static zpool_command_t command_table[] = {
 };
 
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
-
 
 zpool_command_t *current_command;
 
@@ -703,7 +701,6 @@ zpool_do_create(int argc, char **argv)
 	    strcmp(mountpoint, ZFS_MOUNTPOINT_NONE) != 0)) {
 		char buf[MAXPATHLEN];
 		struct stat statbuf;
-
 		if (mountpoint && mountpoint[0] != '/') {
 			(void) fprintf(stderr, gettext("invalid mountpoint "
 			    "'%s': must be an absolute path, 'legacy', or "

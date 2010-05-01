@@ -49,7 +49,6 @@
 extern "C" {
 #endif
 
- 
 /*
  * Miscellaneous ZFS constants
  */

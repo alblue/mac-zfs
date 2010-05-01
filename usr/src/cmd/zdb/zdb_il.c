@@ -233,18 +233,18 @@ typedef struct zil_rec_info {
 } zil_rec_info_t;
 
 static zil_rec_info_t zil_rec_info[TX_MAX_TYPE] = {
-	{	NULL,			"Total              " },
-	{	zil_prt_rec_create,	"TX_CREATE          " },
-	{	zil_prt_rec_create,	"TX_MKDIR           " },
-	{	zil_prt_rec_create,	"TX_MKXATTR         " },
-	{	zil_prt_rec_create,	"TX_SYMLINK         " },
-	{	zil_prt_rec_remove,	"TX_REMOVE          " },
-	{	zil_prt_rec_remove,	"TX_RMDIR           " },
-	{	zil_prt_rec_link,	"TX_LINK            " },
-	{	zil_prt_rec_rename,	"TX_RENAME          " },
-	{	zil_prt_rec_write,	"TX_WRITE           " },
-	{	zil_prt_rec_truncate,	"TX_TRUNCATE        " },
-	{	zil_prt_rec_setattr,	"TX_SETATTR         " },
+	{	NULL,			"Total      "	},
+	{	zil_prt_rec_create,	"TX_CREATE  "	},
+	{	zil_prt_rec_create,	"TX_MKDIR   "	},
+	{	zil_prt_rec_create,	"TX_MKXATTR "	},
+	{	zil_prt_rec_create,	"TX_SYMLINK "	},
+	{	zil_prt_rec_remove,	"TX_REMOVE  "	},
+	{	zil_prt_rec_remove,	"TX_RMDIR   "	},
+	{	zil_prt_rec_link,	"TX_LINK    "	},
+	{	zil_prt_rec_rename,	"TX_RENAME  "	},
+	{	zil_prt_rec_write,	"TX_WRITE   "	},
+	{	zil_prt_rec_truncate,	"TX_TRUNCATE"	},
+	{	zil_prt_rec_setattr,	"TX_SETATTR "	},
 	{	zil_prt_rec_acl,	"TX_ACL     "	},
 };
 

@@ -1102,7 +1102,6 @@ check_in_use(nvlist_t *config, nvlist_t *nv, int force, int isreplacing,
 			if ((ret = check_in_use(config, child[c], force,
 			    isreplacing, B_TRUE)) != 0)
 				return (ret);
-
 #endif
 	return (0);
 }

@@ -617,5 +617,4 @@ extern rctl_hndl_t rc_zone_max_swap;
 #endif
 
 #endif  /* !__APPLE__ */
-
-#endif /* _SYS_ZONE_H */
+#endif	/* _SYS_ZONE_H */

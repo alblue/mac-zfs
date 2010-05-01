@@ -25,7 +25,6 @@
  * Use is subject to license terms.
  */
 
-
 #ifndef	_SYS_KSTAT_H
 #define	_SYS_KSTAT_H
 
@@ -705,7 +704,6 @@ typedef struct kstat_timer {
 #if	defined(_KERNEL)
 
 #ifdef __APPLE__
-
 
 extern kstat_t *kstat_create(const char *, int, const char *, const char *,
     uchar_t, uint_t, uchar_t);

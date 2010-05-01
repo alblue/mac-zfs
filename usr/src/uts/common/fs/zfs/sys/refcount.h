@@ -30,7 +30,6 @@
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
-
 #ifdef __APPLE__
 #ifdef _KERNEL
 #include <kern/locks.h>
@@ -94,7 +93,6 @@ int64_t refcount_remove_many(refcount_t *rc, uint64_t number, void *holder_tag);
 void refcount_init(void);
 void refcount_fini(void);
 
-
 #else /* __APPLE__ || DEBUG || !_KERNEL */
 
 typedef struct refcount {
@@ -121,6 +119,5 @@ typedef struct refcount {
 #ifdef	__cplusplus
 }
 #endif
-
 
 #endif /* _SYS_REFCOUNT_H */

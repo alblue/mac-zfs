@@ -258,7 +258,7 @@ rw_exit(krwlock_t *rwlp)
 #else
 	rwlp->rw_owner = NULL;
 #endif
-	rw_unlock(&rwlp->rw_lock);
+	(void) rw_unlock(&rwlp->rw_lock);
 }
 
 int
@@ -356,7 +356,7 @@ cv_timedwait(kcondvar_t *cv, kmutex_t *mp, clock_t abstime)
 	struct timeval tv;
 	uint64_t dsec;
 #endif
-	
+
 top:
 	delta = abstime - lbolt;
 	if (delta <= 0)
@@ -800,16 +800,16 @@ int
 kobj_get_filesize(struct _buf *file, uint64_t *size)
 {
 #if _DARWIN_FEATURE_64_BIT_INODE
-    struct stat st;
+	struct stat st;
 #else
-    struct stat64 st;
+	struct stat64 st;
 #endif
-    vnode_t *vp = (vnode_t *)file->_fd;
+	vnode_t *vp = (vnode_t *)file->_fd;
 
 #if _DARWIN_FEATURE_64_BIT_INODE
-    if (fstat(vp->v_fd, &st) == -1) {	
+	if (fstat(vp->v_fd, &st) == -1) {	
 #else
-    if (fstat64(vp->v_fd, &st) == -1) {
+	if (fstat64(vp->v_fd, &st) == -1) {
 #endif
 		vn_close(vp);
 		return (errno);
@@ -865,7 +865,6 @@ highbit(ulong_t i)
 	return (h);
 }
 
-
 static int
 random_get_bytes_common(uint8_t *ptr, size_t len, char *devname)
 {
@@ -883,6 +882,7 @@ random_get_bytes_common(uint8_t *ptr, size_t len, char *devname)
 	}
 
 	close(fd);
+
 	return (0);
 }
 
@@ -930,8 +930,8 @@ void
 kernel_init(int mode)
 {
 	pthread_mutex_init(&zfs_global_atomic_mutex, 0);
-
 	umem_nofail_callback(umem_out_of_memory);
+
 #ifdef __APPLE__
 	int mib[2] = {CTL_HW, HW_MEMSIZE};
 	u_int mib_array_size = sizeof(mib)/sizeof(mib[0]);
@@ -953,7 +953,6 @@ kernel_init(int mode)
 #endif
 
 	snprintf(hw_serial, sizeof (hw_serial), "%ld", gethostid());
-
 
 	spa_init(mode);
 }
@@ -1035,4 +1034,5 @@ zfs_secpolicy_destroy_perms(const char *name, cred_t *cr)
 {
 	return (0);
 }
+
 #endif

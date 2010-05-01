@@ -172,7 +172,6 @@ history_str_get(zfs_cmd_t *zc)
 		return (NULL);
 	}
 	buf[HIS_MAX_RECORD_LEN -1] = '\0';
-	
 	return (buf);
 }
 
@@ -746,7 +745,6 @@ zfs_ioc_pool_create(zfs_cmd_t *zc)
 	history_str_free(buf);
 
 	return (error);
-	
 }
 
 static int
@@ -1000,7 +998,6 @@ zfs_ioc_vdev_add(zfs_cmd_t *zc)
 	}
 	spa_close(spa, FTAG);
 	return (error);
-
 }
 
 static int
@@ -1015,7 +1012,6 @@ zfs_ioc_vdev_remove(zfs_cmd_t *zc)
 	error = spa_vdev_remove(spa, zc->zc_guid, B_FALSE);
 	spa_close(spa, FTAG);
 	return (error);
-
 }
 
 static int
@@ -1705,7 +1701,6 @@ static int
 zfs_ioc_remove_minor(zfs_cmd_t *zc)
 {
 	return (zvol_remove_minor(zc->zc_name));
-
 }
 
 /*
@@ -1863,7 +1858,6 @@ zfs_ioc_create(zfs_cmd_t *zc)
 
 	nvlist_free(nvprops);
 	return (error);
-
 }
 
 static int
@@ -1935,7 +1929,6 @@ zfs_ioc_destroy_snaps(zfs_cmd_t *zc)
 	if (err)
 		return (err);
 	return (dmu_snapshots_destroy(zc->zc_name, zc->zc_value));
-
 }
 
 static int
@@ -1948,7 +1941,6 @@ zfs_ioc_destroy(zfs_cmd_t *zc)
 	}
 
 	return (dmu_objset_destroy(zc->zc_name));
-
 }
 
 static int
@@ -1978,7 +1970,6 @@ zfs_ioc_rename(zfs_cmd_t *zc)
 	}
 
 	return (dmu_objset_rename(zc->zc_name, zc->zc_value, recursive));
-
 }
 
 #if ZFS_LEOPARD_ONLY
@@ -2001,8 +1992,6 @@ zfs_ioc_recvbackup(zfs_cmd_t *zc)
 		return (EINVAL);
 
 	fd = zc->zc_cookie;
-
-
 #ifdef __APPLE__
 	/*XXX NOEL: due to the fact that BSD doesn't support 
 	 * vnodes for things not of f_type DTYPE_VNODE we
@@ -2078,7 +2067,6 @@ zfs_ioc_sendbackup(zfs_cmd_t *zc)
 			return (error);
 		}
 	}
-
 
 #ifdef __APPLE__
 	/*XXX NOEL: due to the fact that BSD doesn't support 
@@ -2352,7 +2340,6 @@ static int
 	int error, rc;
 #ifdef __APPLE__
 	cred_t *cr;
-
 	// 10a286 vfs_context_t ctx = vfs_context_create(NULL)
 #else
 	if (getminor(dev) != 0)
@@ -2408,7 +2395,7 @@ static int
 		error = zfs_ioc_vec[vec].zvec_func(zc);
 #ifdef __APPLE__
 	if (error == 0 && zfs_ioc_vec[vec].zvec_his_log == B_TRUE)
-				zfs_log_history(zc);
+		zfs_log_history(zc);
 
 	/* 
 	 * Return the real error in zc_ioc_error so the ioctl
@@ -2416,7 +2403,6 @@ static int
 	 */
 	zc->zc_ioc_error = error;
 	error = 0;
-
 #else
 	rc = xcopyout(zc, (void *)arg, sizeof (zfs_cmd_t));
 	if (error == 0) {
@@ -2559,6 +2545,7 @@ zfs_ioctl_fini(void)
 		zfs_major = 0;
 	}
 }
+
 #else /* Open Solaris */
 
 /*

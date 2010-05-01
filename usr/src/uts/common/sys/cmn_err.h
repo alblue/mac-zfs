@@ -40,6 +40,7 @@
 #include <sys/va_list.h>
 #endif
 #endif /* !__APPLE__ */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

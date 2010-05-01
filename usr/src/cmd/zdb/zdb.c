@@ -508,8 +508,10 @@ dump_metaslabs(spa_t *spa)
 	for (c = 0; c < rvd->vdev_children; c++) {
 		vd = rvd->vdev_child[c];
 
+		spa_config_enter(spa, RW_READER, FTAG);
 		(void) printf("\n    vdev %llu = %s\n\n",
 		    (u_longlong_t)vd->vdev_id, vdev_description(vd));
+		spa_config_exit(spa, FTAG);
 
 		if (dump_opt['d'] <= 5) {
 			(void) printf("\t%10s   %10s   %5s\n",
@@ -527,6 +529,7 @@ static void
 dump_dtl(vdev_t *vd, int indent)
 {
 	avl_tree_t *t = &vd->vdev_dtl_map.sm_root;
+	spa_t *spa = vd->vdev_spa;
 	space_seg_t *ss;
 	vdev_t *pvd;
 	int c;
@@ -534,7 +537,9 @@ dump_dtl(vdev_t *vd, int indent)
 	if (indent == 0)
 		(void) printf("\nDirty time logs:\n\n");
 
+	spa_config_enter(spa, RW_READER, FTAG);
 	(void) printf("\t%*s%s\n", indent, "", vdev_description(vd));
+	spa_config_exit(spa, FTAG);
 
 	for (ss = avl_first(t); ss; ss = AVL_NEXT(t, ss)) {
 		/*
@@ -1052,6 +1057,7 @@ dump_object(objset_t *os, uint64_t object, int verbosity, int *print_header)
 static char *objset_types[DMU_OST_NUMTYPES] = {
 	"NONE", "META", "ZPL", "ZVOL", "OTHER", "ANY" };
 
+/*ARGSUSED*/
 static void
 dump_dir(objset_t *os)
 {
@@ -1443,7 +1449,6 @@ zdb_count_block(spa_t *spa, zdb_cb_t *zcb, blkptr_t *bp, int type)
 		zb->zb_count++;
 	}
 
-
 	if (dump_opt['L'])
 		return;
 
@@ -1486,15 +1491,15 @@ zdb_blkptr_cb(traverse_blk_cache_t *bc, spa_t *spa, void *arg)
 		else
 			blkbuf[0] = '\0';
 
-			(void) printf("zdb_blkptr_cb: Got error %d reading "
-			    "<%llu, %llu, %lld, %llx> %s -- %s\n",
-			    bc->bc_errno,
-			    (u_longlong_t)zb->zb_objset,
-			    (u_longlong_t)zb->zb_object,
-			    (u_longlong_t)zb->zb_level,
-			    (u_longlong_t)zb->zb_blkid,
-			    blkbuf,
-			    error == EAGAIN ? "retrying" : "skipping");
+		(void) printf("zdb_blkptr_cb: Got error %d reading "
+		    "<%llu, %llu, %lld, %llx> %s -- %s\n",
+		    bc->bc_errno,
+		    (u_longlong_t)zb->zb_objset,
+		    (u_longlong_t)zb->zb_object,
+		    (u_longlong_t)zb->zb_level,
+		    (u_longlong_t)zb->zb_blkid,
+		    blkbuf,
+		    error == EAGAIN ? "retrying" : "skipping");
 
 		return (error);
 	}
@@ -1537,9 +1542,9 @@ dump_block_stats(spa_t *spa)
 
 	advance |= ADVANCE_PRUNE | ADVANCE_ZIL;
 
-		(void) printf("\nTraversing all blocks to %sverify"
-		    " nothing leaked ...\n",
-		    dump_opt['c'] ? "verify checksums and " : "");
+	(void) printf("\nTraversing all blocks to %sverify"
+	    " nothing leaked ...\n",
+	    dump_opt['c'] ? "verify checksums and " : "");
 
 	/*
 	 * Load all space maps.  As we traverse the pool, if we find a block
@@ -1608,7 +1613,6 @@ dump_block_stats(spa_t *spa)
 	 */
 	if (!dump_opt['L'])
 		zdb_space_map_unload(spa);
-
 
 	if (dump_opt['L'])
 		(void) printf("\n\n *** Live pool traversal; "
@@ -1741,7 +1745,6 @@ dump_zpool(spa_t *spa)
 	dsl_pool_t *dp = spa_get_dsl(spa);
 	int rc = 0;
 
-
 	if (dump_opt['u'])
 		dump_uberblock(&spa->spa_uberblock);
 
@@ -1762,7 +1765,6 @@ dump_zpool(spa_t *spa)
 
 	if (dump_opt['s'])
 		show_pool_stats(spa);
-
 
 	if (rc != 0)
 		exit(rc);
@@ -2092,7 +2094,6 @@ nvlist_string_match(nvlist_t *config, char *name, char *tgt)
 	char *s;
 
 	verify(nvlist_lookup_string(config, name, &s) == 0);
-
 	return (strcmp(s, tgt) == 0);
 }
 
@@ -2102,7 +2103,6 @@ nvlist_uint64_match(nvlist_t *config, char *name, uint64_t tgt)
 	uint64_t val;
 
 	verify(nvlist_lookup_uint64(config, name, &val) == 0);
-
 	return (val == tgt);
 }
 
@@ -2400,13 +2400,11 @@ main(int argc, char **argv)
 		 */
 		nvlist_t *exported_conf = NULL;
 
-
 		error = find_exported_zpool(argv[0], &exported_conf, vdev_dir);
 		if (error == 0) {
 			error = spa_import(argv[0], exported_conf, vdev_dir);
-
 			if (error == 0)
-			error = spa_open(argv[0], &spa, FTAG);
+				error = spa_open(argv[0], &spa, FTAG);
 		}
 	}
 
