@@ -1432,7 +1432,7 @@ zfs_statvfs(vfs_t *vfsp, struct statvfs64 *statp)
 #endif /* __APPLE__ */
 {
 #ifdef __APPLE__
-        zfsvfs_t *zfsvfs = vfs_fsprivate(mp);
+	zfsvfs_t *zfsvfs = vfs_fsprivate(mp);
 #else
 	zfsvfs_t *zfsvfs = vfsp->vfs_data;
 #endif /* __APPLE__ */
