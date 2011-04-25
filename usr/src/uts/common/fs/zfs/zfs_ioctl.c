@@ -108,7 +108,7 @@ typedef struct zfs_ioc_vec {
 void
 __dprintf(const char *file, const char *func, int line, const char *fmt, ...)
 {
-	const char *newfile;
+	const char *newfile __attribute__((__unused__));
 	char buf[256];
 	va_list adx;
 
@@ -730,19 +730,17 @@ zfs_ioc_pool_create(zfs_cmd_t *zc)
 	nvlist_t *config;
 	char *buf;
 
-	if ((buf = history_str_get(zc)) == NULL)
-		return (EINVAL);
-
-	if ((error = get_nvlist(zc, &config)) != 0) {
-		history_str_free(buf);
+	if ((error = get_nvlist(zc, &config)) != 0)
 		return (error);
-	}
+
+	buf = history_str_get(zc);
 
 	error = spa_create(zc->zc_name, config, zc->zc_value[0] == '\0' ?
 	    NULL : zc->zc_value, buf);
 
+	if (buf != NULL)
+		history_str_free(buf);
 	nvlist_free(config);
-	history_str_free(buf);
 
 	return (error);
 }
@@ -1644,7 +1642,7 @@ zfs_ioc_set_fsacl(zfs_cmd_t *zc)
 	/*
 	 * Verify nvlist is constructed correctly
 	 */
-	if ((error = zfs_deleg_verify_nvlist(fsaclnv)) != 0) {
+	if (zfs_deleg_verify_nvlist(fsaclnv) != 0) {
 		nvlist_free(fsaclnv);
 		return (EINVAL);
 	}
@@ -1980,7 +1978,7 @@ static int
 zfs_ioc_recvbackup(zfs_cmd_t *zc)
 {
 #ifdef __APPLE__
-	struct vnode *vp;
+	vnode_t *vp;
 #else
 	file_t *fp;
 #endif
@@ -1999,7 +1997,7 @@ zfs_ioc_recvbackup(zfs_cmd_t *zc)
 	 * soon as we have signed kexts so we are allowed to use the kernel 
 	 * interface to write to PIPE objects.
 	 */
-	if ((error = file_vnode_withvid(fd, &vp, NULL)))
+	if (file_vnode_withvid(fd, &vp, NULL))
 	       return (EBADF);	
 
 	error = dmu_recvbackup(zc->zc_value, &zc->zc_begin_record,
@@ -2040,7 +2038,7 @@ zfs_ioc_sendbackup(zfs_cmd_t *zc)
 	objset_t *fromsnap = NULL;
 	objset_t *tosnap;
 #ifdef __APPLE__
-	struct vnode *vp;
+	vnode_t *vp;
 #else
 	file_t *fp;
 #endif /* __APPLE__ */
@@ -2075,7 +2073,7 @@ zfs_ioc_sendbackup(zfs_cmd_t *zc)
 	 * soon as we have signed kexts so we are allowed to use the kernel 
 	 * interface to write to PIPE objects.
 	 */
-	if ((error = file_vnode_withvid(zc->zc_cookie, &vp, NULL))) 
+	if (file_vnode_withvid(zc->zc_cookie, &vp, NULL))
 #else
 	fp = getf(zc->zc_cookie);
 	if (fp == NULL) 
@@ -2272,9 +2270,9 @@ zfs_ioc_share(zfs_cmd_t *zc)
 }
 
 /*
- * pool destroy and pool export don't log the history as part of zfsdev_ioctl,
- * but rather zfs_ioc_pool_create, and zfs_ioc_pool_export do the loggin
- * of those commands.
+ * pool create, destroy, and export don't log the history as part of
+ * zfsdev_ioctl, but rather zfs_ioc_pool_create, and zfs_ioc_pool_export
+ * do the logging of those commands.
  */
 static zfs_ioc_vec_t zfs_ioc_vec[] = {
 	{ zfs_ioc_pool_create, zfs_secpolicy_config, POOL_NAME, B_FALSE },

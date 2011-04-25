@@ -45,11 +45,7 @@
 
 struct backuparg {
 	dmu_replay_record_t *drr;
-#ifdef __APPLE__
-	struct vnode *vp;
-#else
 	vnode_t *vp;
-#endif
 	objset_t *os;
 	zio_cksum_t zc;
 	int err;
@@ -233,13 +229,7 @@ backup_cb(traverse_blk_cache_t *bc, spa_t *spa, void *arg)
 	return (err);
 }
 
-// Issue 27
-int
-#ifdef __APPLE__
-dmu_sendbackup(objset_t *tosnap, objset_t *fromsnap, struct vnode *vp)
-#else
 dmu_sendbackup(objset_t *tosnap, objset_t *fromsnap, vnode_t *vp)
-#endif
 {
 	dsl_dataset_t *ds = tosnap->os->os_dsl_dataset;
 	dsl_dataset_t *fromds = fromsnap ? fromsnap->os->os_dsl_dataset : NULL;
@@ -308,12 +298,7 @@ dmu_sendbackup(objset_t *tosnap, objset_t *fromsnap, vnode_t *vp)
 struct restorearg {
 	int err;
 	int byteswap;
-// Issue 27
-#ifdef __APPLE__
-	struct vnode *vp;
-#else
 	vnode_t *vp;
-#endif
 	char *buf;
 	uint64_t voff;
 	int buflen; /* number of valid bytes in buf */
@@ -648,13 +633,13 @@ restore_object(struct restorearg *ra, objset_t *os, struct drr_object *drro)
 		VERIFY(0 == dmu_bonus_hold(os, drro->drr_object, FTAG, &db));
 		dmu_buf_will_dirty(db, tx);
 
-		ASSERT3U(db->db_size, ==, drro->drr_bonuslen);
-		data = restore_read(ra, P2ROUNDUP(db->db_size, 8));
+		ASSERT3U(db->db_size, >=, drro->drr_bonuslen);
+		data = restore_read(ra, P2ROUNDUP(drro->drr_bonuslen, 8));
 		if (data == NULL) {
 			dmu_tx_commit(tx);
 			return (ra->err);
 		}
-		bcopy(data, db->db_data, db->db_size);
+		bcopy(data, db->db_data, drro->drr_bonuslen);
 		if (ra->byteswap) {
 			dmu_ot[drro->drr_bonustype].ot_byteswap(db->db_data,
 			    drro->drr_bonuslen);
@@ -765,15 +750,9 @@ restore_free(struct restorearg *ra, objset_t *os,
 	return (err);
 }
 
-// Issue 27
 int
-#ifdef __APPLE__
-dmu_recvbackup(char *tosnap, struct drr_begin *drrb, uint64_t *sizep,
-    boolean_t force, struct vnode *vp, uint64_t voffset)
-#else
 dmu_recvbackup(char *tosnap, struct drr_begin *drrb, uint64_t *sizep,
     boolean_t force, vnode_t *vp, uint64_t voffset)
-#endif
 {
 	struct restorearg ra;
 	dmu_replay_record_t *drr;

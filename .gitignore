@@ -3,10 +3,4 @@
 *.mode1v3
 .DS_Store
 *~
-*.a
-*.tax
-*.tsox
-*.diff
-*/build_objs/
-*.dylib*
-*.deps
+.hgtags

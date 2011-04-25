@@ -1364,6 +1364,9 @@ zpool_iter_zvol(zpool_handle_t *zhp, int (*cb)(const char *, void *),
 	if ((base = open("/dev/zvol/dsk", O_RDONLY)) < 0)
 		return (errno == ENOENT ? 0 : -1);
 
+	// TODO Do we even get here? Does the above just fall over?
+	st.st_mode = 0;
+	
 #ifndef __APPLE__ 
 	if (fstatat(base, zhp->zpool_name, &st, 0) != 0) {
 		int err = errno;
@@ -1386,9 +1389,9 @@ zpool_iter_zvol(zpool_handle_t *zhp, int (*cb)(const char *, void *),
 	}
 
 	(void) strlcpy(paths[0], zhp->zpool_name, sizeof (paths[0]));
-	curr = 0;
 
 #ifndef __APPLE__ 
+	curr = 0;
 	while (curr >= 0) {
 		if (fstatat(base, paths[curr], &st, AT_SYMLINK_NOFOLLOW) != 0)
 			goto err;
@@ -1814,37 +1817,41 @@ zpool_upgrade(zpool_handle_t *zhp)
 	return (0);
 }
 
-/*
- * Log command history.
- *
- * 'zfs_cmd' is B_TRUE if we are logging a command for 'zfs'; B_FALSE
- * otherwise ('zpool').  'argc' and 'argv' are used to construct the
- * command string.
- */
 void
-zpool_stage_history(libzfs_handle_t *hdl, int argc, char **argv,
-    boolean_t zfs_cmd)
+zpool_set_history_str(const char *subcommand, int argc, char **argv,
+    char *history_str)
 {
-	char *cmd_buf;
 	int i;
+
+	(void) strlcpy(history_str, subcommand, HIS_MAX_RECORD_LEN);
+	for (i = 1; i < argc; i++) {
+		if (strlen(history_str) + 1 + strlen(argv[i]) >
+		    HIS_MAX_RECORD_LEN)
+			break;
+		(void) strlcat(history_str, " ", HIS_MAX_RECORD_LEN);
+		(void) strlcat(history_str, argv[i], HIS_MAX_RECORD_LEN);
+	}
+}
+
+/*
+ * Stage command history for logging.
+ */
+int
+zpool_stage_history(libzfs_handle_t *hdl, const char *history_str)
+{
+	if (history_str == NULL)
+		return (EINVAL);
+
+	if (strlen(history_str) > HIS_MAX_RECORD_LEN)
+		return (EINVAL);
 
 	if (hdl->libzfs_log_str != NULL)
 		free(hdl->libzfs_log_str);
 
-	if ((hdl->libzfs_log_str = zfs_alloc(hdl, HIS_MAX_RECORD_LEN)) == NULL)
-		return;
+	if ((hdl->libzfs_log_str = strdup(history_str)) == NULL)
+		return (no_memory(hdl));
 
-	cmd_buf = hdl->libzfs_log_str;
-
-	/* construct the command string */
-	(void) strlcpy(cmd_buf, zfs_cmd ? "zfs" : "zpool",
-	    HIS_MAX_RECORD_LEN);
-	for (i = 1; i < argc; i++) {
-		if (strlen(cmd_buf) + 1 + strlen(argv[i]) > HIS_MAX_RECORD_LEN)
-			break;
-		(void) strlcat(cmd_buf, " ", HIS_MAX_RECORD_LEN);
-		(void) strlcat(cmd_buf, argv[i], HIS_MAX_RECORD_LEN);
-	}
+	return (0);
 }
 
 /*

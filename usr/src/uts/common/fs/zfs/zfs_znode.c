@@ -62,6 +62,9 @@
 #include <sys/zfs_ioctl.h>
 #include <sys/zfs_rlock.h>
 #include <sys/fs/zfs.h>
+#ifdef __APPLE__
+#include <maczfs/kernel/maczfs_kernel.h>
+#endif
 #endif /* _KERNEL */
 
 #include <sys/dmu.h>
@@ -632,7 +635,7 @@ static void
 zfs_znode_dmu_init(znode_t *zp)
 {
 	znode_t		*nzp;
-	zfsvfs_t	*zfsvfs = zp->z_zfsvfs;
+	// zfsvfs_t	*zfsvfs = zp->z_zfsvfs;
 	dmu_buf_t	*db = zp->z_dbuf;
 
 	mutex_enter(&zp->z_lock);
@@ -691,13 +694,8 @@ zfs_znode_dmu_init(znode_t *zp)
  *	zfs_make_xattrdir
  */
 void
-#ifdef __APPLE__
-zfs_mknode(znode_t *dzp, struct vnode_attr *vap, uint64_t *oid, dmu_tx_t *tx, cred_t *cr,
-	uint_t flag, znode_t **zpp, int bonuslen)
-#else
 zfs_mknode(znode_t *dzp, vattr_t *vap, uint64_t *oid, dmu_tx_t *tx, cred_t *cr,
 	uint_t flag, znode_t **zpp, int bonuslen)
-#endif
 {
 	dmu_buf_t	*dbp;
 	znode_phys_t	*pzp;
@@ -894,7 +892,7 @@ again:
 		 * vp and vid before we unlock 
 		 */
 		uint32_t vid = zp->z_vid;
-		struct vnode *vp = ZTOV(zp);
+		vnode_t *vp = ZTOV(zp);
 		
 		dmu_buf_rele(db, NULL);
 		mutex_exit(&zp->z_lock);
@@ -1118,7 +1116,7 @@ zfs_znode_free(znode_t *zp)
 
 	zp->z_id = 0;
 	zp->z_vid = 0;
-	zp->z_vnode = (struct vnode *)0xDEADBEEF;
+	zp->z_vnode = (vnode_t *)0xDEADBEEF;
 	zp->z_zfsvfs = (struct zfsvfs *)0xDEADBEEF;
 
 #ifdef ZFS_DEBUG
@@ -1282,12 +1280,7 @@ zfs_no_putpage(vnode_t *vp, page_t *pp, u_offset_t *offp, size_t *lenp,
 int
 zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 {
-// Issue 27
-#ifdef __APPLE__
-	struct vnode *vp = ZTOV(zp);
-#else
 	vnode_t *vp = ZTOV(zp);
-#endif /* __APPLE__ */
 	dmu_tx_t *tx;
 	zfsvfs_t *zfsvfs = zp->z_zfsvfs;
 	zilog_t *zilog = zfsvfs->z_log;
@@ -1443,14 +1436,8 @@ zfs_create_fs(objset_t *os, cred_t *cr, uint64_t version, dmu_tx_t *tx)
 	uint64_t	moid, doid, roid = 0;
 	int		error;
 	znode_t		*rootzp = NULL;
-// Issue 27
-#ifdef __APPLE__
-	struct vnode	*vp;
-	struct vnode_attr vattr;
-#else
 	vnode_t		*vp;
 	vattr_t		vattr;
-#endif /* __APPLE__ */
 
 	/*
 	 * First attempt to create master node.
@@ -1495,8 +1482,8 @@ zfs_create_fs(objset_t *os, cred_t *cr, uint64_t version, dmu_tx_t *tx)
 	rootzp->z_atime_dirty = 0;
 	rootzp->z_dbuf_held = 0;
 
-	vp = ZTOV(rootzp);
 #ifndef __APPLE__
+	vp = ZTOV(rootzp);
 	vn_reinit(vp);
 	vp->v_type = VDIR;
 #endif
@@ -1663,8 +1650,8 @@ zfs_setbsdflags(znode_t *zp, uint32_t bsdflags)
 	zp->z_phys->zp_flags = zflags;
 }
 #endif /* LIBZPOOL_HACK */
-#endif /* __APPLE__ */
 
+#ifdef _KERNEL
 #ifdef ZFS_DEBUG
 #ifndef LIBZPOOL_HACK
 char *
@@ -1704,13 +1691,14 @@ void
 znode_stalker(znode_t *zp, whereami_t event)
 {
 	findme_t *n;
-
-	n = kmem_alloc(sizeof (findme_t), KM_SLEEP);
-	n->event = event;
-	mutex_enter(&zp->z_lock);
-	list_insert_tail(&zp->z_stalker, n);
-	mutex_exit(&zp->z_lock);
-	printf("stalk: zp %p %s\n", zp, n_event_to_str(event));
+	if( k_maczfs_debug_stalk ) {
+		n = kmem_alloc(sizeof (findme_t), KM_SLEEP);
+		n->event = event;
+		mutex_enter(&zp->z_lock);
+		list_insert_tail(&zp->z_stalker, n);
+		mutex_exit(&zp->z_lock);
+		printf("stalk: zp %p %s\n", zp, n_event_to_str(event));
+	}
 }
 
 void 
@@ -1726,3 +1714,5 @@ znode_stalker_fini(znode_t *zp)
 }
 #endif /* LIBZPOOL_HACK */
 #endif /* ZFS_DEBUG */
+#endif /* _KERNEL */
+#endif /* __APPLE__ */

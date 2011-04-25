@@ -183,6 +183,7 @@ static zpool_command_t command_table[] = {
 #define	NCOMMAND	(sizeof (command_table) / sizeof (command_table[0]))
 
 zpool_command_t *current_command;
+static char history_str[HIS_MAX_RECORD_LEN];
 
 static const char *
 get_usage(zpool_help_t idx) {
@@ -306,6 +307,8 @@ print_prop_cb(zpool_prop_t prop, void *cb)
 
 	return (ZFS_PROP_CONT);
 }
+
+void usage(boolean_t requested) __attribute__((__noreturn__));
 
 /*
  * Display usage message.  If we're inside a command, display only the usage for
@@ -1344,7 +1347,7 @@ zpool_do_import(int argc, char **argv)
 	int nsearch = 0;
 	int c;
 	int err;
-	nvlist_t *pools;
+	nvlist_t *pools = NULL;
 	boolean_t do_all = B_FALSE;
 	boolean_t do_destroyed = B_FALSE;
 	char *altroot = NULL;
@@ -1601,7 +1604,8 @@ zpool_do_import(int argc, char **argv)
 error:
 	if (props)
 		nvlist_free(props);
-	nvlist_free(pools);
+	if (pools)
+		nvlist_free(pools);
 	free(searchdirs);
 
 	return (err ? 1 : 0);
@@ -3791,7 +3795,7 @@ find_command_idx(char *command, int *idx)
 int
 main(int argc, char **argv)
 {
-	int ret;
+	int ret = 0;
 	int i;
 	char *cmdname;
 
@@ -3820,17 +3824,14 @@ main(int argc, char **argv)
 
 	cmdname = argv[1];
 
-	/* Handle special case of pool create for staging history */
-	if (strcmp(cmdname, "create") != 0)
-		zpool_stage_history(g_zfs, argc, argv, B_FALSE);
-	else
-		zpool_stage_history(g_zfs, argc, argv, B_FALSE);
-
 	/*
 	 * Special case '-?'
 	 */
 	if (strcmp(cmdname, "-?") == 0)
 		usage(B_TRUE);
+
+	zpool_set_history_str("zpool", argc, argv, history_str);
+	verify(zpool_stage_history(g_zfs, history_str) == 0);
 
 	/*
 	 * Run the appropriate command.

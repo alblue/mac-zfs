@@ -468,9 +468,10 @@ kmem_error(int error, kmem_cache_t *cparg, void *bufarg)
 			mutex_exit(&cp->cache_lock);
 			if (bcp == NULL && btp != NULL)
 				bcp = btp->bt_bufctl;
-			if (kmem_findslab(cp->cache_bufctl_cache, bcp) ==
+			if (bcp && (
+				kmem_findslab(cp->cache_bufctl_cache, bcp) ==
 			    NULL || P2PHASE((uintptr_t)bcp, KMEM_ALIGN) ||
-			    bcp->bc_addr != buf) {
+			    bcp->bc_addr != buf)) {
 				error = KMERR_BADBUFCTL;
 				bcp = NULL;
 			}
@@ -1355,7 +1356,6 @@ kmem_cache_free(kmem_cache_t *cp, void *buf)
 	kmem_magtype_t *mtp;
 
 #ifdef __APPLE__
-	// Issue 36
 	if(cp == NULL)
 		 return;
 	
@@ -2335,14 +2335,15 @@ kmem_cache_create(
 	/*
 	 * Now that we know the chunk size, determine the optimal slab size.
 	 */
-	if (vmp == kmem_firewall_arena) {
+	if (vmp == kmem_firewall_arena && vmp) {
 		cp->cache_slabsize = P2ROUNDUP(chunksize, vmp->vm_quantum);
 		cp->cache_mincolor = cp->cache_slabsize - chunksize;
 		cp->cache_maxcolor = cp->cache_mincolor;
 		cp->cache_flags |= KMF_HASH;
 		ASSERT(!(cp->cache_flags & KMF_BUFTAG));
-	} else if ((cflags & KMC_NOHASH) || (!(cflags & KMC_NOTOUCH) &&
+	} else if ((vmp && cflags & KMC_NOHASH) || (!(cflags & KMC_NOTOUCH) &&
 	    !(cp->cache_flags & KMF_AUDIT) &&
+		vmp &&
 	    chunksize < vmp->vm_quantum / KMEM_VOID_FRACTION)) {
 		cp->cache_slabsize = vmp->vm_quantum;
 
@@ -2368,7 +2369,7 @@ kmem_cache_create(
 		ASSERT(chunksize + sizeof (kmem_slab_t) <= cp->cache_slabsize);
 		ASSERT(!(cp->cache_flags & KMF_AUDIT));
 	} else {
-		size_t chunks, bestfit, waste, slabsize;
+		size_t chunks, bestfit = 0, waste, slabsize;
 		size_t minwaste = LONG_MAX;
 
 		for (chunks = 1; chunks <= KMEM_VOID_FRACTION; chunks++) {

@@ -48,7 +48,11 @@
 #endif /* !__APPLE__ */
 #include <sys/mntent.h>
 #include <sys/mnttab.h>
+#ifdef __APPLE__
+#include <maczfs/maczfs_mount.h>
+#else
 #include <sys/mount.h>
+#endif /* __APPLE__ */
 #include <sys/stat.h>
 #include <sys/avl.h>
 
@@ -67,8 +71,8 @@ libzfs_handle_t *g_zfs;
 #ifndef __APPLE__
 static FILE *mnttab_file;
 #endif /*!__APPLE__*/
-static int first_argc;
-static char **first_argv;
+
+static char history_str[HIS_MAX_RECORD_LEN];
 
 static int zfs_do_clone(int argc, char **argv);
 static int zfs_do_create(int argc, char **argv);
@@ -311,6 +315,8 @@ usage_prop_cb(zfs_prop_t prop, void *cb)
 
 	return (ZFS_PROP_CONT);
 }
+
+static void usage(boolean_t requested) __attribute__((__noreturn__));
 
 /*
  * Display usage message.  If we're inside a command, display only the usage for
@@ -1309,7 +1315,7 @@ same_pool(zfs_handle_t *zhp, const char *name)
 
 	if (len1 != len2)
 		return (B_FALSE);
-	return (strncmp(name, zhname, len1) != 0);
+	return (strncmp(name, zhname, len1) == 0);
 }
 
 static int
@@ -1365,8 +1371,7 @@ upgrade_set_callback(zfs_handle_t *zhp, void *data)
 			 * be doing ioctls to different pools.  We need
 			 * to log this history once to each pool.
 			 */
-			zpool_stage_history(g_zfs, first_argc, first_argv,
-			    B_TRUE);
+			verify(zpool_stage_history(g_zfs, history_str) == 0);
 		}
 		if (zfs_prop_set(zhp, "version", verstr) == 0)
 			cb->cb_numupgraded++;
@@ -2847,15 +2852,15 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, boolean_t explicit,
 	assert(type & (ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME));
 
 	if (type == ZFS_TYPE_FILESYSTEM) {
+#ifndef	__APPLE__
 		/*
 		 * Check to make sure we can mount/share this dataset.  If we
 		 * are in the global zone and the filesystem is exported to a
 		 * local zone, or if we are in a local zone and the
 		 * filesystem is not exported, then it is an error.
 		 */
-		zoned = zfs_prop_get_int(zhp, ZFS_PROP_ZONED);
 
-#ifndef	__APPLE__
+		zoned = zfs_prop_get_int(zhp, ZFS_PROP_ZONED);
 		if (zoned && getzoneid() == GLOBAL_ZONEID) {
 			if (!explicit)
 				return (0);
@@ -3895,7 +3900,7 @@ find_command_idx(char *command, int *idx)
 int
 main(int argc, char **argv)
 {
-	int ret;
+	int ret = 0;
 	int i;
 	char *progname;
 	char *cmdname;
@@ -3907,16 +3912,14 @@ main(int argc, char **argv)
 
 	opterr = 0;
 
-	first_argc = argc;
-	first_argv = argv;
-
 	if ((g_zfs = libzfs_init()) == NULL) {
 		(void) fprintf(stderr, gettext("internal error: failed to "
 		    "initialize ZFS library\n"));
 		return (1);
 	}
 
-	zpool_stage_history(g_zfs, argc, argv, B_TRUE);
+	zpool_set_history_str("zfs", argc, argv, history_str);
+	verify(zpool_stage_history(g_zfs, history_str) == 0);
 
 	libzfs_print_on_error(g_zfs, B_TRUE);
 

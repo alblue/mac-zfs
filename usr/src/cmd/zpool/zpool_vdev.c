@@ -154,9 +154,16 @@ check_slice(const char *path, int force, boolean_t wholedisk, boolean_t isspare)
 {
 	char *msg;
 	int error = 0;
+	dm_who_type_t who;
 
-	if (dm_inuse((char *)path, &msg, isspare ? DM_WHO_ZPOOL_SPARE :
-	    (force ? DM_WHO_ZPOOL_FORCE : DM_WHO_ZPOOL), &error) || error) {
+	if (force)
+		who = DM_WHO_ZPOOL_FORCE;
+	else if (isspare)
+		who = DM_WHO_ZPOOL_SPARE;
+	else
+		who = DM_WHO_ZPOOL;
+
+	if (dm_inuse((char *)path, &msg, who, &error) || error) {
 		if (error != 0) {
 			libdiskmgt_error(error);
 			return (0);
@@ -414,6 +421,8 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 	char *type = NULL;
 	boolean_t wholedisk = B_FALSE;
 
+	statbuf.st_mode = 0;
+	
 	/*
 	 * Determine what type of vdev this is, and put the full path into
 	 * 'path'.  We detect whether this is a device of file afterwards by
