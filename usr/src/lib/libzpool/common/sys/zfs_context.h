@@ -399,6 +399,13 @@ int vfs_context_rele(vfs_context_t ctx);
 #define	vnode_getattr(vp, vap, co)	((vap)->va_data_size = (vp)->v_size, 0)
 #define	vnode_close(vp, f, c)	0
 
+/*
+ * Returns true if any vdevs in the hierarchy is a disk
+ */
+typedef struct vdev vdev_t;
+extern int vdev_contains_disks(vdev_t *);
+
+
 struct vmem {
 	int vm_quantum;
 	int vm_qcache_max;
