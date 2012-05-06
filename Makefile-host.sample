@@ -1,0 +1,46 @@
+# -*- mode: makefile -*-
+#
+# This file contains build host specific definitions.  The
+# "Makefile-host" file is not supposed to be uploaded to any public
+# repository.  Use this "Makefile-host.sample" as a template and
+# rename to "Makefile-host".
+
+ARCH_AVAIL ?= i386 x86_64 ppc
+
+# In the real file, do not use $(shell pwd), use an absolut path!
+SRCROOT := $(shell pwd)
+
+ARCH_DEF := i386
+
+
+# default base dir to install files to.  This is relative to the
+# project root and defaults to "instbase".  Do not start with a slash
+# "/".
+#
+#INSTDIR := instbase
+
+# default library installation directory, relative to INSTDIR.  Do not
+# start with a slash "/".  May be overridden by
+# ARCH_EXTRA_arch_INSTLIBDIR and target specific tget_INSTLIBDIR
+#
+#INSTLIBDEF := usr/lib
+
+# default header installation directory, relative to INSTDIR.  Do not
+# start with a slash "/".  May be overridden by
+# ARCH_EXTRA_arch_INSTHDRSDIR and target specific tget_INSTHDRSDIR
+#
+#INSTHDRSDEF := usr/include
+
+# default exe installation directory, relative to INSTDIR.  Do not
+# start with a slash "/".  May be overridden by
+# ARCH_EXTRA_arch_INSTEXEDIR and target specific tget_INSTEXEDIR
+#
+#INSTEXEDEF := usr/bin
+
+# default kernel extensions installation directory, relative to
+# INSTDIR.  Do not start with a slash "/".  May be overridden by
+# ARCH_EXTRA_arch_INSTKEXTDIR and target specific tget_INSTKEXTDIR
+#
+#INSTKEXTDEF := Library/Extensions
+
+# end
