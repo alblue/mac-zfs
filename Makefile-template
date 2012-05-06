@@ -1,0 +1,138 @@
+# -*- mode: makefile -*-
+#
+# gmake based Makefiles for maczfs.
+#
+# This file describes a set of related build targets.  It does not do
+# the actual build, but merely describes what to build and which
+# ingredients go into that specific build.
+#
+# The format is straight-forward:
+#
+# 1) first specify the targets.  
+# 2) for each target, specify sources files, install files and used libraries.
+# 3) at the very end, include Makefile.Rules.
+#
+
+
+# 1) what to build
+#
+# specify executables, libraries and kernel extensions.  Do *not* use
+# extensions like ".exe" or ".a" etc.!
+#
+# here go all normal executable files:
+ALL_EXE :=
+
+#
+# here go all libraries build in this folder.  Do not specify
+# libraries used here but build elsewhere!
+ALL_LIBS :=
+
+#
+# all kernel extensions
+ALL_KEXT :=
+
+
+# 2) what makes up a target.
+#
+# specify the sources *including* path, starting form project root,
+# i.e. starting with usr/src/...
+# 
+# NOTE: It is currently NOT supported to have two source files of the
+# same name but in different directories within one target!
+# 
+# Targets are specified using a set of variables, all prefixed with the
+# target's name and an underscore.  The available variables are:
+#
+# tget_SOURCES  : all source files
+# tget_ARCH     : the architectures to build.  Defaults to all available.
+# tget_LIBS     : used libraries for this project.  specify just the
+#    library name i.e. libzfs, without an extension.  Linkage will be
+#    dynamic if supported, static otherwise.  To force either one, add
+#    the library (w/o extension) to tget_LIBS_DY or tget_LIBS_AR.
+# tget_LDLIBS   : additional system libraries to link in.  Specify as
+#    for the dynamic linker, i.e. use "-lc" to link in libc.  Only
+#    evaluated when creating a dynamic library.
+# tget_INC      : additional include directories to use.
+# tget_INCSYS   : additional system include directories to be added
+#    with "-isystem".
+# tget_INSTHDRS : list of header files that should be installed along a
+#    library.
+# tget_INSTHDRSDIR : directory where to install the headers.  This is
+#    interpreted relative to the install base defined in
+#    Makefile-host.  Defaults to an architecture specific path.
+# tget_CFLAGS     : extra flags to pass to the compiler
+# tget_CXXFLAGS   : same for C++ code
+# tget_LDFLAGS    : extra flags to pass to the (dynamic) linker
+# tget_DYLIB      : what type of library to build.  Empty or NO for static
+#    library and YES for a dynamic library.  Only allowed in a library
+#    target specification.
+# tget_VERS       : version information for a dynamic library.  Should be
+#    a single integer.  Mandatory for dynamic libraries.
+# tget_INSTARLIB  : wether or not to install a static library.  YES to
+#    install (in tget_INSTLIBDIR), empty or NO otherwise.  Automatically
+#    set to YES if tget_DYLIB is YES but dynamic libraries are not
+#    supported by the current architecture.
+# tget_INSTLIBDIR : directory where to install dynamic libraries.  This
+#    is interpreted relative to the install base defined in Makefile-host.
+#    Defaults to an architecture dependent path.
+# tget_INSTEXEDIR : directory where to install executable files.  This
+#    is interpreted relative to the install base defined in Makefile-host.
+#    Defaults to an architecture dependent path.
+# tget_INSTKEXTDIR : directory where to install kernel extension
+#    files.  This is interpreted relative to the install base defined
+#    in Makefile-host.  Defaults to an architecture dependent path.
+# tget_INSTNAME   : alternative filename for installed libraries,
+#    executables and kernel extensions.  Use to install a file by
+#    another name than the target name.  Must not have any extension
+#    or path prefix.
+# tget_VERSION    : file version number.  If set, then a special file
+#    tget_vers.c will be generated which provides Apple's executable file
+#    version mechanism.  The version number should be in the format of
+#    a.b.c with a,b and c positive integer numbers.
+# tget_DESCRIPTION : Optional longer, free-text description, for example
+#    a tag from a SCM system.  Ignored if tget_VERSION is empty.
+# tget_VERS_C     : name of a user-supplied version info file.
+#    Overrides the auto-generated one from tget_VERSION.  Must be a
+#    compilable C source including path relative to project root.  If
+#    set, then this is used independently of tget_VERSION being defined
+#    or not.
+# tget_KEXT_START : kext entry function name.  Stored in the
+#    auto-generated kernel extension info file used by the kext loader.
+# tget_KEXT_STOP  : kext exit function name.  Stored in the
+#    auto-generated kernel extension info file used by the kext loader.
+# tget_KEXT_ID    : full module name of the extension.  constructed as
+#    a reverse domain name, i.e. org.example.module.  Stored in the
+#    auto-generated kernel extension info file and used by the kext
+#    utilities.
+# tget_KEXT_DESCRIPTION : Optional longer, free-text description, for
+#    example a tag from a SCM system.  Used to update the Info.plist
+#    named by tget_KEXT_PLIST.
+# tget_KEXT_VERSION : kernel extension version.  Stored in the
+#    auto-generated kernel extension info file and used by the kext
+#    utilities.  Do not confuse with tget_VERSION, these two are
+#    independent versioning schemes!  The version number should be in
+#    the format of a.b.c with a,b and c positive integer numbers.
+# tget_KEXT_PLIST : Info.plist to store in the kext bundle.
+# tget_KEXT_INFO_C : name of a user-supplied kernel extension info file.
+#    Overrides the auto-generated one from tget_KEXT_*.  Must be a
+#    compilable C source including path relative to project root.
+#
+# All variables, with the exception of tget_ARCH, can be prefixed with
+# an architecture to apply same flags, libraries, sources or other
+# settings only for the given architecture, e.g. tget_ppc_CFLAGS :=
+# xxx.  For most variables, the architecture specific value is
+# appended to the generic value.  The architecture specific values for
+# the variables DYLIB, VERS, INSTHDRSDIR, INSTLIBDIR, INSTEXEDIR,
+# INSTKEXTDIR, INSTARLIB, VERSION, DESCRIPTION, VERS_C and all KEXT_*
+# override the respective generic values.
+# 
+# You can invent other variables to simplify filling in above
+# variables.  Any such invented variables should use lower case, since
+# upper case names are reserved for the build system's internal use.
+# See README_buildsystem.txt file for a list of used variables.
+
+
+# 3) include Makefile.Rules
+#
+# This has all the magic that does the actual multi-architecture builds.
+include ./Makefile.Rules
