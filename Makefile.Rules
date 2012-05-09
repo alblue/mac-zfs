@@ -24,6 +24,7 @@
 #
 # Known library types
 #
+DYEXT := dylib
 LNKEXT := a
 
 #
@@ -236,11 +237,27 @@ $(1)_$(2)_LDFLAGS_ALL :=  $($(1)_LDFLAGS)  $($(1)_$(2)_LDFLAGS)
 $(1)_$(2)_INCSYS_ALL := $($(1)_INCSYS)  $($(1)_$(2)_INCSYS)
 $(1)_$(2)_INC_ALL := $($(1)_INC)  $($(1)_$(2)_INC)
 
-# static libraries from the project
-$(1)_$(2)_LIBS_ALL := $($(1)_LIBS) $($(1)_$(2)_LIBS)
+# linking of static or dynamic libraries from the project is
+# determined in tget_prep_libs_tpl.
 
 # libraries from the system.
 $(1)_$(2)_LDLIBS_ALL := $($(1)_LDLIBS) $($(1)_$(2)_LDLIBS)
+
+# note that (1)_DYLIB and $(1)_$(2)_DYLIB are reversed compared to the
+# other variables.  This allows architecture specific override of a
+# global "YES".
+$(1)_$(2)_DYLIB_FIN := $(firstword $($(1)_$(2)_DYLIB) $($(1)_DYLIB) NO)
+
+# same reversed order as above.
+$(1)_$(2)_VERS_FIN := $(firstword $($(1)_$(2)_VERS) $($(1)_VERS) 0)
+
+# fixup case
+ifeq ($$(strip $$($(1)_$(2)_DYLIB_FIN)),Yes)
+$(1)_$(2)_DYLIB_FIN := YES
+endif
+ifeq ($$(strip $$($(1)_$(2)_DYLIB_FIN)),yes)
+$(1)_$(2)_DYLIB_FIN := YES
+endif
 
 # where to install stuff, and what to install
 $(1)_$(2)_INSTHDRS_ALL := $($(1)_INSTHDRS) $($(1)_$(2)_INSTHDRS)
@@ -266,7 +283,8 @@ endef
 
 
 
-# compute path to linked libraries from the project.
+# finally decide if a target links dynamically or statically against a
+# library.
 #
 # target-name arch
 #
@@ -274,8 +292,29 @@ endef
 # arch = current architecture
 define tget_prep_libs_tpl
 
+# all libraries that should be linked dynamically.  We subtract the
+# architecture specific static libs from the generic dynamic ones, so
+# static linking specification in an architecture overrides a global
+# dynamic linking specification.
+$(1)_$(2)_LIBS_DY_OK := $(filter-out $($(1)_$(2)_LIBS_AR),$($(1)_LIBS_DY)) $($(1)_$(2)_LIBS_DY)
+
+# default is static linking, so use the LIBS variable for that too.
+$(1)_$(2)_LIBS_AR_OK := $($(1)_LIBS_AR) $($(1)_$(2)_LIBS_AR) $($(1)_LIBS) $($(1)_$(2)_LIBS)
+
+# sum of static and dynamic libs
+$(1)_$(2)_LIBS_AR_DY_OK := $$($(1)_$(2)_LIBS_AR_OK) $$($(1)_$(2)_LIBS_DY_OK)
+
 # compute full path for used static libraries
-$(1)_$(2)_ARLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_ALL),$(BUILDBASE)/$$(i)_$(2)/$$(i).$(LNKEXT))
+$(1)_$(2)_ARLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_AR_OK),$(BUILDBASE)/$$(i)_$(2)/$$(i).$(LNKEXT))
+
+# compute full path for used dynamic libraries
+$(1)_$(2)_DYLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$(INSTBASE)/$(2)/$$($$(i)_$(2)_INSTLIBDIR_FIN)/$$(i).$(DYEXT))
+
+# compute linker flags for all used dynamic libs
+$(1)_$(2)_DYLIBS_OK_L := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$$(patsubst lib%,-l%,$$(i)))
+
+# compute library search paths
+$(1)_$(2)_DYLIB_OK_SEARCH := $$(sort $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),-L$(INSTBASE)/$(2)/$$($$(i)_$(2)_INSTLIBDIR_FIN)))
 
 
 #
@@ -365,14 +404,14 @@ define exe_arch_tpl
 .PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
 
 # libraries we need:
-ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1):  $$($(1)_$(2)_ARLIBS_OK_PATH)
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+$(BUILDBASE)/$(1)_$(2)/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
 
 # the actual linker rule
 $(BUILDBASE)/$(1)_$(2)/$(1): $($(1)_$(2)_OBJ_ALL)
-	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_LDLIBS_ALL)
+	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 
 
 # update dependency file for toplevel target
@@ -405,8 +444,11 @@ conf-$(1)-$(2):
 	@echo "$(1): $(2)"
 	@echo "   $(1)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
-ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
-	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_ALL))"
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
+	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
+endif
+ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
+	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
 	@echo "   $(1)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)"
 
@@ -453,11 +495,12 @@ define lib_arch_tpl
 .PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
 
 # we do not support chaining libraries
-ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
-$$(error "Library '$(1)' in architecture '$(2)' depends on other libraries: $($(1)_$(2)_LIBS_ALL).  This is not supported")
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+$$(error "Library '$(1)' in architecture '$(2)' depends on other libraries: $($(1)_$(2)_LIBS_AR_DY_OK).  This is not supported")
 endif
 
-# actual build rule
+# first, build a static library.  we do this in any case.
+
 $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL)
 	ar rs $$@ $($(1)_$(2)_OBJ_ALL)
 
@@ -472,6 +515,40 @@ $(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst 
 $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
 	install -v -d $$(dir $$@)
 	install -v -c $$< $$@
+
+
+
+# Next decide if a dynamic library is wanted, and if yes then build one.
+
+ifeq ($(strip $($(1)_$(2)_DYLIB_FIN)),YES)
+# dynamic lib is wanted.  Same story as for static libraries ...
+
+
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)
+	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $($(1)_$(2)_LDLIBS_ALL)
+
+# install target
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT)
+	install -v -d $$(dir $$@)
+	install -v -c $$< $$@
+
+
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+
+
+clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+
+$(1)_$(2)_DO_INST_DYLIB :=  YES
+
+# else of if: build dynamic lib
+else
+
+$(1)_$(2)_DO_INST_DYLIB :=  NO
+
+# end of else: build dynamic lib
+endif
 
 
 # install any headers?
@@ -500,9 +577,11 @@ clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNK
 else
 $(1)_$(2): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
 
+ifeq ($$($(1)_$(2)_DO_INST_DYLIB),NO)
 install-$(1)-$(2):
 	@echo nothing to be done for $$@ 
 
+endif
 endif
 
 clean-$(1)-$(2):
@@ -518,6 +597,10 @@ conf-$(1)-$(2):
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
 	@echo "   $(1).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)"
+endif
+ifeq ($$($(1)_$(2)_DO_INST_DYLIB),YES)
+	@echo "   $(1) version =  $($(1)_$(2)_VERS_FIN)"
+	@echo "   $(1).$(DYEXT)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)"
 endif
 ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
 	@echo "   header src :  $($(1)_$(2)_INSTHDRS_ALL)"
@@ -570,15 +653,15 @@ define kext_arch_tpl
 .PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
 
 # libraries we need:
-ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1):  $$($(1)_$(2)_ARLIBS_OK_PATH)
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
 # actual linker rule
 $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1): $($(1)_$(2)_OBJ_ALL)
 	rm -rf $(BUILDBASE)/$(1)_$(2)/$(1).kext
 	mkdir -pv $$(dir $$@)
-	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_LDLIBS_ALL)
+	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	cp -p $($(1)_$(2)_KEXT_PLIST_FIN)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/
 endif
@@ -618,8 +701,11 @@ conf-$(1)-$(2):
 	@echo "$(1): $(2)"
 	@echo "   $(1)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
-ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
-	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_ALL))"
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
+	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
+endif
+ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
+	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
