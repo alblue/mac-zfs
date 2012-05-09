@@ -1,0 +1,720 @@
+# -*- mode: makefile -*-
+
+#
+# Generic multi-architecture make rules.
+#
+# (C) Bjoern Kahl <bjoka@bjoern-kahl.de>  2012
+#
+# Permission granted to use for any kind of open source software,
+# provided this copyright notice and below disclamer are left intact.
+#
+
+#
+# gmake based Makefiles for maczfs.
+#
+# This file is a cleaned up version of my (bjoka's) usual Makefile.Rules.
+# I adapted it to suite the specific needs of maczfs, namely adding
+# support for kernel extensions and removing Linux related stuff.
+#
+# DISCLAIMER:
+# This file is considered experimental, it comes with absolutely no
+# warranty of.  It may destroy your data, use at your own risk.
+#
+
+#
+# Known library types
+#
+LNKEXT := a
+
+#
+#  Default library type  (link lib)
+#
+DEF_LIBEXT := $(LNKEXT)
+
+#
+# generic compiler and linker flags
+#
+# EXT_xxx are environment variables and can be used to add flags on
+# demand.
+CXX = g++
+CXXFLAGS = -w -g  -std=c99  $(EXT_CXXFLAGS)
+
+CC = gcc
+CFLAGS = -w -g  -std=c99  $(EXT_CFLAGS)
+
+LDFLAGS = -g  $(EXT_LDFLAGS)
+
+#
+# known architectures
+#
+# Each architecture is defined by six variables:
+# CFLAGS   : default flag for compiling C sources.
+# CXXFLAGS : default flag for compiling C++ sources.
+# LDFLAGS  : default flags for linking executables.  Should not list
+#    extra libraries.
+# INSTLIBDIR : where to install dynamic libraries.  Defaults to host
+#    specific path from Makefile-host.
+# INSTHDRSDIR : where to install header files.  Defaults to host
+#    specific path from Makefile-host.
+# DYLIBS_OK : set to NO for architectures not supporting dynamic
+#    libraries.  Defaults to YES.
+#
+ARCH_EXTRA_x86_64_CFLAGS := -arch x86_64 -fPIC
+ARCH_EXTRA_x86_64_CXXFLAGS := $(ARCH_EXTRA_x86_64_CFLAGS)
+ARCH_EXTRA_x86_64_LDFLAGS :=  -arch x86_64
+ARCH_EXTRA_i386_CFLAGS := -arch i386
+ARCH_EXTRA_i386_CXXFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+ARCH_EXTRA_i386_LDFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+ARCH_EXTRA_ppc_CFLAGS := -arch ppc  -mtune=G5
+ARCH_EXTRA_ppc_CXXFLAGS := $(ARCH_EXTRA_ppc_CFLAGS)
+ARCH_EXTRA_ppc_LDFLAGS := -arch ppc
+
+#
+# Here starts the magic.  Touch and burn at your own risk.
+#
+
+#
+# Debug library build configuration? YES / NO
+#
+MAKE_DEBUG_LIBS := NO
+
+#
+# architectures this host can build
+#
+# this must define ARCH_AVAIL, the list of supported architectures and
+# ARCH_DEF, the architectures to build always (ARCH_DEF may be empty)
+include Makefile-host
+
+# check if architectures are defined
+ifeq ($(strip $(ARCH_AVAIL))x,x)
+$(error "ARCH_AVAIL not defined in Makefile-host.  Please define the available architectures (ppc, i386 or x86_64)")
+endif
+
+
+
+#
+# Figure out our root directory, in case it is not set
+#
+# This assumes there is only one Makefile.Rules and we are not called
+# from to far away.
+ifeq ($(strip $(SRCROOT))x,x)
+SRCROOT := $(firstword $(wildcard $(foreach i,. .. ../.. ../../.. ../../../..,$(CURDIR)/$(i)/Makefile.Rules )))
+endif
+
+ifeq ($(strip $(SRCROOT))x,x)
+$(error "Can't find root of project.  Please set SRCROOT variable in the environment or Makefile-host")
+endif
+
+# cleanup path, resolving . .. //
+SRCROOT := $(abspath $(dir $(SRCROOT)))
+
+
+
+#
+# Define base for our build directories
+#
+BUILDDIR ?= build
+BUILDBASE ?= $(SRCROOT)/$(BUILDDIR)
+
+
+
+#
+# define base for installed files
+#
+INSTDIR ?= instbase
+INSTBASE ?= $(SRCROOT)/$(INSTDIR)
+
+# default for libraries, if not set in Makefile-host.  May be
+# overridden by ARCH_EXTRA_arch_INSTLIBDIR and target specific
+# tget_INSTLIBDIR
+INSTLIBDEF ?= usr/lib
+
+# default for header, if not set in Makefile-host.  May be
+# overridden by ARCH_EXTRA_arch_INSTHDRSDIR and target specific
+# tget_INSTHDRSDIR
+INSTHDRSDEF ?= usr/include
+
+# default for executables, if not set in Makefile-host.  May be
+# overridden by ARCH_EXTRA_arch_INSTEXEDIR and target specific
+# tget_INSTEXEDIR
+INSTEXEDEF ?= usr/bin
+
+# default for kernel extensions, if not set in Makefile-host.  May be
+# overridden by ARCH_EXTRA_arch_INSTKEXTDIR and target specific
+# tget_INSTKEXTDIR
+#
+INSTKEXTDEF ?= Library/Extensions
+
+.PHONY: all libs exe kext all-docs all-pdf
+
+all: libs exe kext
+
+# create a build directory, if it does not exist.
+$(BUILDBASE)/%/.dir:
+	@mkdir -pv $(dir $@)
+	@touch $@
+
+
+
+# compile a single source file into an object file.
+# instantiated once for each source directory of each toplevel target
+# and architecture.
+#
+# we use seven sets of flags, in given order:
+# CFLAGS         : global flags to compiler
+# ARCH_EXTRA_$(2)_CFLAGS : architecture specific flags
+# $(1)_$(2)_INCSYS_ALL : include search path to be added to the system
+#    search path (i.e. -isystem ...) from tget_INCSYS and
+#    tget_arch_INCSYS, in this order
+# $(1)_$(2)_INC  : architecture dependent extra include paths
+# $(1)_$(2)_CFLAGS_ALL : target specific flags from tget_CFLAGS and
+#    tget_arch_CFLAGS, in this order
+# $(1)_INC       : extra target include search paths
+#
+# target-name arch src-dir
+#
+# target-name = toplevel target we are building
+# arch = architecture we are cross-compiling for.  must be defined in
+#        "known architecture" section above
+# src-dir = source directory with trailing "/"
+define obj_arch_tpl
+
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.c  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+	$(CC) -MMD -o $$@ -c $$< $(CFLAGS) $$(ARCH_EXTRA_$(2)_CFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
+
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.cc  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
+
+$(BUILDBASE)/$(1)_$(4)/%.o: $(SRCROOT)/$(3)%.cpp  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
+
+#
+endef
+
+
+# compute architectures to build
+#
+# target-name
+#
+# target-name = toplevel-target
+define tget_prep_tpl
+
+ifeq ($(strip $($(1)_ARCH))x,x)
+$(1)_BUILD_ARCHS := $(ARCH_AVAIL)
+else
+$(1)_BUILD_ARCHS := $(filter $(ARCH_AVAIL),$($(1)_ARCH)) 
+endif
+
+ifeq ($$(strip $$($(1)_BUILD_ARCHS))x,x)
+$$(error "Request to build $(1) with only unsupported architectures")
+endif
+
+#
+endef
+
+
+# compute all sources, source directories, object files, libraries and
+# flags for a given target under a given architecture.
+#
+# target-name arch
+#
+# target-name = toplevel-target
+# arch = current architecture
+define tget_prep_arch_tpl
+
+# for all variables, architecture specific definitions go last, so they
+# may override generic definitions.
+
+$(1)_$(2)_SOURCES_ALL :=  $($(1)_SOURCES)  $($(1)_$(2)_SOURCES)
+$(1)_$(2)_SRCDIRS_ALL := $$(strip $$(filter-out ./,$$(sort $$(dir $$($(1)_$(2)_SOURCES_ALL)))))
+$(1)_$(2)_OBJ_ALL :=  $$(addprefix $(BUILDBASE)/$(1)_$(2),$$(patsubst %.cc,/%.o,$$(patsubst %.cpp,%.cc,$$(patsubst %.c,%.cpp,$$(notdir $$($(1)_$(2)_SOURCES_ALL))))))
+
+$(1)_$(2)_CFLAGS_ALL :=  $($(1)_CFLAGS)  $($(1)_$(2)_CFLAGS)
+$(1)_$(2)_CXXFLAGS_ALL :=  $($(1)_CXXFLAGS)  $($(1)_$(2)_CXXFLAGS)
+$(1)_$(2)_LDFLAGS_ALL :=  $($(1)_LDFLAGS)  $($(1)_$(2)_LDFLAGS)
+
+$(1)_$(2)_INCSYS_ALL := $($(1)_INCSYS)  $($(1)_$(2)_INCSYS)
+$(1)_$(2)_INC_ALL := $($(1)_INC)  $($(1)_$(2)_INC)
+
+# static libraries from the project
+$(1)_$(2)_LIBS_ALL := $($(1)_LIBS) $($(1)_$(2)_LIBS)
+
+# libraries from the system.
+$(1)_$(2)_LDLIBS_ALL := $($(1)_LDLIBS) $($(1)_$(2)_LDLIBS)
+
+# where to install stuff, and what to install
+$(1)_$(2)_INSTHDRS_ALL := $($(1)_INSTHDRS) $($(1)_$(2)_INSTHDRS)
+$(1)_$(2)_INSTHDRSDIR_FIN := $(firstword $($(1)_$(2)_INSTHDRSDIR) $($(1)_INSTHDRSDIR) $(ARCH_EXTRA_$(2)_INSTHDRSDIR) $(INSTHDRSDEF))
+ifneq ($$(strip $$($(1)_$(2)_INSTHDRS_ALL))x,x)
+$(1)_$(2)_DO_INST_HDRS := YES
+endif
+$(1)_$(2)_INSTLIBDIR_FIN := $(firstword $($(1)_$(2)_INSTLIBDIR) $($(1)_INSTLIBDIR) $(ARCH_EXTRA_$(2)_INSTLIBDIR) $(INSTLIBDEF))
+$(1)_$(2)_INSTEXEDIR_FIN := $(firstword $($(1)_$(2)_INSTEXEDIR) $($(1)_INSTEXEDIR) $(ARCH_EXTRA_$(2)_INSTEXEDIR) $(INSTEXEDEF))
+$(1)_$(2)_INSTKEXTDIR_FIN := $(firstword $($(1)_$(2)_INSTKEXTDIR) $($(1)_INSTKEXTDIR) $(ARCH_EXTRA_$(2)_INSTKEXTDIR) $(INSTKEXTDEF))
+$(1)_$(2)_INSTNAME_FIN := $(firstword $($(1)_$(2)_INSTNAME) $($(1)_INSTNAME) $(1))
+
+# decide if static libraries should be installed
+$(1)_$(2)_INSTARLIB_FIN := $(firstword $($(1)_$(2)_INSTARLIB) $($(1)_INSTARLIB) NO)
+
+
+#
+# kext specific variables
+$(1)_$(2)_KEXT_PLIST_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_PLIST) $($(1)_KEXT_PLIST)))
+
+#
+endef
+
+
+
+# compute path to linked libraries from the project.
+#
+# target-name arch
+#
+# target-name = toplevel-target
+# arch = current architecture
+define tget_prep_libs_tpl
+
+# compute full path for used static libraries
+$(1)_$(2)_ARLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_ALL),$(BUILDBASE)/$$(i)_$(2)/$$(i).$(LNKEXT))
+
+
+#
+endef
+
+
+
+# generate all compiler rules for a given target and architecture.
+# Splitted out from tget_prep_arch_tpl because we need the
+# tget_arch_SRCDIRS_ALL variable defined which is computed in
+# tget_prep_arch_tpl.
+#
+# target-name  arch
+#
+# target-name = toplevel-target
+# arch = current architecture
+define tget_prep_obj_tpl
+$(foreach i,$($(1)_$(2)_SRCDIRS_ALL),$(call obj_arch_tpl,$(1),$(2),$(i)))
+
+#
+endef
+
+
+
+# define or call various maintenance targets, like install, clean,
+# print configuration.  This template mostly creates dependencies of
+# toplevel target maintenance target (i.e. conf-'tget' install-'tget')
+# on the actual rules.  The rules themselves are created in the
+# lib_arch_tpl, exe_arch_tpl and kext_arch_tpl.  However this template
+# creates the the help-'tget' rule itself.
+#
+# target-name target-type
+#
+# target-name  : toplevel target to be build.
+# target-type  : kext, library or executable, used to customize
+#    the help message.
+define tget_maketgets_tpl
+.PHONY: $(1) install-$(1) clean-$(1) distclean-$(1) conf-$(1) help-$(1) help-$(1)-i
+
+$(1): $(foreach i,$($(1)_BUILD_ARCHS),$(1)_$(i))
+	@echo Done $(1).
+
+install-$(1): $(foreach i,$($(1)_BUILD_ARCHS),install-$(1)-$(i))
+	@echo Done installing $(1)
+
+clean-$(1): $(foreach i,$($(1)_BUILD_ARCHS),clean-$(1)-$(i))
+	@echo Done cleaning $(1)
+
+distclean-$(1): $(foreach i,$($(1)_BUILD_ARCHS),distclean-$(1)-$(i))
+	@echo Done dist-cleaning $(1)
+
+conf-$(1): $(foreach i,$($(1)_BUILD_ARCHS),conf-$(1)-$(i))
+	@echo Done showing configuration $(1)
+
+help-$(1):
+	@echo "$(1)         : build all architectures"
+	@echo "$(foreach i,$($(1)_BUILD_ARCHS),$(1)_$(i)) : build named architecture"
+	@echo "clean-$(1)   : delete temoprary and installed files"
+	@echo "distclean-$(1) : also delete build directories"
+	@echo "install-$(1) : install $(2)"
+	@echo "conf-$(1)    : print build configuration"
+	@echo "help-$(1)    : this list"
+	@echo
+
+help-$(1)-i:
+	@echo "$(1)         : build all architectures"
+	@echo "$(foreach i,$($(1)_BUILD_ARCHS),$(1)_$(i)) : build named architecture"
+	@echo
+
+#
+endef
+
+
+
+# generate linker rules for executables.
+#
+# this is called once for each pair of toplevel-target and
+# architecture to build.  It generates the linker rule for that pair.
+#
+# target-name arch
+#
+# target-name = toplevel target we are building
+# arch = current architecture
+define exe_arch_tpl
+
+# some internal targets:
+.PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
+
+# libraries we need:
+ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
+$(BUILDBASE)/$(1)_$(2)/$(1):  $$($(1)_$(2)_ARLIBS_OK_PATH)
+endif
+
+
+# the actual linker rule
+$(BUILDBASE)/$(1)_$(2)/$(1): $($(1)_$(2)_OBJ_ALL)
+	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_LDLIBS_ALL)
+
+
+# update dependency file for toplevel target
+#
+# target-name = toplevel target we are building
+$(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst %.o,%.d,$$($(1)_$(2)_OBJ_ALL)))
+	@cat $$^ >$$@
+
+
+# install target
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1): $(BUILDBASE)/$(1)_$(2)/$(1)
+	install -v -d $$(dir $$@)
+	install -v -c $$< $$@
+
+
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)
+
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)
+
+clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)  $(BUILDBASE)/$(1)_$(2)/$(1)
+
+clean-$(1)-$(2):
+	@rm -vf $$(clean-$(1)-$(2)-FILES)
+	@rm -vf $($(1)_$(2)_OBJ_ALL)
+
+distclean-$(1)-$(2): clean-$(1)-$(2)
+	if [ -d $(BUILDBASE)/$(1)_$(2) -a -f $(BUILDBASE)/$(1)_$(2)/.dir ] ; then  rm -vrf $(BUILDBASE)/$(1)_$(2) ; fi
+
+conf-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "   $(1)"
+	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
+ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
+	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_ALL))"
+endif
+	@echo "   $(1)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)"
+
+#
+endef
+
+
+define exe_tpl
+t := 1 # dummy line, needed to silence a make error.
+$(eval $(call tget_prep_tpl,$(1)))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_arch_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_libs_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_obj_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call exe_arch_tpl,$(1),$(i))))
+
+$(eval $(call tget_maketgets_tpl,$(1),executable))
+
+#
+endef
+
+
+
+# generate linker rules for libraries.
+#
+# this is called once for each pair of toplevel-target library and
+# architecture to build.  It generates the linker rules for that pair.
+# It first builds a static library.  We do this in any case.  Next it
+# decides if a dynamic lib is also wanted, and if yes then it builds
+# one.  Additionall, this template creates dependency rules to build
+# needed libraries first and an install target that installs the
+# library.
+#
+# target-name arch
+#
+# target-name = toplevel target we are building
+# arch = current architecture
+define lib_arch_tpl
+
+# some internal targets:
+.PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
+
+# we do not support chaining libraries
+ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
+$$(error "Library '$(1)' in architecture '$(2)' depends on other libraries: $($(1)_$(2)_LIBS_ALL).  This is not supported")
+endif
+
+# actual build rule
+$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL)
+	ar rs $$@ $($(1)_$(2)_OBJ_ALL)
+
+# record which files to delete on a "clean"
+clean-$(1)-$(2)-FILES := $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+
+# update dependency file for toplevel target
+# this does not include other libraries.
+$(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst %.o,%.d,$$($(1)_$(2)_OBJ_ALL)))
+	@cat $$^ >$$@
+
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+	install -v -d $$(dir $$@)
+	install -v -c $$< $$@
+
+
+# install any headers?
+ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
+install-$(1)-$(2)-headers: $($(1)_$(2)_INSTHDRS_ALL)
+	install -v -d  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)
+	install -v -c $($(1)_$(2)_INSTHDRS_ALL)   $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)
+	@echo Done
+
+clean-$(1)-$(2)-FILES += $(addprefix $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)/,$(notdir $($(1)_$(2)_INSTHDRS_ALL)))
+
+else
+install-$(1)-$(2)-headers:
+	@echo "No headers to be installed for $(1) in architecture $(2)"
+
+endif
+
+# install static lib?
+ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
+$(1)_$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+
+install-$(1)-$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+
+clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+
+else
+$(1)_$(2): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+
+install-$(1)-$(2):
+	@echo nothing to be done for $$@ 
+
+endif
+
+clean-$(1)-$(2):
+	@rm -vf $$(clean-$(1)-$(2)-FILES)
+	@rm -vf $($(1)_$(2)_OBJ_ALL)
+
+distclean-$(1)-$(2): clean-$(1)-$(2)
+	if [ -d $(BUILDBASE)/$(1)_$(2) -a -f $(BUILDBASE)/$(1)_$(2)/.dir ] ; then  rm -vrf $(BUILDBASE)/$(1)_$(2) ; fi
+
+conf-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "   $(1).$(LNKEXT)"
+	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
+ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
+	@echo "   $(1).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)"
+endif
+ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
+	@echo "   header src :  $($(1)_$(2)_INSTHDRS_ALL)"
+	@echo "   header dest:  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)/"
+endif
+
+#
+endef
+
+
+
+# build a library.
+#
+# target-name
+#
+# target-name : toplevel target to build
+define lib_tpl
+t := 1 # dummy line, needed to silence make's "missing separator" error.
+$(eval $(call tget_prep_tpl,$(1)))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_arch_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_libs_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_obj_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call lib_arch_tpl,$(1),$(i))))
+
+$(eval $(call tget_maketgets_tpl,$(1),library and its header files))
+
+#
+endef
+
+
+
+# generate linker rules for kernel extensions.
+#
+# this is called once for each pair of toplevel-target and
+# architecture to build.  It generates the linker rule for that pair.
+# Additionally it creates the kernel extension info file and the kext
+# bundle itself.
+#
+# target-name arch
+#
+# target-name = toplevel target we are building
+# arch = current architecture
+define kext_arch_tpl
+
+# some internal targets:
+.PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
+
+# libraries we need:
+ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
+$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1):  $$($(1)_$(2)_ARLIBS_OK_PATH)
+endif
+
+# actual linker rule
+$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1): $($(1)_$(2)_OBJ_ALL)
+	rm -rf $(BUILDBASE)/$(1)_$(2)/$(1).kext
+	mkdir -pv $$(dir $$@)
+	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_LDLIBS_ALL)
+ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
+	cp -p $($(1)_$(2)_KEXT_PLIST_FIN)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/
+endif
+	touch $(BUILDBASE)/$(1)_$(2)/$(1).kext
+
+# update dependency file for toplevel target
+#
+# target-name = toplevel target we are building
+$(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst %.o,%.d,$$($(1)_$(2)_OBJ_ALL)))
+	@cat $$^ >$$@
+
+
+# install target
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1): $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1)
+	install -v -d $$(dir $$@)
+	install -v -c $$< $$@
+ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
+	install -v -c $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
+endif
+	touch $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
+
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)
+
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)
+
+clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1)  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
+
+clean-$(1)-$(2):
+	@rm -vf $$(clean-$(1)-$(2)-FILES)
+	@rm -vr $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext  $(BUILDBASE)/$(1)_$(2)/$(1).kext
+	@rm -vf $($(1)_$(2)_OBJ_ALL)
+
+distclean-$(1)-$(2): clean-$(1)-$(2)
+	if [ -d $(BUILDBASE)/$(1)_$(2) -a -f $(BUILDBASE)/$(1)_$(2)/.dir ] ; then  rm -vrf $(BUILDBASE)/$(1)_$(2) ; fi
+
+conf-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "   $(1)"
+	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
+ifneq ($(strip $($(1)_$(2)_LIBS_ALL))x,x)
+	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_ALL))"
+endif
+ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
+	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
+endif
+	@echo "   $(1).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext"
+
+#
+endef
+
+
+
+# instantiate all templates needed to build a toplevel target of type
+# kext.
+#
+# target-name
+#
+# target-name : curent toplevel target
+define kext_tpl
+t := 1 # dummy line, needed to silence a make error.
+$(eval $(call tget_prep_tpl,$(1)))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_arch_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_libs_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_obj_tpl,$(1),$(i))))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call kext_arch_tpl,$(1),$(i))))
+
+$(eval $(call tget_maketgets_tpl,$(1),kext))
+
+
+#
+endef
+
+
+
+# determine what libs to build
+deb := $(foreach lib,$(ALL_LIBS),$(call lib_tpl,$(lib)))
+
+$(eval $(deb))
+
+# construct rules for exe targets, using already determined libraries.
+deb := $(foreach exe,$(ALL_EXE),$(call exe_tpl,$(exe)))
+
+$(eval $(deb))
+
+# construct rules for kext targets, using already determined libraries.
+deb := $(foreach kext,$(ALL_KEXT),$(call kext_tpl,$(kext)))
+
+$(eval $(deb))
+
+libs:  $(ALL_LIBS)
+
+exe:  $(ALL_EXE)
+
+kext: $(ALL_KEXT)
+
+
+help-intro:
+	@echo "supported make targets for all build targets:"
+	@echo ""
+	@echo "clean-'tget'   : delete temporary and installed files of target 'tget'"
+	@echo "distclean-'tget' : also delete build directories and"
+	@echo "   dependency and state files"
+	@echo "install-'tget' : install a dynamic library and its header files"
+	@echo "   to \"$(INSTBASE)/'arch'/...\""
+	@echo "   or install an executable"
+	@echo "conf-'tget'    : print build configuration of 'tget': object files"
+	@echo "   used, architectures configured, libraries linked in."
+	@echo "help-'tget'    : list all make targets for 'tget'"
+	@echo
+	@echo "build targets configured:"
+	@echo "   libs: $(ALL_LIBS)"
+	@echo "   exe : $(ALL_EXE)"
+	@echo "   kext: $(ALL_KEXT)"
+	@echo
+
+
+help: help-intro $(foreach i,$(ALL_EXE) $(ALL_LIBS) $(ALL_KEXT),help-$(i)-i)
+	@echo Done
+
+conf-intro:
+	@echo "build configuration of all configured targets:"
+	@echo
+
+conf: conf-intro $(foreach i,$(ALL_EXE) $(ALL_LIBS) $(ALL_KEXT),conf-$(i))
+	@echo Done
+
+install:  $(foreach i,$(ALL_EXE) $(ALL_LIBS) $(ALL_KEXT),install-$(i))
+	@echo Done
+
+clean:  $(foreach i,$(ALL_EXE) $(ALL_LIBS) $(ALL_KEXT),clean-$(i))
+	@echo Done
+
+
+
+# End
