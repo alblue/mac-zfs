@@ -237,8 +237,15 @@ $(1)_$(2)_LDFLAGS_ALL :=  $($(1)_LDFLAGS)  $($(1)_$(2)_LDFLAGS)
 $(1)_$(2)_INCSYS_ALL := $($(1)_INCSYS)  $($(1)_$(2)_INCSYS)
 $(1)_$(2)_INC_ALL := $($(1)_INC)  $($(1)_$(2)_INC)
 
-# linking of static or dynamic libraries from the project is
-# determined in tget_prep_libs_tpl.
+# next three variables are intermediaries.  The real answer on what is
+# linked statically and what dynamically is computed in
+# tget_prep_libs_tpl.
+# We subtract the architecture specific static libs from the generic
+# dynamic ones, so static linking specification in an architecture
+# overrides a global dynamic linking specification and vice versa.
+$(1)_$(2)_LIBS_AR_ALL := $(filter-out $($(1)_$(2)_LIBS_DY),$($(1)_LIBS_AR)) $($(1)_$(2)_LIBS_AR)
+$(1)_$(2)_LIBS_DY_ALL := $(filter-out $($(1)_$(2)_LIBS_AR),$($(1)_LIBS_DY)) $($(1)_$(2)_LIBS_DY)
+$(1)_$(2)_LIBS_ALL := $($(1)_LIBS) $($(1)_$(2)_LIBS)
 
 # libraries from the system.
 $(1)_$(2)_LDLIBS_ALL := $($(1)_LDLIBS) $($(1)_$(2)_LDLIBS)
@@ -259,6 +266,22 @@ ifeq ($$(strip $$($(1)_$(2)_DYLIB_FIN)),yes)
 $(1)_$(2)_DYLIB_FIN := YES
 endif
 
+# make sure current architecture supports dynamic libs.  If not force
+# to NO.
+ifeq ($(strip $(ARCH_EXTRA_$(2)_DYLIBS_OK)),NO)
+# save original value
+$(1)_$(2)_DYLIB_ORIG := $$($(1)_$(2)_DYLIB_FIN)
+# override
+$(1)_$(2)_DYLIB_FIN := NO
+endif
+
+# keep a list of all dynamic libraries.  Allows us to quickly check if
+# a given library is available for dynamic linking.  Used in
+# tget_prep_libs_tpl.
+ifeq ($$(strip $$($(1)_$(2)_DYLIB_FIN)),YES)
+ALL_$(2)_DY_LIBS += $(1)
+endif
+
 # where to install stuff, and what to install
 $(1)_$(2)_INSTHDRS_ALL := $($(1)_INSTHDRS) $($(1)_$(2)_INSTHDRS)
 $(1)_$(2)_INSTHDRSDIR_FIN := $(firstword $($(1)_$(2)_INSTHDRSDIR) $($(1)_INSTHDRSDIR) $(ARCH_EXTRA_$(2)_INSTHDRSDIR) $(INSTHDRSDEF))
@@ -272,6 +295,13 @@ $(1)_$(2)_INSTNAME_FIN := $(firstword $($(1)_$(2)_INSTNAME) $($(1)_INSTNAME) $(1
 
 # decide if static libraries should be installed
 $(1)_$(2)_INSTARLIB_FIN := $(firstword $($(1)_$(2)_INSTARLIB) $($(1)_INSTARLIB) NO)
+
+# override if dynamic libs are not supported but requested
+ifeq ($$($(1)_$(2)_DYLIB_ORIG),YES)
+ifeq ($$($(1)_$(2)_DYLIB_FIN),NO)
+$(1)_$(2)_INSTARLIB_FIN := YES
+endif
+endif
 
 
 # support for auto-generated version file and auto-generated kext info
@@ -313,14 +343,20 @@ endef
 # arch = current architecture
 define tget_prep_libs_tpl
 
-# all libraries that should be linked dynamically.  We subtract the
-# architecture specific static libs from the generic dynamic ones, so
-# static linking specification in an architecture overrides a global
-# dynamic linking specification.
-$(1)_$(2)_LIBS_DY_OK := $(filter-out $($(1)_$(2)_LIBS_AR),$($(1)_LIBS_DY)) $($(1)_$(2)_LIBS_DY)
+# check if a dynamic library is requested but not available
+ifneq ($(strip $(filter-out  $(ALL_$(2)_DY_LIBS),$($(1)_$(2)_LIBS_DY_ALL)))x,x)
+$$(error "Can't find requested dynamic library '$(filter-out  $(ALL_$(2)_DY_LIBS),$($(1)_$(2)_LIBS_DY_ALL))' for target '$(1)' in architecture '$(2)'")
+endif
 
-# default is static linking, so use the LIBS variable for that too.
-$(1)_$(2)_LIBS_AR_OK := $($(1)_LIBS_AR) $($(1)_$(2)_LIBS_AR) $($(1)_LIBS) $($(1)_$(2)_LIBS)
+# make final list of libraries linked dynamically
+# we filter-out everything forced to static linking, then check which
+# dynamic libararies are available.
+$(1)_$(2)_LIBS_DY_OK := $(filter $(ALL_$(2)_DY_LIBS),$(filter-out $($(1)_$(2)_LIBS_AR_ALL),$($(1)_$(2)_LIBS_ALL)))  $($(1)_$(2)_LIBS_DY_ALL)
+
+# and list of static libraries
+# we filter-out everything forced to dynamic linking, then everthing
+# available as dynamic library.  What is left is linked statically.
+$(1)_$(2)_LIBS_AR_OK := $(filter-out $(ALL_$(2)_DY_LIBS),$(filter-out $($(1)_$(2)_LIBS_DY_ALL),$($(1)_$(2)_LIBS_ALL))) $($(1)_$(2)_LIBS_AR_ALL)
 
 # sum of static and dynamic libs
 $(1)_$(2)_LIBS_AR_DY_OK := $$($(1)_$(2)_LIBS_AR_OK) $$($(1)_$(2)_LIBS_DY_OK)
@@ -904,7 +940,7 @@ endif
 
 
 test-$(1)-$(2): install-$(1)-$(2)
-	kextutil --no-load -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
+	kextutil --no-load -z -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
 
 #
 endef
