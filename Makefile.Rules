@@ -494,15 +494,27 @@ define lib_arch_tpl
 # some internal targets:
 .PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
 
-# we do not support chaining libraries
+# libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
-$$(error "Library '$(1)' in architecture '$(2)' depends on other libraries: $($(1)_$(2)_LIBS_AR_DY_OK).  This is not supported")
+$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
 endif
 
 # first, build a static library.  we do this in any case.
-
+ifeq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+# no other libraries to link in -> just collect all objects
 $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL)
 	ar rs $$@ $($(1)_$(2)_OBJ_ALL)
+else
+# other libraries needed.  get all of them, merge with the object files.
+# path to the actual static library files:
+$(1)_$(2)_LIBS_AR_DY_OK_PATH := $(foreach i,$($(1)_$(2)_LIBS_AR_DY_OK),$(BUILDBASE)/$(i)_$(2)/$(i).$(LNKEXT))
+
+$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR_DY_OK_PATH)
+	mkdir $$@.tax
+	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -o x $$${i} ; done
+	ar rs $$@ $$@.tax/* $($(1)_$(2)_OBJ_ALL)
+	rm -r $$@.tax
+endif
 
 # record which files to delete on a "clean"
 clean-$(1)-$(2)-FILES := $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
@@ -523,9 +535,26 @@ $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT): $(BUILDBASE)/$(1)_$
 ifeq ($(strip $($(1)_$(2)_DYLIB_FIN)),YES)
 # dynamic lib is wanted.  Same story as for static libraries ...
 
+# libraries we need:
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
+endif
 
+ifeq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
+# no other libraries to link in -> just collect all objects
 $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)
 	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $($(1)_$(2)_LDLIBS_ALL)
+
+else
+
+# dependencies to other dynamic libraries
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $$($(1)_$(2)_DYLIBS_OK_PATH)
+
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)
+	libtool -dynamic -o $$@ $($(1)_$(2)_LDFLAGS_ALL)  $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_DYLIB_OK_SEARCH) $$($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
+
+# end of else: no other libraries to link in -> just collect all objects
+endif
 
 # install target
 $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT)
@@ -595,6 +624,12 @@ conf-$(1)-$(2):
 	@echo "$(1): $(2)"
 	@echo "   $(1).$(LNKEXT)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
+ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
+	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
+endif
+ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
+	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
+endif
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
 	@echo "   $(1).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)"
 endif
@@ -612,17 +647,38 @@ endef
 
 
 
-# build a library.
+# build a library.  Split into two (lib_pre_tpl and lib_tpl), because
+# we need to know which libraries in the project are build as dynamic
+# library.  This lib_pre_tpl calculates this information and is called
+# once for each defined libary, before lib_tpl is called for any
+# library.
+#
+# target-name
+#
+# target-name : toplevel target to build
+define lib_pre_tpl
+t := 1 # dummy line, needed to silence make's "missing separator" error.
+$(eval $(call tget_prep_tpl,$(1)))
+
+$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_arch_tpl,$(1),$(i))))
+
+#
+endef
+
+
+
+# build a library.  Split into two (lib_pre_tpl and lib_tpl), because
+# we need to know which libraries in the project are build as dynamic
+# library, before we can generate the linker rules for each defined
+# library.  The lib_pre_tpl calculates this information and is called
+# once for each defined libary, before this lib_tpl is called for any
+# library.
 #
 # target-name
 #
 # target-name : toplevel target to build
 define lib_tpl
 t := 1 # dummy line, needed to silence make's "missing separator" error.
-$(eval $(call tget_prep_tpl,$(1)))
-
-$(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_arch_tpl,$(1),$(i))))
-
 $(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_libs_tpl,$(1),$(i))))
 
 $(eval $(foreach i,$($(1)_BUILD_ARCHS),$(call tget_prep_obj_tpl,$(1),$(i))))
@@ -744,7 +800,9 @@ endef
 
 
 # determine what libs to build
-deb := $(foreach lib,$(ALL_LIBS),$(call lib_tpl,$(lib)))
+deb := $(foreach lib,$(ALL_LIBS),$(call lib_pre_tpl,$(lib)))
+
+deb += $(foreach lib,$(ALL_LIBS),$(call lib_tpl,$(lib)))
 
 $(eval $(deb))
 
