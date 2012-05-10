@@ -274,9 +274,30 @@ $(1)_$(2)_INSTNAME_FIN := $(firstword $($(1)_$(2)_INSTNAME) $($(1)_INSTNAME) $(1
 $(1)_$(2)_INSTARLIB_FIN := $(firstword $($(1)_$(2)_INSTARLIB) $($(1)_INSTARLIB) NO)
 
 
+# support for auto-generated version file and auto-generated kext info
+$(1)_$(2)_DESCRIPTION_FIN :=  $($(1)_DESCRIPTION)
+ifneq ($(strip $($(1)_$(2)_DESCRIPTION))x,x)
+$(1)_$(2)_DESCRIPTION_FIN :=  $($(1)_$(2)_DESCRIPTION)
+endif
+$(1)_$(2)_VERSION_FIN := $(strip $(firstword $($(1)_$(2)_VERSION) $($(1)_VERSION)))
+$(1)_$(2)_VERS_C_FIN := $(strip $(firstword $($(1)_$(2)_VERS_C) $($(1)_VERS_C)))
+
 #
 # kext specific variables
+$(1)_$(2)_KEXT_START_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_START) $($(1)_KEXT_START)))
+$(1)_$(2)_KEXT_STOP_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_STOP) $($(1)_KEXT_STOP)))
+$(1)_$(2)_KEXT_ID_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_ID) $($(1)_KEXT_ID)))
+$(1)_$(2)_KEXT_DESCRIPTION_FIN :=  $($(1)_KEXT_DESCRIPTION)
+ifneq ($(strip $($(1)_$(2)_KEXT_DESCRIPTION))x,x)
+$(1)_$(2)_KEXT_DESCRIPTION_FIN :=  $($(1)_$(2)_KEXT_DESCRIPTION)
+endif
+$(1)_$(2)_KEXT_VERSION_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_VERSION) $($(1)_KEXT_VERSION)))
 $(1)_$(2)_KEXT_PLIST_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_PLIST) $($(1)_KEXT_PLIST)))
+$(1)_$(2)_KEXT_INFO_C_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_INFO_C) $($(1)_KEXT_INFO_C)))
+#
+# the actual source code for the auto-generated files is emitted in
+# exe_arch_tpl, lib_arch_tpl and kext_arch_tpl.  This way we can have
+# different sources depending on target type.
 
 #
 endef
@@ -333,6 +354,7 @@ endef
 # arch = current architecture
 define tget_prep_obj_tpl
 $(foreach i,$($(1)_$(2)_SRCDIRS_ALL),$(call obj_arch_tpl,$(1),$(2),$(i)))
+$(call obj_arch_tpl,$(1),$(2),generated-sources/$(1)_$(2)/)
 
 #
 endef
@@ -375,6 +397,10 @@ help-$(1):
 	@echo "clean-$(1)   : delete temoprary and installed files"
 	@echo "distclean-$(1) : also delete build directories"
 	@echo "install-$(1) : install $(2)"
+ifeq ($(strip $(2)),kext)
+	@echo "test-$(1)-'arch' : run kextutil -t ... against kernel extension."
+	@echo "   'arch' must be one of $($(1)_BUILD_ARCHS)"
+endif
 	@echo "conf-$(1)    : print build configuration"
 	@echo "help-$(1)    : this list"
 	@echo
@@ -408,10 +434,32 @@ ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 $(BUILDBASE)/$(1)_$(2)/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
+# check if we should auto-generate a version file
+ifneq ($(strip $($(1)_$(2)_VERS_C_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	cp -p $($(1)_$(2)_VERS_C_FIN)  $$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+else
+ifneq ($(strip $($(1)_$(2)_VERSION_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$(1)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
+	echo 'const double zfsVersionNumber __attribute__ ((used)) = (double)0.;'  >>$$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+endif
+endif
+
 
 # the actual linker rule
-$(BUILDBASE)/$(1)_$(2)/$(1): $($(1)_$(2)_OBJ_ALL)
-	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
+$(BUILDBASE)/$(1)_$(2)/$(1): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_VERS_O)
+	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_VERS_O)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 
 
 # update dependency file for toplevel target
@@ -540,18 +588,40 @@ ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
 endif
 
+# check if we should auto-generate a version file
+ifneq ($(strip $($(1)_$(2)_VERS_C_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	cp -p $($(1)_$(2)_VERS_C_FIN)  $$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+else
+ifneq ($(strip $($(1)_$(2)_VERSION_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$(1)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
+	echo 'const double zfsVersionNumber __attribute__ ((used)) = (double)0.;'  >>$$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+endif
+endif
+
 ifeq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 # no other libraries to link in -> just collect all objects
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)
-	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $($(1)_$(2)_LDLIBS_ALL)
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)
+	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $($(1)_$(2)_LDLIBS_ALL)
 
 else
 
 # dependencies to other dynamic libraries
 $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $$($(1)_$(2)_DYLIBS_OK_PATH)
 
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)
-	libtool -dynamic -o $$@ $($(1)_$(2)_LDFLAGS_ALL)  $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_DYLIB_OK_SEARCH) $$($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
+$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)
+	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL)  $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_DYLIB_OK_SEARCH) $$($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 
 # end of else: no other libraries to link in -> just collect all objects
 endif
@@ -706,20 +776,84 @@ endef
 define kext_arch_tpl
 
 # some internal targets:
-.PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2)
+.PHONY: $(1)_$(2) install-$(1)-$(2) install-$(1)-$(2)-headers clean-$(1)-$(2) distclean-$(1)-$(2) conf-$(1)-$(2) test-$(1)-$(2)
 
 # libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
+# check if we should auto-generate a version file
+ifneq ($(strip $($(1)_$(2)_VERS_C_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	cp -p $($(1)_$(2)_VERS_C_FIN)  $$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+else
+ifneq ($(strip $($(1)_$(2)_VERSION_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
+	mkdir -pv $$(dir $$@)
+	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$(1)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
+	echo 'const double zfsVersionNumber __attribute__ ((used)) = (double)0.;'  >>$$@
+
+$(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
+
+endif
+endif
+
+
+# check if we should auto-generate a kext info file
+ifneq ($(strip $($(1)_$(2)_KEXT_INFO_C_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_info.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_info.c:
+	mkdir -pv $$(dir $$@)
+	cp -p $($(1)_$(2)_KEXT_INFO_C_FIN)  $$@
+
+$(1)_$(2)_INFO_O := $(BUILDBASE)/$(1)_$(2)/$(1)_info.o
+
+else
+ifneq ($(strip $($(1)_$(2)_KEXT_VERSION_FIN))x,x)
+.PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_info.c
+$(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_info.c:
+	mkdir -pv $$(dir $$@)
+	echo '#include <mach/mach_types.h>'  >$$@
+	echo   >>$$@
+	echo 'extern kern_return_t _start(kmod_info_t *ki, void *data);'  >>$$@
+	echo 'extern kern_return_t _stop(kmod_info_t *ki, void *data);'  >>$$@
+	echo '__private_extern__ kern_return_t $($(1)_$(2)_KEXT_START_FIN)(kmod_info_t *ki, void *data);'  >>$$@
+	echo '__private_extern__ kern_return_t $($(1)_$(2)_KEXT_STOP_FIN)(kmod_info_t *ki, void *data);'  >>$$@
+	echo   >>$$@
+	echo '__attribute__((visibility("default"))) KMOD_EXPLICIT_DECL($($(1)_$(2)_KEXT_ID_FIN), "$($(1)_$(2)_KEXT_VERSION_FIN)", _start, _stop)'  >>$$@
+	echo '__private_extern__ kmod_start_func_t *_realmain = $($(1)_$(2)_KEXT_START_FIN);'  >>$$@
+	echo '__private_extern__ kmod_stop_func_t *_antimain = $($(1)_$(2)_KEXT_STOP_FIN);'  >>$$@
+	echo '__private_extern__ int _kext_apple_cc = __APPLE_CC__ ;'  >>$$@
+
+
+$(1)_$(2)_INFO_O := $(BUILDBASE)/$(1)_$(2)/$(1)_info.o
+
+endif
+endif
+
+
 # actual linker rule
-$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1): $($(1)_$(2)_OBJ_ALL)
+$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_INFO_O)
 	rm -rf $(BUILDBASE)/$(1)_$(2)/$(1).kext
 	mkdir -pv $$(dir $$@)
-	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
+	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_INFO_O)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	cp -p $($(1)_$(2)_KEXT_PLIST_FIN)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/
+ifneq ($(strip $($(1)_$(2)_KEXT_DESCRIPTION_FIN))x,x)
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(strip $($(1)_$(2)_KEXT_DESCRIPTION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+endif
+ifneq ($(strip $($(1)_$(2)_KEXT_VERSION_FIN))x,x)
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(strip $($(1)_$(2)_KEXT_VERSION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+endif
+	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(strip $($(1)_$(2)_KEXT_ID_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $(strip $(1))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
 	touch $(BUILDBASE)/$(1)_$(2)/$(1).kext
 
@@ -767,6 +901,10 @@ ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
 	@echo "   $(1).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext"
+
+
+test-$(1)-$(2): install-$(1)-$(2)
+	kextutil --no-load -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
 
 #
 endef
