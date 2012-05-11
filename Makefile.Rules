@@ -324,6 +324,7 @@ endif
 $(1)_$(2)_KEXT_VERSION_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_VERSION) $($(1)_KEXT_VERSION)))
 $(1)_$(2)_KEXT_PLIST_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_PLIST) $($(1)_KEXT_PLIST)))
 $(1)_$(2)_KEXT_INFO_C_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_INFO_C) $($(1)_KEXT_INFO_C)))
+$(1)_$(2)_KEXT_KERNEL_FIN := $(strip $(firstword $($(1)_$(2)_KEXT_KERNEL) $($(1)_KEXT_KERNEL)))
 #
 # the actual source code for the auto-generated files is emitted in
 # exe_arch_tpl, lib_arch_tpl and kext_arch_tpl.  This way we can have
@@ -362,13 +363,13 @@ $(1)_$(2)_LIBS_AR_OK := $(filter-out $(ALL_$(2)_DY_LIBS),$(filter-out $($(1)_$(2
 $(1)_$(2)_LIBS_AR_DY_OK := $$($(1)_$(2)_LIBS_AR_OK) $$($(1)_$(2)_LIBS_DY_OK)
 
 # compute full path for used static libraries
-$(1)_$(2)_ARLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_AR_OK),$(BUILDBASE)/$$(i)_$(2)/$$(i).$(LNKEXT))
+$(1)_$(2)_ARLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_AR_OK),$(BUILDBASE)/$$(i)_$(2)/$$($$(i)_$(2)_INSTNAME_FIN).$(LNKEXT))
 
 # compute full path for used dynamic libraries
-$(1)_$(2)_DYLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$(INSTBASE)/$(2)/$$($$(i)_$(2)_INSTLIBDIR_FIN)/$$(i).$(DYEXT))
+$(1)_$(2)_DYLIBS_OK_PATH := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$(INSTBASE)/$(2)/$$($$(i)_$(2)_INSTLIBDIR_FIN)/$$($$(i)_$(2)_INSTNAME_FIN).$(DYEXT))
 
 # compute linker flags for all used dynamic libs
-$(1)_$(2)_DYLIBS_OK_L := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$$(patsubst lib%,-l%,$$(i)))
+$(1)_$(2)_DYLIBS_OK_L := $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),$$(patsubst lib%,-l%,$$($$(i)_$(2)_INSTNAME_FIN)))
 
 # compute library search paths
 $(1)_$(2)_DYLIB_OK_SEARCH := $$(sort $$(foreach i,$$($(1)_$(2)_LIBS_DY_OK),-L$(INSTBASE)/$(2)/$$($$(i)_$(2)_INSTLIBDIR_FIN)))
@@ -467,7 +468,7 @@ define exe_arch_tpl
 
 # libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
 # check if we should auto-generate a version file
@@ -484,7 +485,7 @@ ifneq ($(strip $($(1)_$(2)_VERSION_FIN))x,x)
 .PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
 $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
 	mkdir -pv $$(dir $$@)
-	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$(1)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
+	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$($(1)_$(2)_INSTNAME_FIN)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
 	echo 'const double zfsVersionNumber __attribute__ ((used)) = (double)0.;'  >>$$@
 
 $(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
@@ -494,7 +495,7 @@ endif
 
 
 # the actual linker rule
-$(BUILDBASE)/$(1)_$(2)/$(1): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_VERS_O)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_VERS_O)
 	$(CC) -o $$@ $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_VERS_O)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 
 
@@ -506,16 +507,16 @@ $(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst 
 
 
 # install target
-$(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1): $(BUILDBASE)/$(1)_$(2)/$(1)
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN): $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN)
 	install -v -d $$(dir $$@)
 	install -v -c $$< $$@
 
 
-$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)
 
-install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)
 
-clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)  $(BUILDBASE)/$(1)_$(2)/$(1)
+clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN)
 
 clean-$(1)-$(2):
 	@rm -vf $$(clean-$(1)-$(2)-FILES)
@@ -526,7 +527,7 @@ distclean-$(1)-$(2): clean-$(1)-$(2)
 
 conf-$(1)-$(2):
 	@echo "$(1): $(2)"
-	@echo "   $(1)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
 	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
@@ -534,7 +535,7 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
-	@echo "   $(1)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$(1)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)"
 
 #
 endef
@@ -580,20 +581,20 @@ define lib_arch_tpl
 
 # libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
 endif
 
 # first, build a static library.  we do this in any case.
 ifeq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 # no other libraries to link in -> just collect all objects
-$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $($(1)_$(2)_OBJ_ALL)
 	ar rs $$@ $($(1)_$(2)_OBJ_ALL)
 else
 # other libraries needed.  get all of them, merge with the object files.
 # path to the actual static library files:
-$(1)_$(2)_LIBS_AR_DY_OK_PATH := $(foreach i,$($(1)_$(2)_LIBS_AR_DY_OK),$(BUILDBASE)/$(i)_$(2)/$(i).$(LNKEXT))
+$(1)_$(2)_LIBS_AR_DY_OK_PATH := $(foreach i,$($(1)_$(2)_LIBS_AR_DY_OK),$(BUILDBASE)/$(i)_$(2)/$($(i)_$(2)_INSTNAME_FIN).$(LNKEXT))
 
-$(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR_DY_OK_PATH)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR_DY_OK_PATH)
 	mkdir $$@.tax
 	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -o x $$${i} ; done
 	ar rs $$@ $$@.tax/* $($(1)_$(2)_OBJ_ALL)
@@ -601,14 +602,14 @@ $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR
 endif
 
 # record which files to delete on a "clean"
-clean-$(1)-$(2)-FILES := $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+clean-$(1)-$(2)-FILES := $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 
 # update dependency file for toplevel target
 # this does not include other libraries.
 $(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst %.o,%.d,$$($(1)_$(2)_OBJ_ALL)))
 	@cat $$^ >$$@
 
-$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 	install -v -d $$(dir $$@)
 	install -v -c $$< $$@
 
@@ -621,7 +622,7 @@ ifeq ($(strip $($(1)_$(2)_DYLIB_FIN)),YES)
 
 # libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT): $($(1)_$(2)_LIBS_AR_DY_OK)
 endif
 
 # check if we should auto-generate a version file
@@ -638,7 +639,7 @@ ifneq ($(strip $($(1)_$(2)_VERSION_FIN))x,x)
 .PHONY: $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c
 $(SRCROOT)/generated-sources/$(1)_$(2)/$(1)_vers.c:
 	mkdir -pv $$(dir $$@)
-	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$(1)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
+	echo 'const unsigned char zfsVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:$($(1)_$(2)_INSTNAME_FIN)  PROJECT:$($(1)_$(2)_DESCRIPTION_FIN)" "\\n";' >$$@
 	echo 'const double zfsVersionNumber __attribute__ ((used)) = (double)0.;'  >>$$@
 
 $(1)_$(2)_VERS_O := $(BUILDBASE)/$(1)_$(2)/$(1)_vers.o
@@ -648,32 +649,32 @@ endif
 
 ifeq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
 # no other libraries to link in -> just collect all objects
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)
-	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $($(1)_$(2)_LDLIBS_ALL)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)
+	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $($(1)_$(2)_LDLIBS_ALL)
 
 else
 
 # dependencies to other dynamic libraries
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $$($(1)_$(2)_DYLIBS_OK_PATH)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT): $$($(1)_$(2)_DYLIBS_OK_PATH)
 
-$(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)
-	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL)  $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_DYLIB_OK_SEARCH) $$($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT): $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)
+	libtool -dynamic -install_name /$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT) -current_version $($(1)_$(2)_VERS_FIN)  -o $$@ $($(1)_$(2)_LDFLAGS_ALL)  $($(1)_$(2)_OBJ_ALL)  $$($(1)_$(2)_ARLIBS_OK_PATH)  $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_DYLIB_OK_SEARCH) $$($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 
 # end of else: no other libraries to link in -> just collect all objects
 endif
 
 # install target
-$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT): $(BUILDBASE)/$(1)_$(2)/$(1).$(DYEXT)
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT): $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT)
 	install -v -d $$(dir $$@)
 	install -v -c $$< $$@
 
 
-$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT)
 
-install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT)
 
 
-clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)
+clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT)
 
 $(1)_$(2)_DO_INST_DYLIB :=  YES
 
@@ -703,14 +704,14 @@ endif
 
 # install static lib?
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
-$(1)_$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+$(1)_$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 
-install-$(1)-$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+install-$(1)-$(2): $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 
-clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)
+clean-$(1)-$(2)-FILES += $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 
 else
-$(1)_$(2): $(BUILDBASE)/$(1)_$(2)/$(1).$(LNKEXT)
+$(1)_$(2): $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)
 
 ifeq ($$($(1)_$(2)_DO_INST_DYLIB),NO)
 install-$(1)-$(2):
@@ -728,7 +729,7 @@ distclean-$(1)-$(2): clean-$(1)-$(2)
 
 conf-$(1)-$(2):
 	@echo "$(1): $(2)"
-	@echo "   $(1).$(LNKEXT)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
 	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
@@ -737,11 +738,11 @@ ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
-	@echo "   $(1).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(LNKEXT)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)"
 endif
 ifeq ($$($(1)_$(2)_DO_INST_DYLIB),YES)
-	@echo "   $(1) version =  $($(1)_$(2)_VERS_FIN)"
-	@echo "   $(1).$(DYEXT)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$(1).$(DYEXT)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN) version =  $($(1)_$(2)_VERS_FIN)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN).$(DYEXT)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(DYEXT)"
 endif
 ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
 	@echo "   header src :  $($(1)_$(2)_INSTHDRS_ALL)"
@@ -816,7 +817,7 @@ define kext_arch_tpl
 
 # libraries we need:
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_DY_OK))x,x)
-$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN):  $$($(1)_$(2)_DYLIBS_OK_PATH)  $$($(1)_$(2)_ARLIBS_OK_PATH)
 endif
 
 # check if we should auto-generate a version file
@@ -876,22 +877,22 @@ endif
 
 
 # actual linker rule
-$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_INFO_O)
-	rm -rf $(BUILDBASE)/$(1)_$(2)/$(1).kext
+$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_INFO_O)
+	rm -rf $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext
 	mkdir -pv $$(dir $$@)
 	$(CC) -o $$@  $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_VERS_O)  $$($(1)_$(2)_INFO_O)  $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL) $($(1)_$(2)_ARLIBS_OK_PATH)  $($(1)_$(2)_DYLIB_OK_SEARCH) $($(1)_$(2)_DYLIBS_OK_L)  $($(1)_$(2)_LDLIBS_ALL)
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
-	cp -p $($(1)_$(2)_KEXT_PLIST_FIN)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/
+	cp -p $($(1)_$(2)_KEXT_PLIST_FIN)  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/
 ifneq ($(strip $($(1)_$(2)_KEXT_DESCRIPTION_FIN))x,x)
-	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(strip $($(1)_$(2)_KEXT_DESCRIPTION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(strip $($(1)_$(2)_KEXT_DESCRIPTION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
 ifneq ($(strip $($(1)_$(2)_KEXT_VERSION_FIN))x,x)
-	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(strip $($(1)_$(2)_KEXT_VERSION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(strip $($(1)_$(2)_KEXT_VERSION_FIN))" "$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
-	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(strip $($(1)_$(2)_KEXT_ID_FIN))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
-	/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $(strip $(1))" "$(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(strip $($(1)_$(2)_KEXT_ID_FIN))" "$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $(strip $($(1)_$(2)_INSTNAME_FIN))" "$(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
-	touch $(BUILDBASE)/$(1)_$(2)/$(1).kext
+	touch $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext
 
 # update dependency file for toplevel target
 #
@@ -901,23 +902,23 @@ $(BUILDBASE)/$(1)_$(2).dep: $(BUILDBASE)/$(1)_$(2)/.dir $$(wildcard $$(patsubst 
 
 
 # install target
-$(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1): $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1)
+$(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN): $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN)
 	install -v -d $$(dir $$@)
 	install -v -c $$< $$@
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
-	install -v -c $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
+	install -v -c $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
 endif
-	touch $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
+	touch $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext
 
-$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)
+$(1)_$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN)
 
-install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)
+install-$(1)-$(2):  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN)
 
-clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/MacOS/$(1)  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/MacOS/$(1)  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(BUILDBASE)/$(1)_$(2)/$(1).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
+clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN)  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/MacOS/$($(1)_$(2)_INSTNAME_FIN)  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext/Contents/$(notdir $($(1)_$(2)_KEXT_PLIST_FIN))
 
 clean-$(1)-$(2):
 	@rm -vf $$(clean-$(1)-$(2)-FILES)
-	@rm -vr $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext  $(BUILDBASE)/$(1)_$(2)/$(1).kext
+	@rm -vr $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext
 	@rm -vf $($(1)_$(2)_OBJ_ALL)
 
 distclean-$(1)-$(2): clean-$(1)-$(2)
@@ -925,7 +926,7 @@ distclean-$(1)-$(2): clean-$(1)-$(2)
 
 conf-$(1)-$(2):
 	@echo "$(1): $(2)"
-	@echo "   $(1)"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN)"
 	@echo "   = $(subst $(SRCROOT)/,,$($(1)_$(2)_OBJ_ALL))"
 ifneq ($(strip $($(1)_$(2)_LIBS_AR_OK))x,x)
 	@echo "   + $(addsuffix .$(LNKEXT),$($(1)_$(2)_LIBS_AR_OK))"
@@ -936,11 +937,15 @@ endif
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
-	@echo "   $(1).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext"
+	@echo "   $($(1)_$(2)_INSTNAME_FIN).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext"
 
 
 test-$(1)-$(2): install-$(1)-$(2)
-	kextutil --no-load -z -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$(1).kext
+ifneq ($(strip $($(1)_$(2)_KEXT_KERNEL_FIN))x,x)
+	kextutil --no-load -k $($(1)_$(2)_KEXT_KERNEL_FIN) --arch $(2) -z -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext
+else
+	kextutil --no-load --arch $(2) -z -t $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext
+endif
 
 #
 endef
