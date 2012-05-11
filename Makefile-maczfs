@@ -1,0 +1,190 @@
+# -*- mode: makefile -*-
+#
+# gmake based Makefiles for maczfs.
+#
+# This file describes a set of related build targets.  It does not do
+# the actual build, but merely describes what to build and which
+# ingredients go into that specific build.
+#
+# The format is straight-forward:
+#
+# 1) first specify the targets.  
+# 2) for each target, specify sources files, install files and used libraries.
+# 3) at the very end, include Makefile.Rules.
+#
+
+
+# 1) what to build
+#
+# specify executables, libraries and kernel extensions.  Do *not* use
+# extensions like ".exe" or ".a" etc.!
+#
+# here go all normal executable files:
+ALL_EXE := zfs zpool
+
+#
+# here go all libraries build in this folder.  Do not specify
+# libraries used here but build elsewhere!
+ALL_LIBS := libzfs
+
+#
+# all kernel extensions
+ALL_KEXT := zfskext
+
+
+# 2) what makes up a target.
+#
+# specify the sources *including* path, starting form project root,
+# i.e. starting with usr/src/...
+# 
+# NOTE: It is currently NOT supported to have two source files of the
+# same name but in different directories within one target!
+# 
+# Targets are specified using a set of variables, all prefixed with the
+# target's name and an underscore.  The available variables are:
+#
+# tget_SOURCES  : all source files
+# tget_ARCH     : the architectures to build.  Defaults to all available.
+# tget_LIBS     : used libraries for this project.  specify just the
+#    library name i.e. libzfs, without an extension.  Linkage will be
+#    dynamic if supported, static otherwise.  To force either one, add
+#    the library (w/o extension) to tget_LIBS_DY or tget_LIBS_AR.
+# tget_LDLIBS   : additional system libraries to link in.  Specify as
+#    for the dynamic linker, i.e. use "-lc" to link in libc.  Only
+#    evaluated when creating a dynamic library.
+# tget_INC      : additional include directories to use.
+# tget_INCSYS   : additional system include directories to be added
+#    with "-isystem".
+# tget_INSTHDRS : list of header files that should be installed along a
+#    library.
+# tget_INSTHDRSDIR : directory where to install the headers.  This is
+#    interpreted relative to the install base defined in
+#    Makefile-host.  Defaults to an architecture specific path.
+# tget_CFLAGS   : extra flags to pass to the compiler
+# tget_CXXFLAGS : same for C++ code
+# tget_LDFLAGS  : extra flags to pass to the (dynamic) linker
+# tget_DYLIB    : what type of library to build.  Empty or NO for static
+#    library and YES for a dynamic library.  Only allowed in a library
+#    target specification.
+# tget_VERS     : version information for a dynamic library.  Should be
+#    a single integer.  Mandatory for dynamic libraries.
+# tget_INSTARLIB : wether or not to install a static library.  YES to
+#    install (in tget_INSTLIBDIR), empty or NO otherwise.  Automatically
+#    set to YES if tget_DYLIB is YES but dynamic libraries are not
+#    supported by the current architecture.
+# tget_INSTLIBDIR : directory where to install dynamic libraries.  This
+#    is interpreted relative to the install base defined in Makefile-host.
+#    Defaults to an architecture dependent path.
+# tget_INSTEXEDIR : directory where to install executable files.  This
+#    is interpreted relative to the install base defined in Makefile-host.
+#    Defaults to an architecture dependent path.
+# tget_VERSION    : file version number.  If set, then a special file
+#    tget_vers.c will be generated which provides Apple's executable file
+#    version mechanism.  The version number should be in the format of
+#    a.b.c with a,b and c positive integer numbers.
+# tget_DESCRIPTION : Optional longer, free-text description, for example
+#    a tag from a SCM system.  Ignored if tget_VERSION is empty.
+# tget_VERS_C      : name of a user-supplied version info file.
+#    Overrides the auto-generated one from tget_VERSION.  Must be a
+#    compilable C source including path relative to project root.  If
+#    set, then this is used independently of tget_VERSION being defined
+#    or not.
+#
+# All variables, with the exception of tget_ARCH, can be prefixed with
+# an architecture to apply same flags, libraries, sources or other
+# settings only for the given architecture, e.g. tget_ppc_CFLAGS :=
+# xxx.  For most variables, the architecture specific value is
+# appended to the generic value.  The architecture specific values for
+# the variables DYLIB, VERS, INSTHDRSDIR, INSTLIBDIR, INSTEXEDIR,
+# INSTKEXTDIR, INSTARLIB, VERSION, DESCRIPTION and VERS_C override the
+# respective generic values.
+# 
+# You can invent other variables to simplify filling in above
+# variables.  Any such invented variables should use lower case, since
+# upper case names are reserved for the build system's internal use.
+# See README_buildsystem.txt file for a list of used variables.
+
+src := usr/src
+
+libzfs_SOURCES := $(addprefix $(src)/common/,avl/avl.c devid/devid.c nvpair/nvpair.c nvpair/nvpair_alloc_fixed.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
+libzfs_SOURCES += $(addprefix $(src)/lib/,libdevid/deviceid.c libnsl/rpc/xdr.c libnsl/rpc/xdr_array.c libnsl/rpc/xdr_mem.c libnvpair/libnvpair.c libnvpair/nvpair_alloc_system.c)
+libzfs_SOURCES += $(addprefix $(src)/lib/libuutil/common/,uu_alloc.c uu_avl.c uu_dprintf.c uu_ident.c uu_list.c uu_misc.c uu_open.c uu_pname.c uu_strtoint.c)
+libzfs_SOURCES += $(addprefix $(src)/lib/libzfs/common/,libzfs_changelist.c libzfs_config.c libzfs_dataset.c libzfs_graph.c libzfs_import.c libzfs_mount.c libzfs_pool.c libzfs_status.c libzfs_util.c)
+libzfs_SOURCES += $(addprefix $(src)/,libgen/common/mkdirp.c maczfs/assfail.c)
+
+libzfs_DYLIB := YES
+libzfs_VERS := 1
+libzfs_LDLIBS := -lc
+libzfs_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
+libzfs_INCSYS := $(addprefix $(src)/,maczfs libgen/common lib/libzfs/common lib/libuutil/common common/zfs)  $(addprefix $(src)/lib/,libdevid libnsl/rpc libnsl/include libnvpair)  $(addprefix $(src)/,head uts/common uts/common/fs/zfs lib uts/common/sys) $(src)
+
+libzfs_INSTHDRS := $(addprefix $(src)/common/,devid/devid_impl.h util/qsort.h zfs/zfs_deleg.h zfs/zfs_namecheck.h zfs/zfs_prop.h)
+libzfs_INSTHDRS += $(addprefix $(src)/lib/,libdevid/libdevid.h libnsl/include/mt.h libnsl/rpc/rpc_mt.h libnvpair/libnvpair.h libuutil/common/libuutil.h libuutil/common/libuutil_common.h libuutil/common/libuutil_impl.h libzfs/common/libzfs.h libzfs/common/libzfs_impl.h libzfs/common/libzfs_ioctl.h)
+libzfs_INSTHDRS += $(addprefix $(src)/uts/common/,fs/zfs/sys/zvol.h rpc/types.h rpc/xdr.h sys/fs/zfs.h sys/mntent.h sys/mnttab.h)
+
+libzfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+
+
+zfs_SOURCES := $(addprefix $(src)/,cmd/zfs/zfs_iter.c cmd/zfs/zfs_main.c maczfs/assfail.c)
+zfs_LIBS := libzfs
+zfs_LDLIBS := -lc
+zfs_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zfs_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zfs maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair) $(src)
+
+zfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+
+
+zpool_SOURCES := $(addprefix $(src)/,cmd/zpool/zpool_iter.c cmd/zpool/zpool_main.c cmd/zpool/zpool_util.c cmd/zpool/zpool_vdev.c maczfs/assfail.c)
+zpool_LIBS := libzfs
+zpool_LDLIBS := -lc
+zpool_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zpool_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
+
+zpool_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+
+
+zfskext_SOURCES := $(addprefix $(src)/common/,avl/avl.c nvpair/nvpair.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
+zfskext_SOURCES += $(addprefix $(src)/maczfs/,assfail.c kernel/maczfs_kernel.c kernel/zfs_context.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,arc.c bplist.c dbuf.c dmu.c dmu_object.c dmu_objset.c dmu_send.c dmu_traverse.c dmu_tx.c dmu_zfetch.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,dnode.c dnode_sync.c dsl_dataset.c dsl_deleg.c dsl_dir.c dsl_pool.c dsl_prop.c dsl_synctask.c fletcher.c gzip.c lzjb.c metaslab.c refcount.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,rprwlock.c sha256.c spa.c spa_config.c spa_errlog.c spa_history.c spa_misc.c space_map.c txg.c uberblock.c unique.c vdev.c vdev_cache.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,vdev_disk.c vdev_file.c vdev_label.c vdev_mirror.c vdev_missing.c vdev_queue.c vdev_raidz.c vdev_root.c zap.c zap_leaf.c zap_micro.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_acl.c zfs_byteswap.c zfs_ctldir.c zfs_dir.c zfs_fm.c zfs_ioctl.c zfs_log.c zfs_replay.c zfs_rlock.c zfs_vfsops.c zfs_vnops.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_vnops_macosx.c zfs_znode.c zil.c zio.c zio_checksum.c zio_compress.c zio_inject.c zvol.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/os/,callb.c kmem.c list.c nvpair_alloc_system.c taskq.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/rpc/,xdr.c xdr_array.c xdr_mem.c) $(src)/uts/common/zmod/zmod.c
+
+zfskext_CFLAGS := -v -mkernel -DNAMEDSTREAMS -D__APPLE_API_UNSTABLE -D_KERNEL -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE
+zfskext_CFLAGS += -nostdinc -finline -fno-keep-inline-functions -Wmissing-prototypes -Wunused-function -Wunused-label -w -Wshadow -Wnewline-eof -Wno-deprecated-declarations
+zfskext_CFLAGS += -include $(src)/uts/common/fs/zfs/sys/zfs_context.h -include $(src)/uts/common/sys/types.h 
+
+zfskext_INC := 
+
+zfskext_LDFLAGS := -lcpp_kext -Xlinker -kext -nostdlib -lkmodc++  -lkmod -lcc_kext
+
+zfskext_KEXT_START := zfs_module_start
+zfskext_KEXT_STOP := zfs_module_stop
+zfskext_KEXT_ID := com.bandlem.mac.zfs.fs
+zfskext_KEXT_DESCRIPTION := $(shell git describe --tags --long --match 'maczfs*' 2> /dev/null)
+zfskext_KEXT_VERSION := $(shell echo $(zfskext_KEXT_DESCRIPTION) | awk -f support/version.awk)
+zfskext_KEXT_PLIST := zfs_kext/Info.plist
+
+zfskext_VERSION := $(zfskext_KEXT_VERSION)
+zfskext_DESCRIPTION := $(zfskext_KEXT_DESCRIPTION)
+
+zfskext_INSTNAME := zfs
+zfskext_KEXT_KERNEL := /mach_kernel
+
+zfskext_i386_CFLAGS :=  -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6
+zfskext_i386_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  /System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers
+
+zfskext_x86_64_CFLAGS :=  -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6
+zfskext_x86_64_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  /System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers
+
+zfskext_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zfskext_ppc_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  $(addprefix /Developer/SDKs/MacOSX10.5.sdk,/System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers)
+
+# 3) include Makefile.Rules
+#
+# This has all the magic that does the actual multi-architecture builds.
+include ./Makefile.Rules
