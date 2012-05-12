@@ -84,12 +84,14 @@ MAKE_DEBUG_LIBS := NO
 #
 # this must define ARCH_AVAIL, the list of supported architectures and
 # ARCH_DEF, the architectures to build always (ARCH_DEF may be empty)
-include Makefile-host
+-include Makefile-host
 
 # check if architectures are defined
 ifeq ($(strip $(ARCH_AVAIL))x,x)
-$(error "ARCH_AVAIL not defined in Makefile-host.  Please define the available architectures (ppc, i386 or x86_64)")
+$(warning "ARCH_AVAIL not defined in Makefile-host.  Please define the available architectures (ppc, i386 or x86_64).")
+$(warning "Trying 'uname -p' as default ...")
 endif
+ARCH_AVAIL ?= $(shell uname -p)
 
 
 
@@ -100,6 +102,9 @@ endif
 # from to far away.
 ifeq ($(strip $(SRCROOT))x,x)
 SRCROOT := $(firstword $(wildcard $(foreach i,. .. ../.. ../../.. ../../../..,$(CURDIR)/$(i)/Makefile.Rules )))
+ifeq ($(notdir $(SRCROOT)),Makefile.Rules)
+SRCROOT := $(dir $(SRCROOT))
+endif
 endif
 
 ifeq ($(strip $(SRCROOT))x,x)
@@ -107,7 +112,7 @@ $(error "Can't find root of project.  Please set SRCROOT variable in the environ
 endif
 
 # cleanup path, resolving . .. //
-SRCROOT := $(abspath $(dir $(SRCROOT)))
+SRCROOT := $(abspath $(SRCROOT))
 
 
 
