@@ -918,7 +918,7 @@ clean-$(1)-$(2)-FILES := $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(
 
 clean-$(1)-$(2):
 	@rm -vf $$(clean-$(1)-$(2)-FILES)
-	@rm -vr $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext
+	@rm -vr $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext  $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).kext || true
 	@rm -vf $($(1)_$(2)_OBJ_ALL)
 
 distclean-$(1)-$(2): clean-$(1)-$(2)
