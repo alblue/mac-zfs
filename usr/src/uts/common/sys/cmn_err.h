@@ -36,7 +36,7 @@
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #ifndef __APPLE__
-#if defined(_KERNEL) && !defined(_ASM) 
+#if defined(_KERNEL) && !defined(_ASM)
 #include <sys/va_list.h>
 #endif
 #endif /* !__APPLE__ */

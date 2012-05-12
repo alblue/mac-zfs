@@ -58,9 +58,8 @@ dnode_cons(void *arg, void *unused, int kmflag)
 	bzero(dn, sizeof (dnode_t));
 
 	rw_init(&dn->dn_struct_rwlock, NULL, RW_DEFAULT, NULL);
-// This is from the 10a286 bits
 #ifdef __APPLE__
-        cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
+	cv_init(&dn->dn_notxholds, NULL, CV_DEFAULT, NULL);
 #endif
 
 	mutex_init(&dn->dn_mtx, NULL, MUTEX_DEFAULT, NULL);
@@ -83,7 +82,6 @@ dnode_cons(void *arg, void *unused, int kmflag)
 	return (0);
 }
 
-
 /* ARGSUSED */
 static void
 dnode_dest(void *arg, void *unused)
@@ -92,9 +90,8 @@ dnode_dest(void *arg, void *unused)
 	dnode_t *dn = arg;
 
 	rw_destroy(&dn->dn_struct_rwlock);
-// This is from the 10a286 bits
 #ifdef __APPLE__
-        cv_destroy(&dn->dn_notxholds);
+	cv_destroy(&dn->dn_notxholds);
 #endif
 	mutex_destroy(&dn->dn_mtx);
 	mutex_destroy(&dn->dn_dbufs_mtx);
@@ -604,8 +601,10 @@ dnode_hold_impl(objset_impl_t *os, uint64_t object, int flag,
 		return (EIO);
 	err = dbuf_read(db, NULL, DB_RF_CANFAIL);
 	if (err) {
+#ifdef __APPLE__
 		debug_msg("dnode_hold_impl: from %s, dbuf read failed %d\n",
 				(char *)tag, err);
+#endif
 		dbuf_rele(db, FTAG);
 		return (err);
 	}

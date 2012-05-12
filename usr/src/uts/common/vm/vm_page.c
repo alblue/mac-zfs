@@ -109,11 +109,11 @@ pgcnt_t availrmem_initial;
  * segvn_pages_locked : This keeps track on a global basis how many pages
  * are currently locked because of I/O.
  *
- * pages_locked : How many pages are locked becuase of user specified
+ * pages_locked : How many pages are locked because of user specified
  * locking through mlock or plock.
  *
  * pages_useclaim,pages_claimed : These two variables track the
- * cliam adjustments because of the protection changes on a segvn segment.
+ * claim adjustments because of the protection changes on a segvn segment.
  *
  * All these globals are protected by the same lock which protects availrmem.
  */
@@ -268,7 +268,7 @@ uint_t	page_exists_forreal_cnt;
 uint_t	page_lookup_dev_cnt;
 uint_t	get_cachelist_cnt;
 uint_t	page_create_cnt[10];
-uint_t	alloc_pages[8];
+uint_t	alloc_pages[9];
 uint_t	page_exphcontg[19];
 uint_t  page_create_large_cnt[10];
 
@@ -503,7 +503,7 @@ page_free_large_ctr(pgcnt_t npages)
 }
 
 /*
- * Add a physical chunk of memory to the system freee lists during startup.
+ * Add a physical chunk of memory to the system free lists during startup.
  * Platform specific startup() allocates the memory for the page structs.
  *
  * num	- number of page structures
@@ -670,7 +670,7 @@ page_lookup(vnode_t *vp, u_offset_t off, se_t se)
  * Find a page representing the specified [vp, offset].
  * We either return the one we found or, if passed in,
  * create one with identity of [vp, offset] of the
- * pre-allocated page. If we find exsisting page but it is
+ * pre-allocated page. If we find existing page but it is
  * intransit coming in, it will have an "exclusive" lock
  * and we wait for the i/o to complete.  A page found on
  * the free list is always reclaimed and then locked.
@@ -1445,16 +1445,20 @@ page_create_throttle(pgcnt_t npages, int flags)
 
 	cv_signal(&proc_pageout->p_cv);
 
-	while (freemem < npages + tf) {
+	for (;;) {
+		fm = 0;
 		pcf_acquire_all();
 		mutex_enter(&new_freemem_lock);
-		fm = 0;
 		for (i = 0; i < PCF_FANOUT; i++) {
 			fm += pcf[i].pcf_count;
 			pcf[i].pcf_wait++;
 			mutex_exit(&pcf[i].pcf_lock);
 		}
 		freemem = fm;
+		if (freemem >= npages + tf) {
+			mutex_exit(&new_freemem_lock);
+			break;
+		}
 		needfree += npages;
 		freemem_wait++;
 		cv_wait(&freemem_cv, &new_freemem_lock);
@@ -1466,7 +1470,7 @@ page_create_throttle(pgcnt_t npages, int flags)
 }
 
 /*
- * page_create_wait() is called to either coalecse pages from the
+ * page_create_wait() is called to either coalesce pages from the
  * different pcf buckets or to wait because there simply are not
  * enough pages to satisfy the caller's request.
  *
@@ -1823,13 +1827,7 @@ page_create_get_something(vnode_t *vp, u_offset_t off, struct seg *seg,
 	flags &= ~PG_MATCH_COLOR;
 	locked = 0;
 #if defined(__i386) || defined(__amd64)
-	/*
-	 * page_create_get_something may be called because 4g memory may be
-	 * depleted. Set flags to allow for relocation of base page below
-	 * 4g if necessary.
-	 */
-	if (physmax4g)
-		flags |= (PGI_PGCPSZC0 | PGI_PGCPHIPRI);
+	flags = page_create_update_flags_x86(flags);
 #endif
 
 	lgrp = lgrp_mem_choose(seg, vaddr, PAGESIZE);
@@ -1991,16 +1989,25 @@ page_alloc_pages(struct vnode *vp, struct seg *seg, caddr_t addr,
 	}
 #endif
 
-	pgsz = page_get_pagesize(szc);
-	totpgs = curnpgs = npgs = pgsz >> PAGESHIFT;
-
-	ASSERT(((uintptr_t)addr & (pgsz - 1)) == 0);
 	/*
 	 * One must be NULL but not both.
 	 * And one must be non NULL but not both.
 	 */
 	ASSERT(basepp != NULL || ppa != NULL);
 	ASSERT(basepp == NULL || ppa == NULL);
+
+#if defined(__i386) || defined(__amd64)
+	while (page_chk_freelist(szc) == 0) {
+		VM_STAT_ADD(alloc_pages[8]);
+		if (anypgsz == 0 || --szc == 0)
+			return (ENOMEM);
+	}
+#endif
+
+	pgsz = page_get_pagesize(szc);
+	totpgs = curnpgs = npgs = pgsz >> PAGESHIFT;
+
+	ASSERT(((uintptr_t)addr & (pgsz - 1)) == 0);
 
 	(void) page_create_wait(npgs, PG_WAIT);
 
@@ -2416,7 +2423,7 @@ page_create_va(vnode_t *vp, u_offset_t off, size_t bytes, uint_t flags,
 	if (!enough) {
 		/*
 		 * Have to look harder.  If npages is greater than
-		 * one, then we might have to coalecse the counters.
+		 * one, then we might have to coalesce the counters.
 		 *
 		 * Go wait.  We come back having accounted
 		 * for the memory.
@@ -4400,7 +4407,7 @@ page_busy(int cleanit)
 			VN_HOLD(vp);
 			page_unlock(pp);
 			(void) VOP_PUTPAGE(vp, off, PAGESIZE,
-			    B_ASYNC | B_FREE, kcred);
+			    B_ASYNC | B_FREE, kcred, NULL);
 			VN_RELE(vp);
 		}
 	} while ((pp = page_next(pp)) != page0);
@@ -4533,7 +4540,7 @@ top:
 			 * if this putpage fails.
 			 */
 			(void) VOP_PUTPAGE(vp, offset, PAGESIZE, B_INVAL,
-			    kcred);
+			    kcred, NULL);
 			VN_RELE(vp);
 		} else {
 			page_destroy(pp, 0);
@@ -4548,7 +4555,7 @@ top:
 /*
  * Replace the page "old" with the page "new" on the page hash and vnode lists
  *
- * the replacemnt must be done in place, ie the equivalent sequence:
+ * the replacement must be done in place, ie the equivalent sequence:
  *
  *	vp = old->p_vnode;
  *	off = old->p_offset;
@@ -4696,7 +4703,7 @@ page_relocate_hash(page_t *pp_new, page_t *pp_old)
  *
  * Returns 1 on success, 0 on failure.
  *
- * If success is returned this routine gurantees p_szc for all constituent
+ * If success is returned this routine guarantees p_szc for all constituent
  * pages of a large page pp belongs to can't change. To achieve this we
  * recheck szc of pp after locking all constituent pages and retry if szc
  * changed (it could only decrease). Since hat_page_demote() needs an EXCL
@@ -4704,7 +4711,7 @@ page_relocate_hash(page_t *pp_new, page_t *pp_old)
  * pages are locked.  hat_page_demote() with a lock on a constituent page
  * outside of this large page (i.e. pp belonged to a larger large page) is
  * already done with all constituent pages of pp since the root's p_szc is
- * changed last. Thefore no need to synchronize with hat_page_demote() that
+ * changed last. Therefore no need to synchronize with hat_page_demote() that
  * locked a constituent page outside of pp's current large page.
  */
 #ifdef DEBUG
@@ -5341,7 +5348,7 @@ page_try_demote_pages(page_t *pp)
  * cache). However file system pages can be truncated or invalidated at a
  * PAGESIZE level from the file system side and end up in page_free() or
  * page_destroy() (we also allow only part of the large page to be SOFTLOCKed
- * and therfore pageout should be able to demote a large page by EXCL locking
+ * and therefore pageout should be able to demote a large page by EXCL locking
  * any constituent page that is not under SOFTLOCK). In those cases we cannot
  * rely on being able to lock EXCL all constituent pages.
  *
@@ -5360,9 +5367,9 @@ page_try_demote_pages(page_t *pp)
  *
  * This routine calls page_szc_lock() before calling hat_page_demote() to
  * allow segvn in one special case not to lock all constituent pages SHARED
- * before calling hat_memload_array() that relies on p_szc not changeing even
+ * before calling hat_memload_array() that relies on p_szc not changing even
  * before hat level mlist lock is taken.  In that case segvn uses
- * page_szc_lock() to prevent hat_page_demote() changeing p_szc values.
+ * page_szc_lock() to prevent hat_page_demote() changing p_szc values.
  *
  * Anonymous or kernel page demotion still has to lock all pages exclusively
  * and do hat_pageunload() on all constituent pages before demoting the page
@@ -5377,7 +5384,7 @@ page_try_demote_pages(page_t *pp)
  * pages within szc 1 area to prevent szc changes because hat_page_demote()
  * that started on this page when it had szc > 1 is done for this szc 1 area.
  *
- * We are guranteed that all constituent pages of pp's large page belong to
+ * We are guaranteed that all constituent pages of pp's large page belong to
  * the same vnode with the consecutive offsets increasing in the direction of
  * the pfn i.e. the identity of constituent pages can't change until their
  * p_szc is decreased. Therefore it's safe for hat_page_demote() to remove
@@ -5449,7 +5456,7 @@ page_mark_migrate(struct seg *seg, caddr_t addr, size_t len,
 		len = P2ROUNDUP(len, segpgsz);
 
 	/*
-	 * Allocate page array to accomodate largest page size
+	 * Allocate page array to accommodate largest page size
 	 */
 	pgsz = page_get_pagesize(page_num_pagesizes() - 1);
 	ppa_nentries = btop(pgsz);

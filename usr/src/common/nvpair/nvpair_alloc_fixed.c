@@ -44,36 +44,36 @@
 #endif
 
 /*
-* This allocator is very simple.
-*  - it uses a pre-allocated buffer for memory allocations.
-*  - it does _not_ free memory in the pre-allocated buffer.
-*
-* The reason for the selected implemention is simplicity.
-* This allocator is designed for the usage in interrupt context when
-* the caller may not wait for free memory.
-*/
+ * This allocator is very simple.
+ *  - it uses a pre-allocated buffer for memory allocations.
+ *  - it does _not_ free memory in the pre-allocated buffer.
+ *
+ * The reason for the selected implemention is simplicity.
+ * This allocator is designed for the usage in interrupt context when
+ * the caller may not wait for free memory.
+ */
 
 /* pre-allocated buffer for memory allocations */
 typedef struct nvbuf {
-uintptr_t	nvb_buf;	/* address of pre-allocated buffer */
-uintptr_t 	nvb_lim;	/* limit address in the buffer */
-uintptr_t	nvb_cur;	/* current address in the buffer */
+	uintptr_t	nvb_buf;	/* address of pre-allocated buffer */
+	uintptr_t 	nvb_lim;	/* limit address in the buffer */
+	uintptr_t	nvb_cur;	/* current address in the buffer */
 } nvbuf_t;
 
 /*
-* Initialize the pre-allocated buffer allocator. The caller needs to supply
-*
-*   buf	address of pre-allocated buffer
-*   bufsz	size of pre-allocated buffer
-*
-* nv_fixed_init() calculates the remaining members of nvbuf_t.
-*/
+ * Initialize the pre-allocated buffer allocator. The caller needs to supply
+ *
+ *   buf	address of pre-allocated buffer
+ *   bufsz	size of pre-allocated buffer
+ *
+ * nv_fixed_init() calculates the remaining members of nvbuf_t.
+ */
 static int
 nv_fixed_init(nv_alloc_t *nva, va_list valist)
 {
-uintptr_t base = va_arg(valist, uintptr_t);
-uintptr_t lim = base + va_arg(valist, size_t);
-nvbuf_t *nvb = (nvbuf_t *)P2ROUNDUP(base, sizeof (uintptr_t));
+	uintptr_t base = va_arg(valist, uintptr_t);
+	uintptr_t lim = base + va_arg(valist, size_t);
+	nvbuf_t *nvb = (nvbuf_t *)P2ROUNDUP(base, sizeof (uintptr_t));
 
 	if (base == NULL || (uintptr_t)&nvb[1] > lim)
 		return (EINVAL);

@@ -25,10 +25,6 @@
  * Use is subject to license terms.
  */
 
-/*
- * Portions Copyright 2007 Apple Inc.  All rights reserved.
- */
-
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 /*
@@ -47,10 +43,16 @@
  */
 
 #include <sys/kmem_impl.h>
+#ifndef __APPLE__
+#include <sys/vmem_impl.h>
+#endif
 #include <sys/param.h>
 #include <sys/sysmacros.h>
 #include <sys/vm.h>
 #include <sys/proc.h>
+#ifndef __APPLE__
+#include <sys/tuneable.h>
+#endif
 #include <sys/systm.h>
 #include <sys/cmn_err.h>
 #include <sys/debug.h>
@@ -761,6 +763,10 @@ kmem_slab_create(kmem_cache_t *cp, int kmflag)
 		buf += chunksize;
 	}
 
+#ifndef __APPLE__
+	kmem_log_event(kmem_slab_log, cp, sp, slab);
+#endif
+
 	return (sp);
 
 bufctl_alloc_failure:
@@ -776,6 +782,10 @@ slab_alloc_failure:
 	vmem_free(vmp, slab, slabsize);
 
 vmem_alloc_failure:
+
+#ifndef __APPLE__
+	kmem_log_event(kmem_failure_log, cp, NULL, NULL);
+#endif
 
 	atomic_add_64(&cp->cache_alloc_fail, 1);
 

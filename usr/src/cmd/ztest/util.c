@@ -26,7 +26,7 @@
 #pragma ident	"@(#)util.c	1.4	06/05/24 SMI"
 
 #include <assert.h>
-#include <sys/zfs_context.h>
+#include <sys/ztest_context.h>
 #include <sys/avl.h>
 #include <string.h>
 #include <stdio.h>

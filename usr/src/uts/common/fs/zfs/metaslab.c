@@ -37,9 +37,7 @@
 uint64_t metaslab_aliquot = 512ULL << 10;
 
 /*
- * ==========================================================================
  * Metaslab classes
- * ==========================================================================
  */
 metaslab_class_t *
 metaslab_class_create(void)
@@ -111,9 +109,7 @@ metaslab_class_remove(metaslab_class_t *mc, metaslab_group_t *mg)
 }
 
 /*
- * ==========================================================================
  * Metaslab groups
- * ==========================================================================
  */
 static int
 metaslab_compare(const void *x1, const void *x2)
@@ -203,9 +199,7 @@ metaslab_group_sort(metaslab_group_t *mg, metaslab_t *msp, uint64_t weight)
 }
 
 /*
- * ==========================================================================
  * The first-fit block allocator
- * ==========================================================================
  */
 static void
 metaslab_ff_load(space_map_t *sm)
@@ -281,9 +275,7 @@ static space_map_ops_t metaslab_ff_ops = {
 };
 
 /*
- * ==========================================================================
  * Metaslabs
- * ==========================================================================
  */
 metaslab_t *
 metaslab_init(metaslab_group_t *mg, space_map_obj_t *smo,
@@ -341,7 +333,7 @@ metaslab_fini(metaslab_t *msp)
 	int t;
 
 	vdev_space_update(mg->mg_vd, -msp->ms_map.sm_size,
-	    -msp->ms_smo.smo_alloc);
+	    -msp->ms_smo.smo_alloc, B_TRUE);
 
 	metaslab_group_remove(mg, msp);
 
@@ -569,10 +561,10 @@ metaslab_sync_done(metaslab_t *msp, uint64_t txg)
 			space_map_create(&msp->ms_freemap[t], sm->sm_start,
 			    sm->sm_size, sm->sm_shift, sm->sm_lock);
 		}
-		vdev_space_update(vd, sm->sm_size, 0);
+		vdev_space_update(vd, sm->sm_size, 0, B_TRUE);
 	}
 
-	vdev_space_update(vd, 0, smosync->smo_alloc - smo->smo_alloc);
+	vdev_space_update(vd, 0, smosync->smo_alloc - smo->smo_alloc, B_TRUE);
 
 	ASSERT(msp->ms_allocmap[txg & TXG_MASK].sm_space == 0);
 	ASSERT(msp->ms_freemap[txg & TXG_MASK].sm_space == 0);
@@ -773,6 +765,20 @@ top:
 	all_zero = B_TRUE;
 	do {
 		vd = mg->mg_vd;
+		/*
+		 * Dont allocate from faulted devices
+		 */
+		if (!vdev_writeable(vd))
+			goto next;
+		/*
+		 * Avoid writing single-copy data to a failing vdev
+		 */
+		if ((vd->vdev_stat.vs_write_errors > 0 ||
+		    vd->vdev_state < VDEV_STATE_HEALTHY) &&
+		    d == 0 && dshift == 3) {
+			all_zero = B_FALSE;
+			goto next;
+		}
 
 		ASSERT(mg->mg_class == mc);
 
@@ -828,6 +834,7 @@ top:
 
 			return (0);
 		}
+next:
 		mc->mc_rotor = mg->mg_next;
 		mc->mc_allocated = 0;
 	} while ((mg = mg->mg_next) != rotor);

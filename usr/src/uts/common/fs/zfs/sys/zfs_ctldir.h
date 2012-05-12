@@ -63,7 +63,8 @@ int zfsctl_unmount_snap(vnode_t *dvp, const char *name, int force, cred_t *cr);
 
 #ifndef __APPLE__
 int zfsctl_root_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, pathname_t *pnp,
-    int flags, vnode_t *rdir, cred_t *cr);
+    int flags, vnode_t *rdir, cred_t *cr, caller_context_t *ct,
+    int *direntflags, pathname_t *realpnp);
 
 int zfsctl_make_fid(zfsvfs_t *zfsvfsp, uint64_t object, uint32_t gen,
     fid_t *fidp);

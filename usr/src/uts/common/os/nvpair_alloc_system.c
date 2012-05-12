@@ -30,7 +30,9 @@
 
 #include <rpc/types.h>
 #include <sys/nvpair.h>
+#ifdef __APPLE__
 #include <sys/kmem.h>
+#endif
 
 #ifdef _KERNEL
 

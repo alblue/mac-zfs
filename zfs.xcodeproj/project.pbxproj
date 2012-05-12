@@ -90,6 +90,19 @@
 		FA0D2AC610A39F8000C63936 /* zfs_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9376A110A38FB500754C9E /* zfs_prop.c */; };
 		FA0D2AC710A39F8000C63936 /* zfs_prop.h in Headers */ = {isa = PBXBuildFile; fileRef = FA9376A610A38FB500754C9E /* zfs_prop.h */; };
 		FA0D2AE710A39F8000C63936 /* zvol.h in Headers */ = {isa = PBXBuildFile; fileRef = FA93760B10A38E6300754C9E /* zvol.h */; };
+		FA6DD2F212BCDEC000B25DA9 /* maczfs_vnode.h in Headers */ = {isa = PBXBuildFile; fileRef = FA6DD2F112BCDEC000B25DA9 /* maczfs_vnode.h */; };
+		FA6DD37F12BD5FC900B25DA9 /* string.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD37E12BD5FC900B25DA9 /* string.c */; };
+		FA6DD41612BD7C8000B25DA9 /* libzfs_sendrecv.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD41512BD7C8000B25DA9 /* libzfs_sendrecv.c */; };
+		FA6DD49F12C01E6400B25DA9 /* zfs_i18n.h in Headers */ = {isa = PBXBuildFile; fileRef = FA6DD49E12C01E6400B25DA9 /* zfs_i18n.h */; };
+		FA6DD81D12C3F0EE00B25DA9 /* u8_textprep.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD81B12C3F0EE00B25DA9 /* u8_textprep.c */; };
+		FA6DD81E12C3F0EE00B25DA9 /* uconv.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD81C12C3F0EE00B25DA9 /* uconv.c */; };
+		FA6DD81F12C3F0EE00B25DA9 /* u8_textprep.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD81B12C3F0EE00B25DA9 /* u8_textprep.c */; };
+		FA6DD82012C3F0EE00B25DA9 /* uconv.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD81C12C3F0EE00B25DA9 /* uconv.c */; };
+		FA6DD82F12C3F29C00B25DA9 /* rrwlock.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD82D12C3F29C00B25DA9 /* rrwlock.c */; };
+		FA6DD86612C406CB00B25DA9 /* zfs_fuid.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD82E12C3F29C00B25DA9 /* zfs_fuid.c */; };
+		FA6DD8A512C419A600B25DA9 /* acl_common.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD8A312C419A600B25DA9 /* acl_common.c */; };
+		FA6DD8A612C419A600B25DA9 /* acl_common.c in Sources */ = {isa = PBXBuildFile; fileRef = FA6DD8A312C419A600B25DA9 /* acl_common.c */; };
+		FA6DD8A712C419A600B25DA9 /* acl_common.h in Headers */ = {isa = PBXBuildFile; fileRef = FA6DD8A412C419A600B25DA9 /* acl_common.h */; };
 		FA93776610A391FD00754C9E /* zpool_iter.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93766010A38E6300754C9E /* zpool_iter.c */; };
 		FA93776710A391FD00754C9E /* zpool_vdev.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93766210A38E6300754C9E /* zpool_vdev.c */; };
 		FA93776810A391FD00754C9E /* zpool_util.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93766310A38E6300754C9E /* zpool_util.c */; };
@@ -191,6 +204,10 @@
 		FAB331D010C3C88B00BF4948 /* nvpair_alloc_system.c in Sources */ = {isa = PBXBuildFile; fileRef = FAB331CF10C3C88B00BF4948 /* nvpair_alloc_system.c */; };
 		FAB331F810C3CC7C00BF4948 /* xdr_array.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93759210A38E6300754C9E /* xdr_array.c */; };
 		FACE32C9113A779E00A513AE /* uu_misc.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93757F10A38E6300754C9E /* uu_misc.c */; };
+		FAFCDF6911F511A8005259C8 /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = FAFCDF6711F511A8005259C8 /* zpool_prop.c */; };
+		FAFCDF6A11F511A8005259C8 /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = FAFCDF6811F511A8005259C8 /* zprop_common.c */; };
+		FAFCDFFC11F65BB1005259C8 /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = FAFCDF6711F511A8005259C8 /* zpool_prop.c */; };
+		FAFCE00111F65BEF005259C8 /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = FAFCDF6811F511A8005259C8 /* zprop_common.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -377,6 +394,16 @@
 		32A4FEC30562C75700D090E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = zfs_kext/Info.plist; sourceTree = "<group>"; };
 		32A4FEC40562C75800D090E7 /* zfs.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zfs.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAD6B41710940DCF008A0395 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
+		FA6DD2F112BCDEC000B25DA9 /* maczfs_vnode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = maczfs_vnode.h; sourceTree = "<group>"; };
+		FA6DD37E12BD5FC900B25DA9 /* string.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = string.c; sourceTree = "<group>"; };
+		FA6DD41512BD7C8000B25DA9 /* libzfs_sendrecv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libzfs_sendrecv.c; sourceTree = "<group>"; };
+		FA6DD49E12C01E6400B25DA9 /* zfs_i18n.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_i18n.h; sourceTree = "<group>"; };
+		FA6DD81B12C3F0EE00B25DA9 /* u8_textprep.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = u8_textprep.c; path = unicode/u8_textprep.c; sourceTree = "<group>"; };
+		FA6DD81C12C3F0EE00B25DA9 /* uconv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = uconv.c; path = unicode/uconv.c; sourceTree = "<group>"; };
+		FA6DD82D12C3F29C00B25DA9 /* rrwlock.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rrwlock.c; sourceTree = "<group>"; };
+		FA6DD82E12C3F29C00B25DA9 /* zfs_fuid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfs_fuid.c; sourceTree = "<group>"; };
+		FA6DD8A312C419A600B25DA9 /* acl_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = acl_common.c; path = acl/acl_common.c; sourceTree = "<group>"; };
+		FA6DD8A412C419A600B25DA9 /* acl_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = acl_common.h; path = acl/acl_common.h; sourceTree = "<group>"; };
 		FA93756010A38E6300754C9E /* libnvpair.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libnvpair.c; sourceTree = "<group>"; };
 		FA93756110A38E6300754C9E /* libnvpair.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libnvpair.h; sourceTree = "<group>"; };
 		FA93756210A38E6300754C9E /* nvpair_alloc_system.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = nvpair_alloc_system.c; sourceTree = "<group>"; };
@@ -648,6 +675,8 @@
 		FA96598D11F35E74001E7C56 /* zutil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zutil.c; sourceTree = "<group>"; };
 		FA96598E11F35E74001E7C56 /* zutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zutil.h; sourceTree = "<group>"; };
 		FAB331CF10C3C88B00BF4948 /* nvpair_alloc_system.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = nvpair_alloc_system.c; sourceTree = "<group>"; };
+		FAFCDF6711F511A8005259C8 /* zpool_prop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zpool_prop.c; sourceTree = "<group>"; };
+		FAFCDF6811F511A8005259C8 /* zprop_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zprop_common.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -779,6 +808,24 @@
 			path = zfs_commands/zoink;
 			sourceTree = "<group>";
 		};
+		FA6DD82112C3F0F500B25DA9 /* unicode */ = {
+			isa = PBXGroup;
+			children = (
+				FA6DD81B12C3F0EE00B25DA9 /* u8_textprep.c */,
+				FA6DD81C12C3F0EE00B25DA9 /* uconv.c */,
+			);
+			name = unicode;
+			sourceTree = "<group>";
+		};
+		FA6DD8A812C419AA00B25DA9 /* acl */ = {
+			isa = PBXGroup;
+			children = (
+				FA6DD8A312C419A600B25DA9 /* acl_common.c */,
+				FA6DD8A412C419A600B25DA9 /* acl_common.h */,
+			);
+			name = acl;
+			sourceTree = "<group>";
+		};
 		FA93755C10A38E6300754C9E /* usr */ = {
 			isa = PBXGroup;
 			children = (
@@ -790,13 +837,13 @@
 		FA93755D10A38E6300754C9E /* src */ = {
 			isa = PBXGroup;
 			children = (
-				FA9656A711F1BFA3001E7C56 /* maczfs */,
-				FA93755E10A38E6300754C9E /* lib */,
-				FA93758A10A38E6300754C9E /* libgen */,
-				FA93758D10A38E6300754C9E /* uts */,
-				FA93764710A38E6300754C9E /* head */,
 				FA93764A10A38E6300754C9E /* common */,
 				FA93765E10A38E6300754C9E /* cmd */,
+				FA93764710A38E6300754C9E /* head */,
+				FA93755E10A38E6300754C9E /* lib */,
+				FA93758A10A38E6300754C9E /* libgen */,
+				FA9656A711F1BFA3001E7C56 /* maczfs */,
+				FA93758D10A38E6300754C9E /* uts */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -862,6 +909,7 @@
 		FA93756C10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
+				FA6DD41512BD7C8000B25DA9 /* libzfs_sendrecv.c */,
 				FA93756D10A38E6300754C9E /* libzfs.h */,
 				FA93756E10A38E6300754C9E /* libzfs_mount.c */,
 				FA93756F10A38E6300754C9E /* libzfs_graph.c */,
@@ -941,12 +989,12 @@
 		FA93758E10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
-				FA96597711F35E74001E7C56 /* zmod */,
-				FA93759C10A38E6300754C9E /* vm */,
-				FA93758F10A38E6300754C9E /* rpc */,
-				FA93759510A38E6300754C9E /* sys */,
 				FA9375C910A38E6300754C9E /* fs */,
 				FA93764210A38E6300754C9E /* os */,
+				FA93758F10A38E6300754C9E /* rpc */,
+				FA93759510A38E6300754C9E /* sys */,
+				FA93759C10A38E6300754C9E /* vm */,
+				FA96597711F35E74001E7C56 /* zmod */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -1059,6 +1107,8 @@
 		FA9375CA10A38E6300754C9E /* zfs */ = {
 			isa = PBXGroup;
 			children = (
+				FA6DD82D12C3F29C00B25DA9 /* rrwlock.c */,
+				FA6DD82E12C3F29C00B25DA9 /* zfs_fuid.c */,
 				FA9375CB10A38E6300754C9E /* dmu_traverse.c */,
 				FA9375CC10A38E6300754C9E /* zfs_fm.c */,
 				FA9375CD10A38E6300754C9E /* dnode_sync.c */,
@@ -1133,6 +1183,7 @@
 		FA93760A10A38E6300754C9E /* sys */ = {
 			isa = PBXGroup;
 			children = (
+				FA6DD49E12C01E6400B25DA9 /* zfs_i18n.h */,
 				FA93760B10A38E6300754C9E /* zvol.h */,
 				FA93760C10A38E6300754C9E /* refcount.h */,
 				FA93760D10A38E6300754C9E /* zio_impl.h */,
@@ -1212,11 +1263,13 @@
 		FA93764A10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
-				FA93764B10A38E6300754C9E /* zfs */,
-				FA93765310A38E6300754C9E /* nvpair */,
-				FA93765610A38E6300754C9E /* util */,
+				FA6DD8A812C419AA00B25DA9 /* acl */,
 				FA93765910A38E6300754C9E /* avl */,
 				FA93765B10A38E6300754C9E /* devid */,
+				FA93765310A38E6300754C9E /* nvpair */,
+				FA6DD82112C3F0F500B25DA9 /* unicode */,
+				FA93765610A38E6300754C9E /* util */,
+				FA93764B10A38E6300754C9E /* zfs */,
 			);
 			path = common;
 			sourceTree = "<group>";
@@ -1224,6 +1277,8 @@
 		FA93764B10A38E6300754C9E /* zfs */ = {
 			isa = PBXGroup;
 			children = (
+				FAFCDF6711F511A8005259C8 /* zpool_prop.c */,
+				FAFCDF6811F511A8005259C8 /* zprop_common.c */,
 				FA9376A110A38FB500754C9E /* zfs_prop.c */,
 				FA9376A210A38FB500754C9E /* zfs_deleg.h */,
 				FA9376A310A38FB500754C9E /* zfs_namecheck.c */,
@@ -1246,6 +1301,7 @@
 		FA93765610A38E6300754C9E /* util */ = {
 			isa = PBXGroup;
 			children = (
+				FA6DD37E12BD5FC900B25DA9 /* string.c */,
 				FA93765710A38E6300754C9E /* qsort.c */,
 				FA93765810A38E6300754C9E /* qsort.h */,
 			);
@@ -1325,6 +1381,7 @@
 		FA9656A711F1BFA3001E7C56 /* maczfs */ = {
 			isa = PBXGroup;
 			children = (
+				FA6DD2F112BCDEC000B25DA9 /* maczfs_vnode.h */,
 				FA96584511F304B1001E7C56 /* maczfs_file.h */,
 				FA96584611F304B1001E7C56 /* maczfs_libc.h */,
 				FA96584711F304B1001E7C56 /* maczfs_mount.h */,
@@ -1405,6 +1462,9 @@
 				FA0D2AC510A39F8000C63936 /* zfs_namecheck.h in Headers */,
 				FA0D2AC710A39F8000C63936 /* zfs_prop.h in Headers */,
 				FA0D2AE710A39F8000C63936 /* zvol.h in Headers */,
+				FA6DD2F212BCDEC000B25DA9 /* maczfs_vnode.h in Headers */,
+				FA6DD49F12C01E6400B25DA9 /* zfs_i18n.h in Headers */,
+				FA6DD8A712C419A600B25DA9 /* acl_common.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1528,6 +1588,7 @@
 				FA17B50211E1D47A00D5C55B /* ShellScript */,
 				32A4FEBD0562C75700D090E7 /* Sources */,
 				32A4FEBF0562C75700D090E7 /* Frameworks */,
+				FA6DD3BD12BD63C000B25DA9 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -1566,7 +1627,14 @@
 			};
 			buildConfigurationList = 1DEB91C708733DAC0010E9CD /* Build configuration list for PBXProject "zfs" */;
 			compatibilityVersion = "Xcode 3.1";
+			developmentRegion = English;
 			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
 			mainGroup = 089C166AFE841209C02AAC07 /* zfs */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1631,6 +1699,19 @@
 			shellPath = /bin/bash;
 			shellScript = "# Get a list of all maczfs_* tags, sorted in reverse numerical order\n# Note that both Git and awk needs to be on the path, or this step won't work\n# TODO Consider packing this into a script\n\nDESCRIPTION=`git describe --tags --long --match 'maczfs*' 2> /dev/null`\n\nif [ -n \"${DESCRIPTION}\" ]\nthen\n\t/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${DESCRIPTION}\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n\tVERSION=`echo ${DESCRIPTION} | awk -f ${SOURCE_ROOT}/support/version.awk`\n\tif [ -n \"${VERSION}\" ]\n\tthen\n\t\t/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion ${VERSION}\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n\tfi\nfi\n";
 		};
+		FA6DD3BD12BD63C000B25DA9 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo Checking whether symbols are undefined in the kext\necho If this build stage fails, the kext is unloadable\n/usr/bin/kextutil -n ${TARGET_BUILD_DIR}/zfs.kext";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -1681,6 +1762,12 @@
 				FA0D2AC610A39F8000C63936 /* zfs_prop.c in Sources */,
 				FACE32C9113A779E00A513AE /* uu_misc.c in Sources */,
 				FA9656B311F1BFBC001E7C56 /* assfail.c in Sources */,
+				FAFCDF6911F511A8005259C8 /* zpool_prop.c in Sources */,
+				FAFCDF6A11F511A8005259C8 /* zprop_common.c in Sources */,
+				FA6DD41612BD7C8000B25DA9 /* libzfs_sendrecv.c in Sources */,
+				FA6DD81F12C3F0EE00B25DA9 /* u8_textprep.c in Sources */,
+				FA6DD82012C3F0EE00B25DA9 /* uconv.c in Sources */,
+				FA6DD8A612C419A600B25DA9 /* acl_common.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1803,6 +1890,14 @@
 				FA9656AF11F1BFA3001E7C56 /* maczfs_kernel.c in Sources */,
 				FA9656B011F1BFA3001E7C56 /* zfs_context.c in Sources */,
 				FA965A1611F366D2001E7C56 /* zmod.c in Sources */,
+				FAFCDFFC11F65BB1005259C8 /* zpool_prop.c in Sources */,
+				FAFCE00111F65BEF005259C8 /* zprop_common.c in Sources */,
+				FA6DD37F12BD5FC900B25DA9 /* string.c in Sources */,
+				FA6DD81D12C3F0EE00B25DA9 /* u8_textprep.c in Sources */,
+				FA6DD81E12C3F0EE00B25DA9 /* uconv.c in Sources */,
+				FA6DD82F12C3F29C00B25DA9 /* rrwlock.c in Sources */,
+				FA6DD86612C406CB00B25DA9 /* zfs_fuid.c in Sources */,
+				FA6DD8A512C419A600B25DA9 /* acl_common.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1967,7 +2062,6 @@
 				MODULE_STOP = zfs_module_stop;
 				MODULE_VERSION = 0.0.0;
 				PRODUCT_NAME = zfs;
-				VALID_ARCHS = "i386 ppc ppc7400 ppc970 x86_64";
 				VERSIONING_SYSTEM = "apple-generic";
 				WARNING_CFLAGS = "";
 				WRAPPER_EXTENSION = kext;
@@ -1990,7 +2084,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
 				GCC_VERSION = 4.2;
-				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/usr/**";
 				OTHER_CFLAGS = (
 					"-v",
@@ -2016,7 +2110,7 @@
 				);
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_VERSION = 4.2;
-				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/usr/**";
 				OTHER_CFLAGS = (
 					"-v",
@@ -2273,7 +2367,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
-				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/usr/**";
 				OTHER_CFLAGS = (
 					"-v",
@@ -2307,6 +2401,7 @@
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					DEBUG,
 					NAMEDSTREAMS,
 					__APPLE_API_UNSTABLE,
 					_KERNEL,
@@ -2348,7 +2443,10 @@
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = "TEXT_DOMAIN=0";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					DEBUG,
+					"TEXT_DOMAIN=0",
+				);
 				INSTALL_PATH = /usr/lib;
 				PREBINDING = NO;
 				PRODUCT_NAME = libzfs;

@@ -12,9 +12,23 @@ then
 fi
 
 CONFIG=Release
-if [ "--debug" == "$1" ]
+INSTALL=No
+
+while [[ $1 == -* ]]; do
+  OPT=$1
+  shift
+  case $OPT in
+    --debug) CONFIG=Debug ;;
+    --install) INSTALL=Yes ;;
+    --) break; ;;
+    *) echo "Unknown arguments $OPT $*"; exit 1; ;;
+  esac
+done
+
+if [ -n "$*" ]
 then
-	CONFIG=Debug
+  echo "Unknown arguments $*"
+  exit 1;
 fi
 
 USER=`whoami`
@@ -38,3 +52,9 @@ fi
 cd ${BUILD}
 packagemaker --doc MacZFS.pmdoc --version ${VERSION} --title "Mac ZFS ${VERSION}" --out MacZFS-${VERSION}.pkg --target 10.5 || exit 4
 )
+
+if [ "$INSTALL" == "Yes" ]
+then
+echo "Installing"
+  sudo installer -pkg ${DIR}/../${BUILD}/MacZFS-${VERSION}.pkg -target /
+fi

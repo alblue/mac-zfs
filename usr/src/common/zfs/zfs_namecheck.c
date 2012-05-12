@@ -126,7 +126,10 @@ permset_namecheck(const char *path, namecheck_err_t *why, char *what)
  * Where each component is made up of alphanumeric characters plus the following
  * characters:
  *
- * 	[-_.:]
+ * 	[-_.:%]
+ *
+ * We allow '%' here as we use that character internally to create unique
+ * names for temporary clones (for online recv).
  */
 int
 dataset_namecheck(const char *path, namecheck_err_t *why, char *what)
@@ -196,7 +199,7 @@ dataset_namecheck(const char *path, namecheck_err_t *why, char *what)
 
 		/* Validate the contents of this component */
 		while (loc != end) {
-			if (!valid_char(*loc)) {
+			if (!valid_char(*loc) && *loc != '%') {
 				if (why) {
 					*why = NAME_ERR_INVALCHAR;
 					*what = *loc;

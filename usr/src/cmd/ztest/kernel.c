@@ -25,8 +25,10 @@
 
 #pragma ident	"@(#)kernel.c	1.3	06/03/16 SMI"
 
+#ifdef ZTEST
+
 #include <assert.h>
-#include <sys/zfs_context.h>
+#include <sys/ztest_context.h>
 #include <poll.h>
 #include <string.h>
 #include <stdio.h>
@@ -346,7 +348,7 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 
 int
 vn_openat(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2,
-    int x3, vnode_t *startvp)
+    int x3, vnode_t *startvp, int fd)
 {
 	char *realpath = umem_alloc(strlen(path) + 2, UMEM_NOFAIL);
 	int ret;
@@ -723,3 +725,5 @@ kernel_fini(void)
 {
 	spa_fini();
 }
+
+#endif /* ZTEST */

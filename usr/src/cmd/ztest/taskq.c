@@ -26,7 +26,7 @@
 
 #pragma ident	"@(#)taskq.c	1.1	05/10/30 SMI"
 
-#include <sys/zfs_context.h>
+#include <sys/ztest_context.h>
 
 int taskq_now;
 

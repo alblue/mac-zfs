@@ -67,7 +67,7 @@ const dmu_object_type_info_t dmu_ot[DMU_OT_NUMTYPES] = {
 	{	zap_byteswap,		TRUE,	"DSL props"		},
 	{	byteswap_uint64_array,	TRUE,	"DSL dataset"		},
 	{	zfs_znode_byteswap,	TRUE,	"ZFS znode"		},
-	{	zfs_acl_byteswap,	TRUE,	"ZFS ACL"		},
+	{	zfs_oldacl_byteswap,	TRUE,	"ZFS V0 ACL"		},
 	{	byteswap_uint8_array,	FALSE,	"ZFS plain file"	},
 	{	zap_byteswap,		TRUE,	"ZFS directory"		},
 	{	zap_byteswap,		TRUE,	"ZFS master node"	},
@@ -81,7 +81,11 @@ const dmu_object_type_info_t dmu_ot[DMU_OT_NUMTYPES] = {
 	{	byteswap_uint8_array,	TRUE,	"SPA history"		},
 	{	byteswap_uint64_array,	TRUE,	"SPA history offsets"	},
 	{	zap_byteswap,		TRUE,	"Pool properties"	},
-	{	zap_byteswap,		TRUE,	"DSL permissions"	}
+	{	zap_byteswap,		TRUE,	"DSL permissions"	},
+	{	zfs_acl_byteswap,	TRUE,	"ZFS ACL"		},
+	{	byteswap_uint8_array,	TRUE,	"ZFS SYSACL"		},
+	{	byteswap_uint8_array,	TRUE,	"FUID table"		},
+	{	byteswap_uint64_array,	TRUE,	"FUID table size"	},
 };
 
 int
@@ -512,11 +516,13 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 #ifdef __APPLE__
 		bufoff = uio_offset(uio) - db->db_offset;
 		tocpy = (int)MIN(db->db_size - bufoff, size);
-		err = uio_move((char *)db->db_data + bufoff, tocpy, UIO_READ, uio);
+		err = uio_move((char *)db->db_data + bufoff, tocpy,
+			UIO_READ, uio);
 #else
 		bufoff = uio->uio_loffset - db->db_offset;
 		tocpy = (int)MIN(db->db_size - bufoff, size);
-		err = uiomove((char *)db->db_data + bufoff, tocpy, UIO_READ, uio);
+		err = uiomove((char *)db->db_data + bufoff, tocpy,
+			UIO_READ, uio);
 #endif
 		if (err)
 			break;
@@ -530,9 +536,11 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 
 int
 #ifdef __APPLE__
-dmu_write_uio(objset_t *os, uint64_t object, struct uio *uio, uint64_t size, dmu_tx_t *tx)
+dmu_write_uio(objset_t *os, uint64_t object, struct uio *uio, uint64_t size,
+	dmu_tx_t *tx)
 #else
-dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size, dmu_tx_t *tx)
+dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size,
+	dmu_tx_t *tx)
 #endif
 {
 	dmu_buf_t **dbp;
@@ -580,9 +588,11 @@ dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size, dmu_tx_t
 		 * block.
 		 */
 #ifdef __APPLE__
-		err = uio_move((char *)db->db_data + bufoff, tocpy, UIO_WRITE, uio);
+		err = uio_move((char *)db->db_data + bufoff, tocpy,
+			UIO_WRITE, uio);
 #else
-		err = uiomove((char *)db->db_data + bufoff, tocpy, UIO_WRITE, uio);
+		err = uiomove((char *)db->db_data + bufoff, tocpy,
+			UIO_WRITE, uio);
 #endif
 		if (tocpy == db->db_size)
 			dmu_buf_fill_done(db, tx);
@@ -597,13 +607,8 @@ dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size, dmu_tx_t
 }
 
 int
-#ifdef __APPLE__
 dmu_write_pages(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
     page_t *pp, dmu_tx_t *tx)
-#else
-dmu_write_pages(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
-    struct page *pp, dmu_tx_t *tx)
-#endif
 {
 	dmu_buf_t **dbp;
 	int numbufs, i;
@@ -1077,6 +1082,7 @@ dmu_init(void)
 	dbuf_init();
 	dnode_init();
 	arc_init();
+	l2arc_init();
 }
 
 void
@@ -1085,6 +1091,7 @@ dmu_fini(void)
 	arc_fini();
 	dnode_fini();
 	dbuf_fini();
+	l2arc_fini();
 }
 
 #ifdef __APPLE__

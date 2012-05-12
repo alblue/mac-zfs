@@ -161,6 +161,9 @@ static struct _cpu_pause_info {
 static kmutex_t pause_free_mutex;
 static kcondvar_t pause_free_cv;
 
+void *(*cpu_pause_func)(void *) = NULL;
+
+
 static struct cpu_sys_stats_ks_data {
 	kstat_named_t cpu_ticks_idle;
 	kstat_named_t cpu_ticks_user;
@@ -738,10 +741,12 @@ weakbinding_start(void)
  * which is a good trade off.
  */
 static void
-cpu_pause(volatile char *safe)
+cpu_pause(int index)
 {
 	int s;
 	struct _cpu_pause_info *cpi = &cpu_pause_info;
+	volatile char *safe = &safe_list[index];
+	long    lindex = index;
 
 	ASSERT((curthread->t_bound_cpu != NULL) || (*safe == PAUSE_DIE));
 
@@ -766,6 +771,16 @@ cpu_pause(volatile char *safe)
 		 * setbackdq/setfrontdq.
 		 */
 		s = splhigh();
+		/*
+		 * if cpu_pause_func() has been set then call it using
+		 * index as the argument, currently only used by
+		 * cpr_suspend_cpus().  This function is used as the
+		 * code to execute on the "paused" cpu's when a machine
+		 * comes out of a sleep state and CPU's were powered off.
+		 * (could also be used for hotplugging CPU's).
+		 */
+		if (cpu_pause_func != NULL)
+			(*cpu_pause_func)((void *)lindex);
 
 		mach_cpu_pause(safe);
 
@@ -809,13 +824,13 @@ static void
 cpu_pause_alloc(cpu_t *cp)
 {
 	kthread_id_t	t;
-	int		cpun = cp->cpu_id;
+	long		cpun = cp->cpu_id;
 
 	/*
 	 * Note, v.v_nglobpris will not change value as long as I hold
 	 * cpu_lock.
 	 */
-	t = thread_create(NULL, 0, cpu_pause, (caddr_t)&safe_list[cpun],
+	t = thread_create(NULL, 0, cpu_pause, (void *)cpun,
 	    0, &p0, TS_STOPPED, v.v_nglobpris - 1);
 	thread_lock(t);
 	t->t_bound_cpu = cp;
@@ -2093,6 +2108,8 @@ static struct {
 	kstat_named_t ci_model;
 	kstat_named_t ci_step;
 	kstat_named_t ci_clogid;
+	kstat_named_t ci_ncpuperchip;
+	kstat_named_t ci_ncoreperchip;
 #endif
 } cpu_info_template = {
 	{ "state",			KSTAT_DATA_CHAR },
@@ -2116,6 +2133,8 @@ static struct {
 	{ "model",			KSTAT_DATA_INT32 },
 	{ "stepping",			KSTAT_DATA_INT32 },
 	{ "clog_id",			KSTAT_DATA_INT32 },
+	{ "ncpu_per_chip",		KSTAT_DATA_INT32 },
+	{ "ncore_per_chip", 		KSTAT_DATA_INT32 },
 #endif
 };
 
@@ -2181,6 +2200,9 @@ cpu_info_kstat_update(kstat_t *ksp, int rw)
 	cpu_info_template.ci_model.value.l = cpuid_getmodel(cp);
 	cpu_info_template.ci_step.value.l = cpuid_getstep(cp);
 	cpu_info_template.ci_clogid.value.l = cpuid_get_clogid(cp);
+	cpu_info_template.ci_ncpuperchip.value.l = cpuid_get_ncpu_per_chip(cp);
+	cpu_info_template.ci_ncoreperchip.value.l =
+	    cpuid_get_ncore_per_chip(cp);
 #endif
 
 	return (0);
@@ -2209,6 +2231,9 @@ cpu_info_kstat_create(cpu_t *cp)
 #if defined(__x86)
 		cp->cpu_info_kstat->ks_data_size += X86_VENDOR_STRLEN;
 #endif
+		if (cp->cpu_supp_freqs != NULL)
+			cp->cpu_info_kstat->ks_data_size +=
+			    strlen(cp->cpu_supp_freqs) + 1;
 		cp->cpu_info_kstat->ks_lock = &cpu_info_template_lock;
 		cp->cpu_info_kstat->ks_data = &cpu_info_template;
 		cp->cpu_info_kstat->ks_private = cp;
@@ -2782,14 +2807,17 @@ cpu_destroy_bound_threads(cpu_t *cp)
 
 /*
  * Update the cpu_supp_freqs of this cpu. This information is returned
- * as part of cpu_info kstats.
+ * as part of cpu_info kstats. If the cpu_info_kstat exists already, then
+ * maintain the kstat data size.
  */
 void
 cpu_set_supp_freqs(cpu_t *cp, const char *freqs)
 {
 	char clkstr[sizeof ("18446744073709551615") + 1]; /* ui64 MAX */
 	const char *lfreqs = clkstr;
-	boolean_t locked = B_FALSE;
+	boolean_t kstat_exists = B_FALSE;
+	kstat_t *ksp;
+	size_t len;
 
 	/*
 	 * A NULL pointer means we only support one speed.
@@ -2805,28 +2833,37 @@ cpu_set_supp_freqs(cpu_t *cp, const char *freqs)
 	 * going on. Of course, we only need to worry about this if
 	 * the kstat exists.
 	 */
-	if (cp->cpu_info_kstat != NULL) {
-		mutex_enter(cp->cpu_info_kstat->ks_lock);
-		locked = B_TRUE;
+	if ((ksp = cp->cpu_info_kstat) != NULL) {
+		mutex_enter(ksp->ks_lock);
+		kstat_exists = B_TRUE;
 	}
 
 	/*
-	 * Free any previously allocated string.
+	 * Free any previously allocated string and if the kstat
+	 * already exists, then update its data size.
 	 */
-	if (cp->cpu_supp_freqs != NULL)
-		kmem_free(cp->cpu_supp_freqs, strlen(cp->cpu_supp_freqs) + 1);
+	if (cp->cpu_supp_freqs != NULL) {
+		len = strlen(cp->cpu_supp_freqs) + 1;
+		kmem_free(cp->cpu_supp_freqs, len);
+		if (kstat_exists)
+			ksp->ks_data_size -= len;
+	}
 
 	/*
 	 * Allocate the new string and set the pointer.
 	 */
-	cp->cpu_supp_freqs = kmem_alloc(strlen(lfreqs) + 1, KM_SLEEP);
+	len = strlen(lfreqs) + 1;
+	cp->cpu_supp_freqs = kmem_alloc(len, KM_SLEEP);
 	(void) strcpy(cp->cpu_supp_freqs, lfreqs);
 
 	/*
-	 * kstat is free to take a snapshot once again.
+	 * If the kstat already exists then update the data size and
+	 * free the lock.
 	 */
-	if (locked)
-		mutex_exit(cp->cpu_info_kstat->ks_lock);
+	if (kstat_exists) {
+		ksp->ks_data_size += len;
+		mutex_exit(ksp->ks_lock);
+	}
 }
 
 /*

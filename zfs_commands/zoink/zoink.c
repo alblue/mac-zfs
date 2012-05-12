@@ -83,7 +83,7 @@ print_cache_info(kmem_cache_stats_t *cache_stats)
 		sprintf(linebuf, " zio_bufs %d", cache_stats->cache_obj_size);
 		mvaddstr(row, 0, linebuf);
 
-		sprintf(linebuf, "%9d %9d %9d %9d %9d %7d%K",
+		sprintf(linebuf, "%9d %9d %9d %9d %9d %7dK",
 			cache_stats->cache_obj_size,
 			cache_stats->cache_slab_size,
 			cache_stats->cache_obj_inuse + twin_stats->cache_obj_inuse,

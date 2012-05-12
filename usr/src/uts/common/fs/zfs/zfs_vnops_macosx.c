@@ -715,7 +715,7 @@ fileattrpack(attrinfo_t *aip, zfsvfs_t *zfsvfs, znode_t *zp)
 
 			/* Grab the hidden attribute directory vnode. */
 			if (zfs_get_xattrdir(zp, &xdvp, cr, 0) == 0 &&
-			    zfs_dirlook(VTOZ(xdvp), &cn, &xvp) == 0) {
+			    zfs_dirlook(VTOZ(xdvp), &cn, &xvp, 0, NULL, NULL) == 0) {
 				rsrcsize = VTOZ(xvp)->z_phys->zp_size;
 			}
 			if (xvp)
@@ -897,7 +897,7 @@ getfinderinfo(znode_t *zp, znode_phys_t *pzp, cred_t *cr, finderinfo_t *fip)
 	cn.cn_nameptr = XATTR_FINDERINFO_NAME;
 	cn.cn_namelen = strlen(cn.cn_nameptr);
 
-	if ((error = zfs_dirlook(VTOZ(xdvp), &cn, &xvp))) {
+	if ((error = zfs_dirlook(VTOZ(xdvp), &cn, &xvp, 0, NULL, NULL))) {
 		goto out;
 	}
 	error = dmu_read_uio(zp->z_zfsvfs->z_os, VTOZ(xvp)->z_id, auio,

@@ -22,7 +22,6 @@
 /*
  * Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
- *
  * Portions Copyright 2007-2008 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
@@ -604,6 +603,7 @@ uint_t taskq_smtbf = UINT_MAX;    /* mean time between injected failures */
  * Schedule a task specified by func and arg into the task queue entry tqe.
  */
 #define	TQ_ENQUEUE(tq, tqe, func, arg) {			\
+	ASSERT(MUTEX_HELD(&tq->tq_lock));				\
 	TQ_APPEND(tq->tq_task, tqe);				\
 	tqe->tqent_func = (func);				\
 	tqe->tqent_arg = (arg);					\

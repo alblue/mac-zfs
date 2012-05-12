@@ -50,6 +50,7 @@ typedef struct vdev vdev_t;
 typedef struct metaslab metaslab_t;
 typedef struct zilog zilog_t;
 typedef struct traverse_handle traverse_handle_t;
+typedef struct spa_aux_vdev spa_aux_vdev_t;
 struct dsl_pool;
 
 /*
@@ -277,7 +278,7 @@ typedef struct blkptr {
 #define	BP_IS_HOLE(bp)		((bp)->blk_birth == 0)
 #define	BP_IS_OLDER(bp, txg)	(!BP_IS_HOLE(bp) && (bp)->blk_birth < (txg))
 
-#define	BP_ZERO(bp)				\
+#define	BP_ZERO_DVAS(bp)			\
 {						\
 	(bp)->blk_dva[0].dva_word[0] = 0;	\
 	(bp)->blk_dva[0].dva_word[1] = 0;	\
@@ -285,11 +286,16 @@ typedef struct blkptr {
 	(bp)->blk_dva[1].dva_word[1] = 0;	\
 	(bp)->blk_dva[2].dva_word[0] = 0;	\
 	(bp)->blk_dva[2].dva_word[1] = 0;	\
+	(bp)->blk_birth = 0;			\
+}
+
+#define	BP_ZERO(bp)				\
+{						\
+	BP_ZERO_DVAS(bp)			\
 	(bp)->blk_prop = 0;			\
 	(bp)->blk_pad[0] = 0;			\
 	(bp)->blk_pad[1] = 0;			\
 	(bp)->blk_pad[2] = 0;			\
-	(bp)->blk_birth = 0;			\
 	(bp)->blk_fill = 0;			\
 	ZIO_SET_CHECKSUM(&(bp)->blk_cksum, 0, 0, 0, 0);	\
 }
@@ -321,9 +327,9 @@ typedef struct blkptr {
 extern int spa_open(const char *pool, spa_t **, void *tag);
 extern int spa_get_stats(const char *pool, nvlist_t **config,
     char *altroot, size_t buflen);
-extern int spa_create(const char *pool, nvlist_t *config, const char *altroot,
+extern int spa_create(const char *pool, nvlist_t *config, nvlist_t *props,
     const char *history_str);
-extern int spa_import(const char *pool, nvlist_t *config, const char *altroot);
+extern int spa_import(const char *pool, nvlist_t *config, nvlist_t *props);
 extern nvlist_t *spa_tryimport(nvlist_t *tryconfig);
 extern int spa_destroy(char *pool);
 extern int spa_export(char *pool, nvlist_t **oldconfig);
@@ -354,6 +360,14 @@ extern void spa_spare_remove(vdev_t *vd);
 extern boolean_t spa_spare_exists(uint64_t guid, uint64_t *pool);
 extern void spa_spare_activate(vdev_t *vd);
 
+/* L2ARC state (which is global across all pools) */
+extern void spa_l2cache_add(vdev_t *vd);
+extern void spa_l2cache_remove(vdev_t *vd);
+extern boolean_t spa_l2cache_exists(uint64_t guid, uint64_t *pool);
+extern void spa_l2cache_activate(vdev_t *vd);
+extern void spa_l2cache_drop(spa_t *spa);
+extern void spa_l2cache_space_update(vdev_t *vd, int64_t space, int64_t alloc);
+
 /* scrubbing */
 extern int spa_scrub(spa_t *spa, pool_scrub_type_t type, boolean_t force);
 extern void spa_scrub_suspend(spa_t *spa);
@@ -372,6 +386,7 @@ extern void spa_sync_allpools(void);
 #define	SPA_CONFIG_UPDATE_VDEVS	1
 
 extern void spa_config_sync(void);
+extern void spa_config_check(const char *, const char *);
 extern void spa_config_load(void);
 extern nvlist_t *spa_all_configs(uint64_t *);
 extern void spa_config_set(spa_t *spa, nvlist_t *config);
@@ -426,6 +441,7 @@ extern uint64_t spa_get_asize(spa_t *spa, uint64_t lsize);
 extern uint64_t spa_version(spa_t *spa);
 extern int spa_max_replication(spa_t *spa);
 extern int spa_busy(void);
+extern uint8_t spa_get_failmode(spa_t *spa);
 
 /* Miscellaneous support routines */
 extern int spa_rename(const char *oldname, const char *newname);
@@ -435,7 +451,7 @@ extern void spa_strfree(char *);
 extern uint64_t spa_get_random(uint64_t range);
 extern void sprintf_blkptr(char *buf, int len, const blkptr_t *bp);
 extern void spa_freeze(spa_t *spa);
-extern void spa_upgrade(spa_t *spa);
+extern void spa_upgrade(spa_t *spa, uint64_t version);
 extern void spa_evict_all(void);
 extern vdev_t *spa_lookup_by_guid(spa_t *spa, uint64_t guid);
 extern boolean_t spa_has_spare(spa_t *, uint64_t guid);
@@ -487,10 +503,9 @@ extern void spa_init(int flags);
 extern void spa_fini(void);
 
 /* properties */
-extern int spa_set_props(spa_t *spa, nvlist_t *nvp);
-extern int spa_get_props(spa_t *spa, nvlist_t **nvp);
-extern void spa_clear_bootfs(spa_t *spa, uint64_t obj, dmu_tx_t *tx);
-extern boolean_t spa_has_bootfs(spa_t *spa);
+extern int spa_prop_set(spa_t *spa, nvlist_t *nvp);
+extern int spa_prop_get(spa_t *spa, nvlist_t **nvp);
+extern void spa_prop_clear_bootfs(spa_t *spa, uint64_t obj, dmu_tx_t *tx);
 
 /* asynchronous event notification */
 extern void spa_event_notify(spa_t *spa, vdev_t *vdev, const char *name);

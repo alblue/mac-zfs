@@ -45,6 +45,9 @@
 #else
 #include <sys/u8_textprep.h>
 #endif	/* _KERNEL */
+#ifdef __APPLE__
+#include <sys/u8_textprep.h>
+#endif
 #include <sys/byteorder.h>
 #include <sys/errno.h>
 

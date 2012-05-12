@@ -425,6 +425,16 @@ zil_destroy(zilog_t *zilog, boolean_t keep_first)
 
 	mutex_enter(&zilog->zl_lock);
 
+	/*
+	 * It is possible for the ZIL to get the previously mounted zilog
+	 * structure of the same dataset if quickly remounted and the dbuf
+	 * eviction has not completed. In this case we can see a non
+	 * empty lwb list and keep_first will be set. We fix this by
+	 * clearing the keep_first. This will be slower but it's very rare.
+	 */
+	if (!list_is_empty(&zilog->zl_lwb_list) && keep_first)
+		keep_first = B_FALSE;
+
 	ASSERT3U(zilog->zl_destroy_txg, <, txg);
 	zilog->zl_destroy_txg = txg;
 	zilog->zl_keep_first = keep_first;
@@ -566,7 +576,10 @@ zil_add_vdev(zilog_t *zilog, uint64_t vdev)
 	}
 }
 
-static void
+#ifdef __APPLE__
+static
+#endif
+void
 zil_flush_vdevs(zilog_t *zilog)
 {
 	zil_vdev_t *zv;
@@ -849,7 +862,7 @@ zil_lwb_commit(zilog_t *zilog, itx_t *itx, lwb_t *lwb)
 }
 
 itx_t *
-zil_itx_create(int txtype, size_t lrsize)
+zil_itx_create(uint64_t txtype, size_t lrsize)
 {
 	itx_t *itx;
 
@@ -942,7 +955,10 @@ zil_clean(zilog_t *zilog)
 	mutex_exit(&zilog->zl_lock);
 }
 
-static void
+#ifdef __APPLE__
+static
+#endif
+void
 zil_commit_writer(zilog_t *zilog, uint64_t seq, uint64_t foid)
 {
 	uint64_t txg;
@@ -1394,6 +1410,9 @@ zil_replay_log_record(zilog_t *zilog, lr_t *lr, void *zra, uint64_t claim_txg)
 	if (lr->lrc_seq <= zh->zh_replay_seq)	/* already replayed */
 		return;
 
+	/* Strip case-insensitive bit, still present in log record */
+	txtype &= ~TX_CI;
+
 	/*
 	 * Make a copy of the data so we can revise and extend it.
 	 */
@@ -1513,8 +1532,9 @@ zil_replay_log_record(zilog_t *zilog, lr_t *lr, void *zra, uint64_t claim_txg)
 	name = kmem_alloc(MAXNAMELEN, KM_SLEEP);
 	dmu_objset_name(zr->zr_os, name);
 	cmn_err(CE_WARN, "ZFS replay transaction error %d, "
-	    "dataset %s, seq 0x%llx, txtype %llu\n",
-	    error, name, (u_longlong_t)lr->lrc_seq, (u_longlong_t)txtype);
+	    "dataset %s, seq 0x%llx, txtype %llu %s\n",
+	    error, name, (u_longlong_t)lr->lrc_seq, (u_longlong_t)txtype,
+	    (lr->lrc_txtype & TX_CI) ? "CI" : "");
 	zilog->zl_stop_replay = 1;
 	kmem_free(name, MAXNAMELEN);
 }

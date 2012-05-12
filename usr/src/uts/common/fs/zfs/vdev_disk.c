@@ -21,7 +21,9 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
- * Portions Copyright 2007 Apple Inc. All rights reserved.
+ * Portions Copyright 2009 Apple Inc. All rights reserved.
+ * Use is subject to license terms.
+ * Portions Copyright 2010 Alex Blewitt. All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -53,20 +55,15 @@ typedef struct vdev_disk_buf {
 #endif /*!__APPLE__*/
 
 static int
-vdev_disk_open(vdev_t *vd, uint64_t *psize, uint64_t *ashift)
+vdev_disk_open_common(vdev_t *vd)
 {
 	vdev_disk_t *dvd = NULL;
 #ifdef __APPLE__
 	vnode_t *devvp = NULLVP;
 	vfs_context_t context = NULL;
-	uint64_t blkcnt;
-	uint32_t blksize;
-	int fmode = 0;
+	int fmode = spa_mode & (FREAD | FWRITE);
 #else
-	struct dk_minfo dkm;
 	dev_t dev;
-	char *physpath, *minorname;
-	int otyp;
 #endif
 	int error;
 
@@ -78,8 +75,22 @@ vdev_disk_open(vdev_t *vd, uint64_t *psize, uint64_t *ashift)
 		return (EINVAL);
 	}
 
-	dvd = kmem_zalloc(sizeof (vdev_disk_t), KM_SLEEP);
+	dvd = vd->vdev_tsd = kmem_zalloc(sizeof (vdev_disk_t), KM_SLEEP);
 
+#ifdef __APPLE__
+	/* Obtain an opened/referenced vnode for the device. */
+	context = vfs_context_create((vfs_context_t)0);
+	error = vnode_open(vd->vdev_path, fmode, 0, 0, &devvp, context);
+	(void) vfs_context_rele(context);
+	
+	if (error == 0) {
+		if (vd->vdev_wholedisk == -1ULL)
+			vd->vdev_wholedisk = 0;
+		dvd->vd_devvp = devvp;
+	}
+	
+#else /* !__APPLE__ */
+	
 	/*
 	 * When opening a disk device, we want to preserve the user's original
 	 * intent.  We always want to open the device by the path the user gave
@@ -97,89 +108,6 @@ vdev_disk_open(vdev_t *vd, uint64_t *psize, uint64_t *ashift)
 	 *    by the devid instead.
 	 *
 	 */
-
-#ifdef __APPLE__
-	/* ### APPLE TODO ### */
-	/* ddi_devid_str_decode */
-
-	context = vfs_context_create((vfs_context_t)0);
-
-	/* Obtain an opened/referenced vnode for the device. */
-	if ((error = vnode_open(vd->vdev_path, spa_mode, 0, 0, &devvp, context))) {
-		goto out;
-	}
-	if (!vnode_isblk(devvp)) {
-		error = ENOTBLK;
-		goto out;
-	}
-	/* ### APPLE TODO ### */
-	/* vnode_authorize devvp for KAUTH_VNODE_READ_DATA and 
-	 * KAUTH_VNODE_WRITE_DATA 
-	 */
-
-	/*
-	 * Disallow opening of a device that is currently in use.
-	 * Flush out any old buffers remaining from a previous use.
-	 */
-	if ((error = vfs_mountedon(devvp))) {
-		goto out;
-	}
-	if (VNOP_FSYNC(devvp, MNT_WAIT, context) != 0) {
-		error = ENOTBLK;
-		goto out;
-	}
-	if ((error = buf_invalidateblks(devvp, BUF_WRITE_DATA, 0, 0))) {
-		goto out;
-	}
-
-	/*
-	 * Determine the actual size of the device.
-	 */
-	if (VNOP_IOCTL(devvp, DKIOCGETBLOCKSIZE, (caddr_t)&blksize, 0, context)
-	       	!= 0 || VNOP_IOCTL(devvp, DKIOCGETBLOCKCOUNT, (caddr_t)&blkcnt,
-		0, context) != 0) {
-		
-		error = EINVAL;
-		goto out;
-	}
-	*psize = blkcnt * (uint64_t)blksize;
-
-	/*
-	 *  ### APPLE TODO ###
-	 * If we own the whole disk, try to enable disk write caching.
-	 */
-
-	/*
-	 * Take the device's minimum transfer size into account.
-	 */
-	*ashift = highbit(MAX(blksize, SPA_MINBLOCKSIZE)) - 1;
-
-	/*
-	 * Clear the nowritecache bit, so that on a vdev_reopen() we will
-	 * try again.
-	 */
-	vd->vdev_nowritecache = B_FALSE;
-	vd->vdev_tsd = dvd;
-	dvd->vd_devvp = devvp;
-out:
-	if (error) {
-		if (devvp)
-			vnode_close(devvp, fmode, context);
-		if (dvd) 
-			kmem_free(dvd, sizeof (vdev_disk_t));
-		
-		/*
-		 * Since the open has failed, vd->vdev_tsd should
-		 * be NULL when we get here, signaling to the 
-		 * rest of the spa not to try and reopen or close this device
-		 */
-		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
-	}
-	if (context) {
-		(void) vfs_context_rele(context);
-	}
-	return (error);
-#else
 	if (vd->vdev_devid != NULL) {
 		if (ddi_devid_str_decode(vd->vdev_devid, &dvd->vd_devid,
 		    &dvd->vd_minor) != 0) {
@@ -264,18 +192,72 @@ out:
 			error = ldi_open_by_name(vd->vdev_path, spa_mode, kcred,
 			    &dvd->vd_lh, zfs_li);
 	}
+#endif
+	if (error)
+		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
 
-	if (error) {
+	return (error);
+}
+
+static int
+vdev_disk_open(vdev_t *vd, uint64_t *psize, uint64_t *ashift)
+{
+	vdev_disk_t *dvd;
+#ifdef __APPLE__
+	vnode_t *devvp = NULLVP;
+	vfs_context_t context = NULL;
+	uint64_t blkcnt;
+	uint32_t blksize;
+	int32_t  features;
+	int error;
+#else
+	struct dk_minfo dkm;
+	int error;
+	dev_t dev;
+	int otyp;
+#endif
+
+	error = vdev_disk_open_common(vd);
+	if (error)
+		return (error);
+
+	dvd = vd->vdev_tsd;
+
+#ifdef __APPLE__
+	devvp = dvd->vd_devvp;
+	/*
+	 * We expect block devices for a disk vdev
+	 */
+	if (!vnode_isblk(devvp)) {
+		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
+		return (ENOTBLK);
+	}
+	/*
+	 * Disallow opening of a device that is currently in use.
+	 */
+	if ((error = vfs_mountedon(devvp))) {
 		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
 		return (error);
 	}
-
+	/*
+	 * Flush out any old buffers remaining from a previous use.
+	 */
+	context = vfs_context_create((vfs_context_t)0);
+	if (VNOP_FSYNC(devvp, MNT_WAIT, context) ||
+		buf_invalidateblks(devvp, BUF_WRITE_DATA, 0, 0)) {
+		(void) vfs_context_rele(context);
+		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
+		return (EBUSY);
+	}
+#else
 	/*
 	 * Once a device is opened, verify that the physical device path (if
 	 * available) is up to date.
 	 */
 	if (ldi_get_dev(dvd->vd_lh, &dev) == 0 &&
 	    ldi_get_otyp(dvd->vd_lh, &otyp) == 0) {
+		char *physpath, *minorname;
+
 		physpath = kmem_alloc(MAXPATHLEN, KM_SLEEP);
 		minorname = NULL;
 		if (ddi_dev_pathname(dev, otyp, physpath) == 0 &&
@@ -292,15 +274,41 @@ out:
 			kmem_free(minorname, strlen(minorname) + 1);
 		kmem_free(physpath, MAXPATHLEN);
 	}
+#endif /* __APPLE__ */
 
 	/*
 	 * Determine the actual size of the device.
 	 */
+#ifdef __APPLE__
+	if (VNOP_IOCTL(devvp, DKIOCGETBLOCKSIZE, (caddr_t)&blksize, 0, context) ||
+		VNOP_IOCTL(devvp, DKIOCGETBLOCKCOUNT, (caddr_t)&blkcnt, 0, context)) {
+		(void) vfs_context_rele(context);
+		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
+		return (EINVAL);
+	}
+	*psize = blkcnt * (uint64_t)blksize;
+#else
 	if (ldi_get_size(dvd->vd_lh, psize) != 0) {
 		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
 		return (EINVAL);
 	}
+#endif
 
+#ifdef __APPLE__
+	/*
+	 * Check to see if the device supports FUA
+	 */
+	if (VNOP_IOCTL(devvp, DKIOCGETFEATURES, (caddr_t)&features, 0, context)
+		== 0) {
+		if (features & DK_FEATURE_FORCE_UNIT_ACCESS) {
+			vd->vdev_fua = B_TRUE;
+			printf("Enabling FUA writes on device %s\n",
+				   vd->vdev_path ? vd->vdev_path:
+				   "no-dev-name");
+		}
+	}
+	(void) vfs_context_rele(context);
+#else
 	/*
 	 * If we own the whole disk, try to enable disk write caching.
 	 * We ignore errors because it's OK if we can't do it.
@@ -310,16 +318,21 @@ out:
 		(void) ldi_ioctl(dvd->vd_lh, DKIOCSETWCE, (intptr_t)&wce,
 		    FKIOCTL, kcred, NULL);
 	}
+#endif
 
 	/*
 	 * Determine the device's minimum transfer size.
 	 * If the ioctl isn't supported, assume DEV_BSIZE.
 	 */
+#ifdef __APPLE__
+	*ashift = highbit(MAX(blksize, SPA_MINBLOCKSIZE)) - 1;
+#else
 	if (ldi_ioctl(dvd->vd_lh, DKIOCGMEDIAINFO, (intptr_t)&dkm,
 	    FKIOCTL, kcred, NULL) != 0)
 		dkm.dki_lbsize = DEV_BSIZE;
 
 	*ashift = highbit(MAX(dkm.dki_lbsize, SPA_MINBLOCKSIZE)) - 1;
+#endif
 
 	/*
 	 * Clear the nowritecache bit, so that on a vdev_reopen() we will
@@ -328,7 +341,6 @@ out:
 	vd->vdev_nowritecache = B_FALSE;
 
 	return (0);
-#endif
 }
 
 static void
@@ -362,6 +374,166 @@ vdev_disk_close(vdev_t *vd)
 
 	kmem_free(dvd, sizeof (vdev_disk_t));
 	vd->vdev_tsd = NULL;
+}
+
+#ifdef __APPLE__
+static int
+vdev_disk_physio(vnode_t *devvp, caddr_t data, size_t size, uint64_t offset, int flags)
+{
+	struct buf *bp;
+	int error = 0;
+	
+	if (devvp == NULL)
+		return (EINVAL);
+	
+	bp = buf_alloc(devvp);
+	buf_setflags(bp, flags | B_NOCACHE | B_FAILFAST);
+	buf_setcount(bp, size);
+	buf_setdataptr(bp, (uintptr_t)data);
+	buf_setlblkno(bp, lbtodb(offset));
+	buf_setblkno(bp, lbtodb(offset));
+	buf_setsize(bp, size);
+	if ((flags & B_READ) == 0)
+		vnode_startwrite(devvp);
+	error = VNOP_STRATEGY(bp);
+	ASSERT(error == 0);
+	if ((error = buf_biowait(bp)) == 0 && buf_resid(bp) != 0)
+		error = EIO;
+	buf_free(bp);
+	
+	return (error);
+}
+#else
+static int
+vdev_disk_physio(ldi_handle_t vd_lh, caddr_t data, size_t size,
+				 uint64_t offset, int flags)
+{
+	buf_t *bp;
+	int error = 0;
+	
+	if (vd_lh == NULL)
+		return (EINVAL);
+	
+	ASSERT(flags & B_READ || flags & B_WRITE);
+	
+	bp = getrbuf(KM_SLEEP);
+	bp->b_flags = flags | B_BUSY | B_NOCACHE | B_FAILFAST;
+	bp->b_bcount = size;
+	bp->b_un.b_addr = (void *)data;
+	bp->b_lblkno = lbtodb(offset);
+	bp->b_bufsize = size;
+	
+	error = ldi_strategy(vd_lh, bp);
+	ASSERT(error == 0);
+	if ((error = biowait(bp)) == 0 && bp->b_resid != 0)
+		error = EIO;
+	freerbuf(bp);
+	
+	return (error);
+}
+#endif /* __APPLE__ */
+
+
+static int
+vdev_disk_probe_io(vdev_t *vd, caddr_t data, size_t size, uint64_t offset,
+    int flags)
+{
+	int error = 0;
+	vdev_disk_t *dvd = vd ? vd->vdev_tsd : NULL;
+	
+#ifdef __APPLE__
+	if (vd == NULL || dvd == NULL || dvd->vd_devvp == NULL)
+		return (EINVAL);
+	error = vdev_disk_physio(dvd->vd_devvp, data, size, offset, flags);
+#else
+	if (vd == NULL || dvd == NULL || dvd->vd_lh == NULL)
+		return (EINVAL);
+	error = vdev_disk_physio(dvd->vd_lh, data, size, offset, flags);
+#endif
+
+	if (zio_injection_enabled && error == 0)
+		error = zio_handle_device_injection(vd, EIO);
+
+	return (error);
+}
+
+/*
+ * Determine if the underlying device is accessible by reading and writing
+ * to a known location. We must be able to do this during syncing context
+ * and thus we cannot set the vdev state directly.
+ */
+static int
+vdev_disk_probe(vdev_t *vd)
+{
+	uint64_t offset;
+	vdev_t *nvd;
+	int l, error = 0, retries = 0;
+	char *vl_pad;
+
+	if (vd == NULL)
+		return (EINVAL);
+
+	/* Hijack the current vdev */
+	nvd = vd;
+
+	/*
+	 * Pick a random label to rewrite.
+	 */
+	l = spa_get_random(VDEV_LABELS);
+	ASSERT(l < VDEV_LABELS);
+
+	offset = vdev_label_offset(vd->vdev_psize, l,
+	    offsetof(vdev_label_t, vl_pad));
+
+	vl_pad = kmem_alloc(VDEV_SKIP_SIZE, KM_SLEEP);
+
+	/*
+	 * Try to read and write to a special location on the
+	 * label. We use the existing vdev initially and only
+	 * try to create and reopen it if we encounter a failure.
+	 */
+	while ((error = vdev_disk_probe_io(nvd, vl_pad, VDEV_SKIP_SIZE,
+	    offset, B_READ)) != 0 && retries == 0) {
+
+		nvd = kmem_zalloc(sizeof (vdev_t), KM_SLEEP);
+		if (vd->vdev_path)
+			nvd->vdev_path = spa_strdup(vd->vdev_path);
+		if (vd->vdev_physpath)
+			nvd->vdev_physpath = spa_strdup(vd->vdev_physpath);
+		if (vd->vdev_devid)
+			nvd->vdev_devid = spa_strdup(vd->vdev_devid);
+		nvd->vdev_wholedisk = vd->vdev_wholedisk;
+		nvd->vdev_guid = vd->vdev_guid;
+		retries++;
+
+		error = vdev_disk_open_common(nvd);
+		if (error)
+			break;
+	}
+
+	if (!error) {
+		error = vdev_disk_probe_io(nvd, vl_pad, VDEV_SKIP_SIZE,
+		    offset, B_WRITE);
+	}
+
+	/* Clean up if we allocated a new vdev */
+	if (retries) {
+		vdev_disk_close(nvd);
+		if (nvd->vdev_path)
+			spa_strfree(nvd->vdev_path);
+		if (nvd->vdev_physpath)
+			spa_strfree(nvd->vdev_physpath);
+		if (nvd->vdev_devid)
+			spa_strfree(nvd->vdev_devid);
+		kmem_free(nvd, sizeof (vdev_t));
+	}
+	kmem_free(vl_pad, VDEV_SKIP_SIZE);
+
+	/* Reset the failing flag */
+	if (!error)
+		vd->vdev_is_failing = B_FALSE;
+
+	return (error);
 }
 
 static void
@@ -419,7 +591,7 @@ vdev_disk_io_start(zio_t *zio)
 		zio_vdev_io_bypass(zio);
 
 		/* XXPOLICY */
-		if (vdev_is_dead(vd)) {
+		if (!vdev_readable(vd)) {
 			zio->io_error = ENXIO;
 			zio_next_stage_async(zio);
 			return;
@@ -545,7 +717,11 @@ vdev_disk_io_start(zio_t *zio)
 	bp->b_iodone = (int (*)())vdev_disk_io_intr;
 
 	/* XXPOLICY */
-	error = vdev_is_dead(vd) ? ENXIO : vdev_error_inject(vd, zio);
+	if (zio->io_type == ZIO_TYPE_WRITE)
+		error = vdev_writeable(vd) ? vdev_error_inject(vd, zio) : ENXIO;
+	else
+		error = vdev_readable(vd) ? vdev_error_inject(vd, zio) : ENXIO;
+	error = (vd->vdev_remove_wanted || vd->vdev_is_failing) ? ENXIO : error;
 	if (error) {
 		zio->io_error = error;
 		bioerror(bp, error);
@@ -563,10 +739,6 @@ vdev_disk_io_start(zio_t *zio)
 static void
 vdev_disk_io_done(zio_t *zio)
 {
-	// vdev_t *vd = zio->io_vd;
-	// vdev_disk_t *dvd = vd->vdev_tsd;
-	int state;
-
 	vdev_queue_io_done(zio);
 
 	if (zio->io_type == ZIO_TYPE_WRITE)
@@ -579,15 +751,23 @@ vdev_disk_io_done(zio_t *zio)
 	 * XXX- NOEL TODO
 	 * If the device returned EIO, then attempt a DKIOCSTATE ioctl to see if
 	 * the device has been removed.  If this is the case, then we trigger an
-	 * asynchronous removal of the device.
+	 * asynchronous removal of the device. Otherwise, probe the device and
+	 * make sure it's still accessible.
 	 */
 	if (zio->io_error == EIO) {
+		vdev_t *vd = zio->io_vd;
+		vdev_disk_t *dvd = vd->vdev_tsd;
+		int state;
+
 		state = DKIO_NONE;
-		if (ldi_ioctl(dvd->vd_lh, DKIOCSTATE, (intptr_t)&state,
+		if (dvd && ldi_ioctl(dvd->vd_lh, DKIOCSTATE, (intptr_t)&state,
 		    FKIOCTL, kcred, NULL) == 0 &&
 		    state != DKIO_INSERTED) {
 			vd->vdev_remove_wanted = B_TRUE;
 			spa_async_request(zio->io_spa, SPA_ASYNC_REMOVE);
+		} else if (vdev_probe(vd) != 0) {
+			ASSERT(vd->vdev_ops->vdev_op_leaf);
+			vd->vdev_is_failing = B_TRUE;
 		}
 	}
 #endif /* !__APPLE__ */
@@ -598,6 +778,7 @@ vdev_disk_io_done(zio_t *zio)
 vdev_ops_t vdev_disk_ops = {
 	vdev_disk_open,
 	vdev_disk_close,
+	vdev_disk_probe,
 	vdev_default_asize,
 	vdev_disk_io_start,
 	vdev_disk_io_done,

@@ -52,6 +52,8 @@ extern "C" {
 #define	SIDSYS_ID2SID	1
 
 #ifdef _KERNEL
+#define	KSIDLIST_MEM(n)	(sizeof (ksidlist_t) + ((n) - 1) * sizeof (ksid_t))
+
 /* Domains are stored in AVL trees so we can share them among SIDs */
 typedef struct ksiddomain {
 	uint_t		kd_ref;
@@ -92,6 +94,8 @@ typedef struct credsid {
 	ksidlist_t	*kr_sidlist;		/* List of SIDS */
 } credsid_t;
 
+#ifndef __APPLE__
+
 const char *ksid_getdomain(ksid_t *);
 uint_t ksid_getrid(ksid_t *);
 
@@ -116,6 +120,8 @@ void ksidlist_hold(ksidlist_t *);
 ksiddomain_t *ksid_lookupdomain(const char *);
 
 ksidlist_t *kcrsid_gidstosids(int, gid_t *);
+
+#endif /* !__APPLE__ */
 
 #else
 

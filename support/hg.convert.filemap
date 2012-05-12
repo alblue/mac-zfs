@@ -670,7 +670,7 @@ exclude usr/src/uts/common/sys/vmem_impl.h
 exclude usr/src/uts/common/sys/vmmeter.h
 exclude usr/src/uts/common/sys/vnic.h
 exclude usr/src/uts/common/sys/vnic_impl.h
-exclude usr/src/uts/common/sys/vnode.h
+# exclude usr/src/uts/common/sys/vnode.h - remapped to maczfs_vnode.h
 exclude usr/src/uts/common/sys/vscan.h
 exclude usr/src/uts/common/sys/vt.h
 exclude usr/src/uts/common/sys/vt_impl.h

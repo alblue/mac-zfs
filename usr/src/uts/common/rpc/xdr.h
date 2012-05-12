@@ -48,8 +48,10 @@
 #ifndef _KERNEL
 #include <stdio.h> /* defines FILE *, used in ANSI C function prototypes */
 #endif
-#ifdef _KERNEL && !defined(__APPLE__)
-//#include <sys/stream.h>
+#ifdef _KERNEL
+#ifndef __APPLE__
+#include <sys/stream.h>
+#endif
 #endif
 
 #ifdef __cplusplus

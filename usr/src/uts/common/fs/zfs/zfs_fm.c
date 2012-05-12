@@ -60,7 +60,7 @@
  * read I/Os, there  are basically three 'types' of I/O, which form a roughly
  * layered diagram:
  *
- *  +---------------+
+ * 	+---------------+
  * 	| Aggregate I/O |	No associated logical data or device
  * 	+---------------+
  *              |

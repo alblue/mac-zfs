@@ -54,7 +54,7 @@ extern int  kobj_read_file(struct _buf *, char *, unsigned, unsigned);
 extern int kobj_get_filesize(struct _buf *, uint64_t *size);
 extern int  kobj_fstat(struct vnode *, struct bootstat *);
 
-#endif _KERNEL
+#endif /* _KERNEL */
 #else /* OpenSolaris */
 
 #include <sys/modctl.h>
