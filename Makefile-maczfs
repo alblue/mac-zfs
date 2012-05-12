@@ -106,16 +106,16 @@ ALL_KEXT := zfskext
 
 src := usr/src
 
-libzfs_SOURCES := $(addprefix $(src)/common/,avl/avl.c devid/devid.c nvpair/nvpair.c nvpair/nvpair_alloc_fixed.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
+libzfs_SOURCES := $(addprefix $(src)/common/,acl/acl_common.c avl/avl.c devid/devid.c nvpair/nvpair.c nvpair/nvpair_alloc_fixed.c unicode/u8_textprep.c unicode/uconv.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c zfs/zpool_prop.c zfs/zprop_common.c)
 libzfs_SOURCES += $(addprefix $(src)/lib/,libdevid/deviceid.c libnsl/rpc/xdr.c libnsl/rpc/xdr_array.c libnsl/rpc/xdr_mem.c libnvpair/libnvpair.c libnvpair/nvpair_alloc_system.c)
 libzfs_SOURCES += $(addprefix $(src)/lib/libuutil/common/,uu_alloc.c uu_avl.c uu_dprintf.c uu_ident.c uu_list.c uu_misc.c uu_open.c uu_pname.c uu_strtoint.c)
-libzfs_SOURCES += $(addprefix $(src)/lib/libzfs/common/,libzfs_changelist.c libzfs_config.c libzfs_dataset.c libzfs_graph.c libzfs_import.c libzfs_mount.c libzfs_pool.c libzfs_status.c libzfs_util.c)
+libzfs_SOURCES += $(addprefix $(src)/lib/libzfs/common/,libzfs_changelist.c libzfs_config.c libzfs_dataset.c libzfs_graph.c libzfs_import.c libzfs_mount.c libzfs_pool.c libzfs_sendrecv.c libzfs_status.c libzfs_util.c)
 libzfs_SOURCES += $(addprefix $(src)/,libgen/common/mkdirp.c maczfs/assfail.c)
 
 libzfs_DYLIB := YES
 libzfs_VERS := 1
 libzfs_LDLIBS := -lc
-libzfs_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
+libzfs_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
 libzfs_INCSYS := $(addprefix $(src)/,maczfs libgen/common lib/libzfs/common lib/libuutil/common common/zfs)  $(addprefix $(src)/lib/,libdevid libnsl/rpc libnsl/include libnvpair)  $(addprefix $(src)/,head uts/common uts/common/fs/zfs lib uts/common/sys) $(src)
 
 libzfs_INSTHDRS := $(addprefix $(src)/common/,devid/devid_impl.h util/qsort.h zfs/zfs_deleg.h zfs/zfs_namecheck.h zfs/zfs_prop.h)
@@ -128,7 +128,7 @@ libzfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmac
 zfs_SOURCES := $(addprefix $(src)/,cmd/zfs/zfs_iter.c cmd/zfs/zfs_main.c maczfs/assfail.c)
 zfs_LIBS := libzfs
 zfs_LDLIBS := -lc
-zfs_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zfs_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
 zfs_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zfs maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair) $(src)
 
 zfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
@@ -137,24 +137,24 @@ zfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx
 zpool_SOURCES := $(addprefix $(src)/,cmd/zpool/zpool_iter.c cmd/zpool/zpool_main.c cmd/zpool/zpool_util.c cmd/zpool/zpool_vdev.c maczfs/assfail.c)
 zpool_LIBS := libzfs
 zpool_LDLIBS := -lc
-zpool_CFLAGS := -v -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zpool_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
 zpool_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
 
 zpool_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
 
 
-zfskext_SOURCES := $(addprefix $(src)/common/,avl/avl.c nvpair/nvpair.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
+zfskext_SOURCES := $(addprefix $(src)/common/,acl/acl_common.c avl/avl.c nvpair/nvpair.c unicode/u8_textprep.c unicode/uconv.c util/qsort.c util/string.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c zfs/zpool_prop.c zfs/zprop_common.c)
 zfskext_SOURCES += $(addprefix $(src)/maczfs/,assfail.c kernel/maczfs_kernel.c kernel/zfs_context.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,arc.c bplist.c dbuf.c dmu.c dmu_object.c dmu_objset.c dmu_send.c dmu_traverse.c dmu_tx.c dmu_zfetch.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,dnode.c dnode_sync.c dsl_dataset.c dsl_deleg.c dsl_dir.c dsl_pool.c dsl_prop.c dsl_synctask.c fletcher.c gzip.c lzjb.c metaslab.c refcount.c)
-zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,rprwlock.c sha256.c spa.c spa_config.c spa_errlog.c spa_history.c spa_misc.c space_map.c txg.c uberblock.c unique.c vdev.c vdev_cache.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,rprwlock.c rrwlock.c sha256.c spa.c spa_config.c spa_errlog.c spa_history.c spa_misc.c space_map.c txg.c uberblock.c unique.c vdev.c vdev_cache.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,vdev_disk.c vdev_file.c vdev_label.c vdev_mirror.c vdev_missing.c vdev_queue.c vdev_raidz.c vdev_root.c zap.c zap_leaf.c zap_micro.c)
-zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_acl.c zfs_byteswap.c zfs_ctldir.c zfs_dir.c zfs_fm.c zfs_ioctl.c zfs_log.c zfs_replay.c zfs_rlock.c zfs_vfsops.c zfs_vnops.c)
+zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_acl.c zfs_byteswap.c zfs_ctldir.c zfs_dir.c zfs_fm.c zfs_fuid.c zfs_ioctl.c zfs_log.c zfs_replay.c zfs_rlock.c zfs_vfsops.c zfs_vnops.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_vnops_macosx.c zfs_znode.c zil.c zio.c zio_checksum.c zio_compress.c zio_inject.c zvol.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/os/,callb.c kmem.c list.c nvpair_alloc_system.c taskq.c)
 zfskext_SOURCES += $(addprefix $(src)/uts/common/rpc/,xdr.c xdr_array.c xdr_mem.c) $(src)/uts/common/zmod/zmod.c
 
-zfskext_CFLAGS := -v -mkernel -DNAMEDSTREAMS -D__APPLE_API_UNSTABLE -D_KERNEL -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE
+zfskext_CFLAGS := -mkernel -DNAMEDSTREAMS -D__APPLE_API_UNSTABLE -D_KERNEL -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE
 zfskext_CFLAGS += -nostdinc -finline -fno-keep-inline-functions -Wmissing-prototypes -Wunused-function -Wunused-label -w -Wshadow -Wnewline-eof -Wno-deprecated-declarations
 zfskext_CFLAGS += -include $(src)/uts/common/fs/zfs/sys/zfs_context.h -include $(src)/uts/common/sys/types.h 
 
