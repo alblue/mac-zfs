@@ -600,8 +600,8 @@ else
 $(1)_$(2)_LIBS_AR_DY_OK_PATH := $(foreach i,$($(1)_$(2)_LIBS_AR_DY_OK),$(BUILDBASE)/$(i)_$(2)/$($(i)_$(2)_INSTNAME_FIN).$(LNKEXT))
 
 $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR_DY_OK_PATH)
-	mkdir $$@.tax
-	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -o x $$${i} ; done
+	mkdir -pv $$@.tax
+	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -x -o  $$$${i} ; done
 	ar rs $$@ $$@.tax/* $($(1)_$(2)_OBJ_ALL)
 	rm -r $$@.tax
 endif
