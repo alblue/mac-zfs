@@ -780,7 +780,7 @@ zfs_validate_properties(libzfs_handle_t *hdl, zfs_type_t type, char *pool_name,
 		}
 
 		if (zfs_prop_readonly(prop) &&
-		    (prop != ZFS_PROP_VOLBLOCKSIZE || zhp != NULL)) {
+		    (!zfs_prop_setonce(prop) || zhp != NULL)) {
 			zfs_error_aux(hdl,
 			    dgettext(TEXT_DOMAIN, "'%s' is readonly"),
 			    propname);

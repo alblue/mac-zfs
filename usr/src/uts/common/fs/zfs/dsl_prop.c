@@ -44,8 +44,13 @@ dodefault(const char *propname, int intsz, int numint, void *buf)
 {
 	zfs_prop_t prop;
 
+	/*
+	 * The setonce properties are read-only, BUT they still
+	 * have a default value that can be used as the initial
+	 * value.
+	 */
 	if ((prop = zfs_name_to_prop(propname)) == ZFS_PROP_INVAL ||
-	    zfs_prop_readonly(prop))
+	    (zfs_prop_readonly(prop) && !zfs_prop_setonce(prop)))
 		return (ENOENT);
 
 	if (zfs_prop_get_type(prop) == PROP_TYPE_STRING) {
