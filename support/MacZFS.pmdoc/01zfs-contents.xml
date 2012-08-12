@@ -21,6 +21,8 @@
       </f>
       <f n="local" o="root" g="wheel" p="16749">
         <f n="bin" o="root" g="wheel" p="16749">
+          <f n="zdb" o="root" g="wheel" p="33133" />
+          <f n="ztest" o="root" g="wheel" p="33133" />
           <f n="zoink" o="root" g="wheel" p="33133">
             <mod>mode</mod>
           </f>
