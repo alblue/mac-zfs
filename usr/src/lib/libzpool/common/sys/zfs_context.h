@@ -303,6 +303,15 @@ struct vnode {
 	int		v_fd;
 	char		*v_path;
 };
+// The vnode_t has differing types in OSX and the ZFS codebase - one is a struct vnode, the other is a struct vnode*
+// If we use a #define here, we can replace all the code on the fly - but we need to be careful about the OSX headers
+// (e.g. mount.h, ubc.h, file.h, libc.h) that expect the vnode to be sane. So, we provide maczfs/maczfs_{mount,ubc,file,libc}.h
+// to use instead e.g. if there's compile errors, do:
+// #ifdef __APPLE__
+// #include <maczfs/maczfs_file.h>
+// #else
+// #include <sys/file.h>
+// #endif /* __APPLE__ */
 #define vnode_t struct vnode
 
 extern int vn_open(char *path, int x1, int oflags, int mode, vnode_t **vpp,
@@ -377,6 +386,71 @@ struct vnode_attr {
 	/* traditional stat(2) parameter fields */
 	u_offset_t	va_data_size;	/* file size in bytes */
 };
+
+#define va_mask         va_active
+#define va_size         va_data_size
+
+typedef struct vnode_attr vattr_t;
+
+#if 0
+struct vnode_attr {
+	/* bitfields */
+	uint64_t	va_supported;
+	uint64_t	va_active;
+
+	/*
+	 * Control flags.  The low 16 bits are reserved for the
+	 * ioflags being passed for truncation operations.
+	 */
+	int		va_vaflags;
+	
+	/* traditional stat(2) parameter fields */
+	dev_t		va_rdev;	/* device id (device nodes only) */
+	uint64_t	va_nlink;	/* number of references to this file */
+	uint64_t	va_total_size;	/* size in bytes of all forks */
+	uint64_t	va_total_alloc;	/* disk space used by all forks */
+	uint64_t	va_data_size;	/* size in bytes of the fork managed by current vnode */
+	uint64_t	va_data_alloc;	/* disk space used by the fork managed by current vnode */
+	uint32_t	va_iosize;	/* optimal I/O blocksize */
+
+	/* file security information */
+	uid_t		va_uid;		/* owner UID */
+	gid_t		va_gid;		/* owner GID */
+	mode_t		va_mode;	/* posix permissions */
+	uint32_t	va_flags;	/* file flags */
+	struct kauth_acl *va_acl;	/* access control list */
+
+	/* timestamps */
+	struct timespec	va_create_time;	/* time of creation */
+	struct timespec	va_access_time;	/* time of last access */
+	struct timespec	va_modify_time;	/* time of last data modification */
+	struct timespec	va_change_time;	/* time of last metadata change */
+	struct timespec	va_backup_time;	/* time of last backup */
+	
+	/* file parameters */
+	uint64_t	va_fileid;	/* file unique ID in filesystem */
+	uint64_t	va_linkid;	/* file link unique ID */
+	uint64_t	va_parentid;	/* parent ID */
+	uint32_t	va_fsid;	/* filesystem ID */
+	uint64_t	va_filerev;	/* file revision counter */	/* XXX */
+	uint32_t	va_gen;		/* file generation count */	/* XXX - relationship of
+									* these two? */
+	/* misc parameters */
+	uint32_t	va_encoding;	/* filename encoding script */
+
+	enum vtype	va_type;	/* file type (create only) */
+	char *		va_name;	/* Name for ATTR_CMN_NAME; MAXPATHLEN bytes */
+	guid_t		va_uuuid;	/* file owner UUID */
+	guid_t		va_guuid;	/* file group UUID */
+	
+	/* Meaningful for directories only */
+	uint64_t	va_nchildren;     /* Number of items in a directory */
+	uint64_t	va_dirlinkcount;  /* Real references to dir (i.e. excluding "." and ".." refs) */
+
+	/* add new fields here only */
+		
+};
+#endif
 
 /*
  * Vnode attributes, new-style.
@@ -789,10 +863,12 @@ typedef struct vnode {
 } vnode_t;
 #endif /* !__APPLE__ */
 
+#if 0
 typedef struct vattr {
 	uint_t		va_mask;	/* bit-mask of attributes */
 	u_offset_t	va_size;	/* file size in bytes */
 } vattr_t;
+#endif
 
 #define	AT_TYPE		0x0001
 #define	AT_MODE		0x0002

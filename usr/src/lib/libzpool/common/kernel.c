@@ -963,7 +963,7 @@ kernel_fini(void)
 	spa_fini();
 }
 
-#ifndef __APPLE__
+//#ifndef __APPLE__
 int
 z_uncompress(void *dst, size_t *dstlen, const void *src, size_t srclen)
 {
@@ -988,7 +988,7 @@ z_compress_level(void *dst, size_t *dstlen, const void *src, size_t srclen,
 
 	return (ret);
 }
-#endif
+//#endif
 
 uid_t
 crgetuid(cred_t *cr)
