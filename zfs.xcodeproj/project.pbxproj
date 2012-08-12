@@ -22,6 +22,11 @@
 				26B29B900ACE1CAB00A6F03B /* PBXTargetDependency */,
 				26B29B920ACE1CAF00A6F03B /* PBXTargetDependency */,
 				2665B6470BB47474004F043E /* PBXTargetDependency */,
+				206788D815D8623500F952DF /* PBXTargetDependency */,
+				206788D615D8623500F952DF /* PBXTargetDependency */,
+				206788D415D8623500F952DF /* PBXTargetDependency */,
+				206788DA15D8623F00F952DF /* PBXTargetDependency */,
+				206788DC15D8624500F952DF /* PBXTargetDependency */,
 			);
 			name = "zfs aggregate";
 			productName = "zfs aggregate";
@@ -299,7 +304,7 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 205A1E931365DE5E00C2B265 /* libzpool */;
+			remoteGlobalIDString = 205A1E931365DE5E00C2B265;
 			remoteInfo = libzpool;
 		};
 		2064E54A15D81A770054C259 /* PBXContainerItemProxy */ = {
@@ -313,8 +318,43 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 2696406B0AACEAD20073456B /* libzfs */;
+			remoteGlobalIDString = 2696406B0AACEAD20073456B;
 			remoteInfo = libzfs;
+		};
+		206788D315D8623500F952DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 205A1E931365DE5E00C2B265 /* libzpool */;
+			remoteInfo = libzpool;
+		};
+		206788D515D8623500F952DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 205A1E861365DDD600C2B265 /* libnvpair */;
+			remoteInfo = libnvpair;
+		};
+		206788D715D8623500F952DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 205A1E7A1365DD4000C2B265 /* libnsl */;
+			remoteInfo = libnsl;
+		};
+		206788D915D8623F00F952DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2064E54815D81A770054C259 /* zdb */;
+			remoteInfo = zdb;
+		};
+		206788DB15D8624500F952DF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FA93776E10A3924300754C9E /* ztest */;
+			remoteInfo = ztest;
 		};
 		2611F76A0ACDD5C900E5D4E2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -511,7 +551,7 @@
 		205A1F111365E0C500C2B265 /* __.SYMDEF SORTED */ = {isa = PBXFileReference; lastKnownFileType = file; path = "__.SYMDEF SORTED"; sourceTree = "<group>"; };
 		205A1F7C1365EA7F00C2B265 /* zfs_context_libzpool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfs_context_libzpool.c; sourceTree = "<group>"; };
 		2064E51A15D812480054C259 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
-		2064E55315D81A770054C259 /* ztest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ztest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2064E55315D81A770054C259 /* zdb */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = zdb; sourceTree = BUILT_PRODUCTS_DIR; };
 		2064E56215D81ADC0054C259 /* zdb_il.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zdb_il.c; path = zdb/zdb_il.c; sourceTree = "<group>"; };
 		2064E56315D81ADC0054C259 /* zdb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = zdb.c; path = zdb/zdb.c; sourceTree = "<group>"; };
 		2611F7360ACDD13900E5D4E2 /* zfs.util */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = zfs.util; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -934,7 +974,7 @@
 				205A1E7B1365DD4000C2B265 /* libnsl.a */,
 				205A1E871365DDD600C2B265 /* libnvpair.a */,
 				205A1E941365DE5E00C2B265 /* libzpool.dylib */,
-				2064E55315D81A770054C259 /* ztest */,
+				2064E55315D81A770054C259 /* zdb */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1768,7 +1808,7 @@
 			);
 			name = zdb;
 			productName = ztest;
-			productReference = 2064E55315D81A770054C259 /* ztest */;
+			productReference = 2064E55315D81A770054C259 /* zdb */;
 			productType = "com.apple.product-type.tool";
 		};
 		2611F7350ACDD13900E5D4E2 /* zfs.util */ = {
@@ -2338,6 +2378,31 @@
 			isa = PBXTargetDependency;
 			target = 2696406B0AACEAD20073456B /* libzfs */;
 			targetProxy = 2064E55515D81A900054C259 /* PBXContainerItemProxy */;
+		};
+		206788D415D8623500F952DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 205A1E931365DE5E00C2B265 /* libzpool */;
+			targetProxy = 206788D315D8623500F952DF /* PBXContainerItemProxy */;
+		};
+		206788D615D8623500F952DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 205A1E861365DDD600C2B265 /* libnvpair */;
+			targetProxy = 206788D515D8623500F952DF /* PBXContainerItemProxy */;
+		};
+		206788D815D8623500F952DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 205A1E7A1365DD4000C2B265 /* libnsl */;
+			targetProxy = 206788D715D8623500F952DF /* PBXContainerItemProxy */;
+		};
+		206788DA15D8623F00F952DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2064E54815D81A770054C259 /* zdb */;
+			targetProxy = 206788D915D8623F00F952DF /* PBXContainerItemProxy */;
+		};
+		206788DC15D8624500F952DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FA93776E10A3924300754C9E /* ztest */;
+			targetProxy = 206788DB15D8624500F952DF /* PBXContainerItemProxy */;
 		};
 		2611F76B0ACDD5C900E5D4E2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -3063,7 +3128,7 @@
 					"$(SRCROOT)/usr/src/lib/libzpool/common/sys/zfs_context.h",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = ztest;
+				PRODUCT_NAME = zdb;
 			};
 			name = Debug;
 		};
@@ -3085,7 +3150,7 @@
 					"$(SRCROOT)/usr/src/lib/libzpool/common/sys/zfs_context.h",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = ztest;
+				PRODUCT_NAME = zdb;
 			};
 			name = DebugLLVM;
 		};
@@ -3106,7 +3171,7 @@
 					"$(SRCROOT)/usr/src/lib/libzpool/common/sys/zfs_context.h",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = ztest;
+				PRODUCT_NAME = zdb;
 				ZERO_LINK = NO;
 			};
 			name = Release;
