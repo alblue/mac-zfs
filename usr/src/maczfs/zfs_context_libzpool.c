@@ -381,6 +381,21 @@ SInt64 OSAddAtomic64_NV(SInt64 theAmount, volatile SInt64 *address) {
 	return OSAtomicAdd64(theAmount, address);
 }
 
+/* Userland and Kernel bhave opposite when executin atomic arithmetics:
+ * The kernel functions return the value BEFORE the operation.  The
+ * sources have be adapted to expect this behavior, which is opposite 
+ * from what Solaris does.
+ * 
+ * MacOSX USERLAND returns the value AFTER the operation.  To match the 
+ * (non-Solaris) expectations of the current code, we need to reverse 
+ * the operation before returning.
+ */
+SInt64 OSAddAtomic64(SInt64 theAmount, volatile SInt64 *address) {
+    SInt64 val = OSAtomicAdd64(theAmount, address); // Userland: value after operation
+    return (val - theAmount);
+}
+
+
 /* MacOSX has no userland 8-bit atomic function. so we should use a
    global mutext to lockout other threads while we manipulate the
    byte.  On the other hand, a simple byte or should be a single cpu
@@ -395,6 +410,53 @@ UInt8 OSBitOrAtomic8(UInt32 mask, volatile UInt8 *addr) {
 	pthread_mutex_unlock(&zfs_global_atomic_mutex);
 	return old;
 }
+
+#if !defined(__i386__) && !defined(__x86_64__)
+/*
+ * Emulated for architectures that don't have this primitive. Do an atomic
+ * add for the low order bytes, try to detect overflow/underflow, and
+ * update the high order bytes. The second update is definitely not
+ * atomic, but it's better than nothing.
+ * 
+ * This implementation is for USERLAND, hence it must return the value
+ * AFTER carring out the operation. 
+ */
+SInt64
+OSAtomicAdd64(SInt64 theAmount, volatile SInt64 *address)
+{
+	volatile SInt32 *lowaddr;
+	volatile SInt32 *highaddr;
+	SInt32 highword;
+	SInt32 lowword;
+  SInt32 oldlowword;
+	
+#ifdef __BIG_ENDIAN__
+	highaddr = (volatile SInt32 *)address;
+	lowaddr = highaddr + 1;
+#else
+	lowaddr = (volatile SInt32 *)address;
+	highaddr = lowaddr + 1;
+#endif
+	
+	highword = *highaddr;
+	lowword = OSAtomicAdd32((SInt32)theAmount, lowaddr); // lowword is the new value
+  oldlowword = lowword - (SInt32)theAmount;
+	if ((theAmount < 0) && (oldlowword < -theAmount)) {
+		// underflow, decrement the high word
+		(void)OSAtomicAdd32(-1, highaddr);
+	} else if ((theAmount > 0) && ((UInt32)oldlowword > 0xFFFFFFFF-theAmount)) {
+		// overflow, increment the high word
+		(void)OSAtomicAdd32(1, highaddr);
+	}
+	return ((SInt64)highword << 32) | ((UInt32)lowword);
+}
+
+SInt64
+OSAtomicIncrement64(volatile SInt64 *address)
+{
+	return OSAtomicAdd64(1, address);
+}
+#endif  /* !__i386__ && !__x86_64__ */
 
 /*
  * This operation is not thread-safe and the user must
