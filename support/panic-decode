@@ -1,0 +1,72 @@
+#!/bin/bash
+# Copyright 2010 Alex Blewitt
+#
+# Parses a panic log 
+#
+# Note that this currently only works on 10.6 platforms
+#
+GDB=/usr/bin/gdb
+[ -x $GDB ] || GDB=/Developer/usr/bin/gdb
+KU=/usr/bin/kextutil
+KitPath=/Volumes/KernelDebugKit
+DEBUG_KERNEL=
+GDB_KERNEL=/mach_kernel
+SymDir=/tmp
+Kext=/System/Library/Extensions/zfs.kext
+TEMPDOC=/tmp/kext.gdb
+AWK=/usr/bin/awk
+PANIC=$1
+# For 10.5 systems
+# PANICS='/Library/Logs/PanicReporter'
+PANICS='/Library/Logs/DiagnosticReports'
+
+if [ ! -r "$PANIC" ]
+then
+  PANIC=`grep -l zfs.fs "$PANICS"/*.panic | tail -n 1`
+  echo No panic file given, assuming $PANIC
+fi
+
+if [ ! -x $GDB ]
+then
+  echo Cannot find gdb at $GDB
+  exit 1
+fi
+
+if [ ! -x $KU ]
+then
+  echo Cannot find kextutil at $KU
+  exit 1
+fi
+
+if [ ! -r "$PANIC" ]
+then
+  echo File $PANIC is not a readable panic log, which are usually found in $PANICS
+  exit 1
+fi
+
+ARCH=$($AWK '/root:xnu/ { gsub("^.*/RELEASE_",""); print tolower($0) }' "$PANIC")
+
+if [ -f $KitPath/mach_kernel ]
+then
+  DEBUG_KERNEL="-no-system-extensions -kernel $KitPath/mach_kernel -repository $KitPath"
+  GDB_KERNEL=$KitPath/mach_kernel
+fi
+
+ADDRESSES=$($AWK '/@0x/ { gsub("^ *|->.*$|\\(.*\\)","");print "-address",$0 }' "$PANIC")
+
+$KU -quiet -no-caches $DEBUG_KERNEL -no-load -no-authentication -symbols $SymDir -arch $ARCH $Kext $ADDRESSES 
+
+if [ $? -ne 0 ]
+then
+  echo No symbols generated at $SymDir
+  exit 1
+fi
+
+cat > $TEMPDOC <<EOF
+set kext-symbol-file-path $SymDir
+add-kext $Kext
+EOF
+$AWK '/^0x/ {print "x/i " $3}' < "$PANIC" >> $TEMPDOC
+echo quit >> $TEMPDOC
+
+$GDB -batch -arch $ARCH -x /tmp/kext.gdb $GDB_KERNEL 

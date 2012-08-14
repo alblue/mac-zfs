@@ -2,6 +2,7 @@ MacZFS is a community effort to prolong the life of ZFS on Mac OS X,
 since the Apple Open Source project was shut down. It is supported on
 both Leopard (Intel/PPC) and Snow Leopard (Intel 32-bit and 64-bit)
 platforms, although it may require Snow Leopard in order to build.
+Preview support for Lion is included.
 
 Getting involved
 ================

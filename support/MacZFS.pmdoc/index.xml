@@ -29,9 +29,9 @@
         startHidden="unchanged" />
       </choice-reqs>
     </choice>
-    <choice title="ZFS for Snow Leopard" id="zfs106"
-    tooltip="ZFS for Snow Leopard"
-    description="ZFS for Snow Leopard on Intel 32 bit and 64 bit machines"
+    <choice title="ZFS for Snow Leopard and Lion" id="zfs106"
+    tooltip="ZFS for Snow Leopard and Lion"
+    description="ZFS for Snow Leopard and Lion on Intel 32 bit and 64 bit machines"
     starts_selected="true" starts_enabled="true"
     starts_hidden="false">
       <pkgref id="com.bandlem.mac.zfs.106.pkg" />
@@ -40,7 +40,7 @@
         selected="no" enabled="no" hidden="yes"
         startSelected="unchanged" startEnabled="unchanged"
         startHidden="unchanged" />
-        <requirement id="tosv" operator="lt" value="'10.7'"
+        <requirement id="tosv" operator="lt" value="'10.8'"
         selected="no" enabled="no" hidden="yes"
         startSelected="unchanged" startEnabled="unchanged"
         startHidden="unchanged" />
@@ -49,7 +49,7 @@
   </contents>
   <resources bg-scale="proportional" bg-align="topright">
     <locale lang="en-GB">
-      <resource relative="true" mod="true" type="background">../zfs_bundle/VolumeIcon.icns</resource>
+      <resource relative="true" mod="true" type="background">../support/background.pdf</resource>
       <resource relative="true" mod="true" type="license">../LICENSE.txt</resource>
       <resource relative="true" mod="true" type="readme">../README.txt</resource>
       <resource mime-type="text/rtf" kind="embedded"
@@ -59,7 +59,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
 
-\f0\fs26 \cf0 This will install the next-generation ZFS support for Mac OSX systems running either Leopard or Snow Leopard.}]]>
+\f0\fs26 \cf0 This will install the next-generation ZFS support for Mac OSX systems running either Leopard or Snow Leopard. Preview support for Lion is available.}]]>
 </resource>
     </locale>
   </resources>
@@ -67,8 +67,8 @@
     <requirement id="tosv" operator="ge" value="'10.5'">
       <message>Mac ZFS needs at least Leopard to run.</message>
     </requirement>
-    <requirement id="tosv" operator="lt" value="'10.7'">
-      <message>Mac ZFS is only certified to run on Leopard and Snow Leopard at this time.</message>
+    <requirement id="tosv" operator="lt" value="'10.8'">
+      <message>Mac ZFS is only certified to run on Leopard and Snow Leopard at this time, though preview support for Lion is available.</message>
     </requirement>
   </requirements>
   <flags />
