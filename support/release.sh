@@ -18,6 +18,7 @@ then
 fi
 
 USER=`whoami`
+GROUP=`id -n -g`
 
 (
 mkdir -p ${DIR}/../${BUILD}
@@ -27,12 +28,12 @@ cp -R ${DIR}/MacZFS.pmdoc ${DIR}/../${BUILD}
 sed -i~  -e "s/0\\.0\\.0/${VERSION}/g" ${DIR}/../${BUILD}/MacZFS.pmdoc/*
 
 cd ${DIR}/..
-xcodebuild -sdk macosx10.5 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} SYMROOT=${BUILD}/${CONFIG}105 DSTROOT=${BUILD}/ZFS105 || exit 2
+xcodebuild -sdk macosx10.5 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} INSTALL_GROUP=${GROUP} SYMROOT=${BUILD}/${CONFIG}105 DSTROOT=${BUILD}/ZFS105 || exit 2
 
 # No point in building on 10.5, it'll just do the same thing again
 if [ "`sysctl -b kern.osrelease`" != "9.8.0" ] 
 then
-	xcodebuild -sdk macosx10.6 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} SYMROOT=${BUILD}/${CONFIG}106 DSTROOT=${BUILD}/ZFS106 || exit 3
+	xcodebuild -sdk macosx10.6 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} INSTALL_GROUP=${GROUP} SYMROOT=${BUILD}/${CONFIG}106 DSTROOT=${BUILD}/ZFS106 || exit 3
 fi
 
 cd ${BUILD}
