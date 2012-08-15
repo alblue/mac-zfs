@@ -2837,7 +2837,7 @@
 					DEBUG,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
@@ -2892,7 +2892,7 @@
 					DEBUG,
 				);
 				HEADER_SEARCH_PATHS = "";
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
@@ -2946,7 +2946,7 @@
 				GCC_MODEL_TUNING = G5;
 				GCC_PREPROCESSOR_DEFINITIONS = LIBZPOOL_HACK;
 				HEADER_SEARCH_PATHS = "";
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
@@ -2999,7 +2999,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/sbin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
@@ -3021,7 +3021,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/sbin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
@@ -3042,7 +3042,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/sbin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
@@ -3481,7 +3481,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/bin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
@@ -3503,7 +3503,7 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/bin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
@@ -3524,7 +3524,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/bin;
+				INSTALL_PATH = /usr/bin;
 				OTHER_CFLAGS = (
 					"-v",
 					"-include",
