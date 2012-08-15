@@ -288,6 +288,13 @@
 			remoteGlobalIDString = 200E785715DB14A1000957FF;
 			remoteInfo = libnvpair;
 		};
+		206EDD2B15DC34A800DD2C9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 200E787915DB15BE000957FF /* libzpool */;
+			remoteInfo = libzpool;
+		};
 		20FA07C015DBB5AE007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
@@ -415,13 +422,6 @@
 			remoteInfo = libzfs;
 		};
 		FA63A71E1139EC7500754FDD /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 2696406B0AACEAD20073456B;
-			remoteInfo = libzfs;
-		};
-		FA63A7201139EC8000754FDD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
@@ -1878,7 +1878,7 @@
 			buildRules = (
 			);
 			dependencies = (
-				FA63A7211139EC8000754FDD /* PBXTargetDependency */,
+				206EDD2C15DC34A800DD2C9E /* PBXTargetDependency */,
 			);
 			name = ztest;
 			productName = ztest;
@@ -2268,6 +2268,11 @@
 			target = 200E785715DB14A1000957FF /* libnvpair */;
 			targetProxy = 200E788015DB15C7000957FF /* PBXContainerItemProxy */;
 		};
+		206EDD2C15DC34A800DD2C9E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 200E787915DB15BE000957FF /* libzpool */;
+			targetProxy = 206EDD2B15DC34A800DD2C9E /* PBXContainerItemProxy */;
+		};
 		20FA07BF15DBB5AE007E2315 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 2696406B0AACEAD20073456B /* libzfs */;
@@ -2362,11 +2367,6 @@
 			isa = PBXTargetDependency;
 			target = 2696406B0AACEAD20073456B /* libzfs */;
 			targetProxy = FA63A71E1139EC7500754FDD /* PBXContainerItemProxy */;
-		};
-		FA63A7211139EC8000754FDD /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 2696406B0AACEAD20073456B /* libzfs */;
-			targetProxy = FA63A7201139EC8000754FDD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
