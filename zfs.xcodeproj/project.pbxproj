@@ -110,6 +110,7 @@
 		20FA07D115DBB5FB007E2315 /* libzpool.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E787A15DB15BE000957FF /* libzpool.dylib */; };
 		20FA07EE15DBB806007E2315 /* zdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FA07EC15DBB806007E2315 /* zdb.c */; };
 		20FA07EF15DBB806007E2315 /* zdb_il.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FA07ED15DBB806007E2315 /* zdb_il.c */; };
+		20FA082C15DBBEF8007E2315 /* libzpool.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E787A15DB15BE000957FF /* libzpool.dylib */; };
 		2611F7400ACDD29E00E5D4E2 /* zfsutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 2611F73F0ACDD29E00E5D4E2 /* zfsutil.c */; };
 		2611F7F60ACDE5F200E5D4E2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2611F7F50ACDE5F200E5D4E2 /* InfoPlist.strings */; };
 		2611F8040ACDE72900E5D4E2 /* zfs.util in CopyFiles */ = {isa = PBXBuildFile; fileRef = 2611F7360ACDD13900E5D4E2 /* zfs.util */; };
@@ -298,42 +299,42 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200E787915DB15BE000957FF /* libzpool */;
+			remoteGlobalIDString = 200E787915DB15BE000957FF;
 			remoteInfo = libzpool;
 		};
 		20FA07DB15DBB679007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200E784B15DB13A3000957FF /* libnsl */;
+			remoteGlobalIDString = 200E784B15DB13A3000957FF;
 			remoteInfo = libnsl;
 		};
 		20FA07DD15DBB67E007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200E785715DB14A1000957FF /* libnvpair */;
+			remoteGlobalIDString = 200E785715DB14A1000957FF;
 			remoteInfo = libnvpair;
 		};
 		20FA07DF15DBB682007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200E787915DB15BE000957FF /* libzpool */;
+			remoteGlobalIDString = 200E787915DB15BE000957FF;
 			remoteInfo = libzpool;
 		};
 		20FA07E115DBB686007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 20FA07BE15DBB5AE007E2315 /* zdb */;
+			remoteGlobalIDString = 20FA07BE15DBB5AE007E2315;
 			remoteInfo = zdb;
 		};
 		20FA07E315DBB68B007E2315 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = FA93776E10A3924300754C9E /* ztest */;
+			remoteGlobalIDString = FA93776E10A3924300754C9E;
 			remoteInfo = ztest;
 		};
 		2611F76A0ACDD5C900E5D4E2 /* PBXContainerItemProxy */ = {
@@ -886,6 +887,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20FA082C15DBBEF8007E2315 /* libzpool.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2830,6 +2832,10 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					LIBZPOOL_HACK,
+					DEBUG,
+				);
 				HEADER_SEARCH_PATHS = "";
 				INSTALL_PATH = /usr/local/lib;
 				OTHER_CFLAGS = (
@@ -2881,6 +2887,10 @@
 				EXECUTABLE_PREFIX = "";
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					LIBZPOOL_HACK,
+					DEBUG,
+				);
 				HEADER_SEARCH_PATHS = "";
 				INSTALL_PATH = /usr/local/lib;
 				OTHER_CFLAGS = (
@@ -2934,6 +2944,7 @@
 				EXECUTABLE_PREFIX = "";
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
+				GCC_PREPROCESSOR_DEFINITIONS = LIBZPOOL_HACK;
 				HEADER_SEARCH_PATHS = "";
 				INSTALL_PATH = /usr/local/lib;
 				OTHER_CFLAGS = (
