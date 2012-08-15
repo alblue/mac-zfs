@@ -23,7 +23,7 @@ GROUP=`id -n -g`
 (
 mkdir -p ${DIR}/../${BUILD}
 rm -rf ${DIR}/../${BUILD}/ZFS105
-rm -rf ${DIR}/../${BUILD}/ZFS105
+rm -rf ${DIR}/../${BUILD}/ZFS106
 cp -R ${DIR}/MacZFS.pmdoc ${DIR}/../${BUILD}
 sed -i~  -e "s/0\\.0\\.0/${VERSION}/g" ${DIR}/../${BUILD}/MacZFS.pmdoc/*
 
