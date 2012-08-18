@@ -23,6 +23,8 @@
  * Use is subject to license terms.
  */
 
+#ifdef ZTEST
+
 #ifndef _SYS_ZFS_CONTEXT_H
 #define	_SYS_ZFS_CONTEXT_H
 
@@ -267,21 +269,22 @@ typedef struct vattr {
 #define	AT_BLKSIZE	0x1000
 #define	AT_NBLOCKS	0x2000
 #define	AT_SEQ		0x8000
-
-#define	CRCREAT		0
-
-#define	VOP_CLOSE(vp, f, c, o, cr)	0
-#define	VOP_PUTPAGE(vp, of, sz, fl, cr)	0
-#define	VOP_GETATTR(vp, vap, fl, cr)	((vap)->va_size = (vp)->v_size, 0)
-
-#define	VOP_FSYNC(vp, f, cr)	fsync((vp)->v_fd)
+#define AT_XVATTR       0x10000
+	
+#define CRCREAT         0
+	
+#define VOP_CLOSE(vp, f, c, o, cr, ct)  0
+#define VOP_PUTPAGE(vp, of, sz, fl, cr, ct)     0
+#define VOP_GETATTR(vp, vap, fl, cr, ct)  ((vap)->va_size = (vp)->v_size, 0)
+	
+#define VOP_FSYNC(vp, f, cr, ct)        fsync((vp)->v_fd)
 
 #define	VN_RELE(vp)	vn_close(vp)
 
 extern int vn_open(char *path, int x1, int oflags, int mode, vnode_t **vpp,
     int x2, int x3);
 extern int vn_openat(char *path, int x1, int oflags, int mode, vnode_t **vpp,
-    int x2, int x3, vnode_t *vp);
+    int x2, int x3, vnode_t *vp, int ignoredFd);
 extern int vn_rdwr(int uio, vnode_t *vp, void *addr, ssize_t len,
     offset_t offset, int x1, int x2, rlim64_t x3, void *x4, ssize_t *residp);
 extern void vn_close(vnode_t *vp);
@@ -357,3 +360,5 @@ typedef struct callb_cpr {
 #endif
 
 #endif	/* _SYS_ZFS_CONTEXT_H */
+
+#endif /* ZTEST */

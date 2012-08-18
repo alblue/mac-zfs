@@ -55,9 +55,6 @@
 
 #include <sys/vdev_impl.h>
 
-#include "libzfs.h"
-#include "libzfs_impl.h"
-
 #ifdef __APPLE__
 #include "libzfs_ioctl.h"
 
@@ -65,6 +62,10 @@
 #define open64 open
 #define readdir64 readdir
 #endif
+
+#include "libzfs.h"
+#include "libzfs_impl.h"
+
 
 /*
  * Intermediate structures used to gather configuration information.
@@ -223,11 +224,13 @@ add_config(libzfs_handle_t *hdl, pool_list_t *pl, const char *path,
 	name_entry_t *ne;
 
 	/*
-	 * If this is a hot spare not currently in use, add it to the list of
-	 * names to translate, but don't do anything else.
+	 * If this is a hot spare not currently in use or level 2 cache
+	 * device, add it to the list of names to translate, but don't do
+	 * anything else.
 	 */
 	if (nvlist_lookup_uint64(config, ZPOOL_CONFIG_POOL_STATE,
-	    &state) == 0 && state == POOL_STATE_SPARE &&
+	    &state) == 0 &&
+	    (state == POOL_STATE_SPARE || state == POOL_STATE_L2CACHE) &&
 	    nvlist_lookup_uint64(config, ZPOOL_CONFIG_GUID, &vdev_guid) == 0) {
 		if ((ne = zfs_alloc(hdl, sizeof (name_entry_t))) == NULL)
 			return (-1);
@@ -371,6 +374,46 @@ pool_active(libzfs_handle_t *hdl, const char *name, uint64_t guid,
 	return (0);
 }
 
+static nvlist_t *
+refresh_config(libzfs_handle_t *hdl, nvlist_t *config)
+{
+	nvlist_t *nvl;
+	zfs_cmd_t zc = { 0 };
+	int err;
+
+	if (zcmd_write_conf_nvlist(hdl, &zc, config) != 0)
+		return (NULL);
+
+	if (zcmd_alloc_dst_nvlist(hdl, &zc,
+	    zc.zc_nvlist_conf_size * 2) != 0) {
+		zcmd_free_nvlists(&zc);
+		return (NULL);
+	}
+
+	while ((err = ioctl(hdl->libzfs_fd, ZFS_IOC_POOL_TRYIMPORT,
+	    &zc)) != 0 && errno == ENOMEM) {
+		if (zcmd_expand_dst_nvlist(hdl, &zc) != 0) {
+			zcmd_free_nvlists(&zc);
+			return (NULL);
+		}
+	}
+
+	if (err) {
+		(void) zpool_standard_error(hdl, errno,
+		    dgettext(TEXT_DOMAIN, "cannot discover pools"));
+		zcmd_free_nvlists(&zc);
+		return (NULL);
+	}
+
+	if (zcmd_read_dst_nvlist(hdl, &zc, &nvl) != 0) {
+		zcmd_free_nvlists(&zc);
+		return (NULL);
+	}
+
+	zcmd_free_nvlists(&zc);
+	return (nvl);
+}
+
 /*
  * Convert our list of pools into the definitive set of configurations.  We
  * start by picking the best config for each toplevel vdev.  Once that's done,
@@ -384,21 +427,19 @@ get_configs(libzfs_handle_t *hdl, pool_list_t *pl)
 	pool_entry_t *pe;
 	vdev_entry_t *ve;
 	config_entry_t *ce;
-	nvlist_t *ret = NULL, *config = NULL, *tmp = NULL, *nvtop, *nvroot;
-	nvlist_t **spares;
-	uint_t i, nspares;
+	nvlist_t *ret = NULL, *config = NULL, *tmp, *nvtop, *nvroot;
+	nvlist_t **spares, **l2cache;
+	uint_t i, nspares, nl2cache;
 	boolean_t config_seen;
 	uint64_t best_txg;
 	char *name, *hostname = NULL;
-	zfs_cmd_t zc = { 0 };
 	uint64_t version, guid;
-	size_t len;
-	int err;
 	uint_t children = 0;
 	nvlist_t **child = NULL;
 	uint_t c;
 	boolean_t isactive;
 	uint64_t hostid = 0;
+	nvlist_t *nvl;
 
 	if (nvlist_alloc(&ret, 0, 0) != 0)
 		goto nomem;
@@ -598,41 +639,11 @@ get_configs(libzfs_handle_t *hdl, pool_list_t *pl)
 			continue;
 		}
 
-		/*
-		 * Try to do the import in order to get vdev state.
-		 */
-		if (zcmd_write_src_nvlist(hdl, &zc, config, &len) != 0)
+		if ((nvl = refresh_config(hdl, config)) == NULL)
 			goto error;
 
 		nvlist_free(config);
-		config = NULL;
-
-		if (zcmd_alloc_dst_nvlist(hdl, &zc, len * 2) != 0) {
-			zcmd_free_nvlists(&zc);
-			goto error;
-		}
-
-		while ((err = ioctl(hdl->libzfs_fd, ZFS_IOC_POOL_TRYIMPORT,
-		    &zc)) != 0 && errno == ENOMEM) {
-			if (zcmd_expand_dst_nvlist(hdl, &zc) != 0) {
-				zcmd_free_nvlists(&zc);
-				goto error;
-			}
-		}
-
-		if (err) {
-			(void) zpool_standard_error(hdl, errno,
-			    dgettext(TEXT_DOMAIN, "cannot discover pools"));
-			zcmd_free_nvlists(&zc);
-			goto error;
-		}
-
-		if (zcmd_read_dst_nvlist(hdl, &zc, &config) != 0) {
-			zcmd_free_nvlists(&zc);
-			goto error;
-		}
-
-		zcmd_free_nvlists(&zc);
+		config = nvl;
 
 		/*
 		 * Go through and update the paths for spares, now that we have
@@ -644,6 +655,17 @@ get_configs(libzfs_handle_t *hdl, pool_list_t *pl)
 		    &spares, &nspares) == 0) {
 			for (i = 0; i < nspares; i++) {
 				if (fix_paths(spares[i], pl->names) != 0)
+					goto nomem;
+			}
+		}
+
+		/*
+		 * Update the paths for l2cache devices.
+		 */
+		if (nvlist_lookup_nvlist_array(nvroot, ZPOOL_CONFIG_L2CACHE,
+		    &l2cache, &nl2cache) == 0) {
+			for (i = 0; i < nl2cache; i++) {
+				if (fix_paths(l2cache[i], pl->names) != 0)
 					goto nomem;
 			}
 		}
@@ -706,22 +728,14 @@ label_offset(uint64_t size, int l)
 int
 zpool_read_label(int fd, nvlist_t **config)
 {
-#if _DARWIN_FEATURE_64_BIT_INODE
-	struct stat statbuf;
-#else
 	struct stat64 statbuf;
-#endif
 	int l;
 	vdev_label_t *label;
 	uint64_t state, txg, size;
 
 	*config = NULL;
 
-#if _DARWIN_FEATURE_64_BIT_INODE
-	if (fstat(fd, &statbuf) == -1)
-#else
 	if (fstat64(fd, &statbuf) == -1)		
-#endif
 		return (0);
 /*
  * OSX fstat on a block device will return an st_size of 0 instead of
@@ -758,12 +772,12 @@ zpool_read_label(int fd, nvlist_t **config)
 			continue;
 
 		if (nvlist_lookup_uint64(*config, ZPOOL_CONFIG_POOL_STATE,
-		    &state) != 0 || state > POOL_STATE_SPARE) {
+		    &state) != 0 || state > POOL_STATE_L2CACHE) {
 			nvlist_free(*config);
 			continue;
 		}
 
-		if (state != POOL_STATE_SPARE &&
+		if (state != POOL_STATE_SPARE && state != POOL_STATE_L2CACHE &&
 		    (nvlist_lookup_uint64(*config, ZPOOL_CONFIG_POOL_TXG,
 		    &txg) != 0 || txg == 0)) {
 			nvlist_free(*config);
@@ -791,11 +805,7 @@ zpool_find_import(libzfs_handle_t *hdl, int argc, char **argv)
 	DIR *dirp = NULL;
 	struct dirent64 *dp;
 	char path[MAXPATHLEN];
-#if _DARWIN_FEATURE_64_BIT_INODE
-	struct stat statbuf;
-#else
 	struct stat64 statbuf;
-#endif
 	nvlist_t *ret = NULL, *config;
 #ifdef __APPLE__
 	static char *default_dir = "/dev";
@@ -844,11 +854,7 @@ zpool_find_import(libzfs_handle_t *hdl, int argc, char **argv)
 			(void) snprintf(path, sizeof (path), "%s/%s",
 			    argv[i], dp->d_name);
 
-#if _DARWIN_FEATURE_64_BIT_INODE
-			if (stat(path, &statbuf) != 0)
-#else
 			if (stat64(path, &statbuf) != 0)		
-#endif
 				continue;
 
 			/*
@@ -923,6 +929,113 @@ error:
 	return (ret);
 }
 
+/*
+ * Given a cache file, return the contents as a list of importable pools.
+ */
+nvlist_t *
+zpool_find_import_cached(libzfs_handle_t *hdl, const char *cachefile)
+{
+	char *buf;
+	int fd;
+	struct stat64 statbuf;
+	nvlist_t *raw, *src, *dst;
+	nvlist_t *pools;
+	nvpair_t *elem;
+	char *name;
+	uint64_t guid;
+	boolean_t active;
+
+	if ((fd = open(cachefile, O_RDONLY)) < 0) {
+		zfs_error_aux(hdl, "%s", strerror(errno));
+		(void) zfs_error(hdl, EZFS_BADCACHE,
+		    dgettext(TEXT_DOMAIN, "failed to open cache file"));
+		return (NULL);
+	}
+
+	if (fstat64(fd, &statbuf) != 0) {
+		zfs_error_aux(hdl, "%s", strerror(errno));
+		(void) close(fd);
+		(void) zfs_error(hdl, EZFS_BADCACHE,
+		    dgettext(TEXT_DOMAIN, "failed to get size of cache file"));
+		return (NULL);
+	}
+
+	if ((buf = zfs_alloc(hdl, statbuf.st_size)) == NULL) {
+		(void) close(fd);
+		return (NULL);
+	}
+
+	if (read(fd, buf, statbuf.st_size) != statbuf.st_size) {
+		(void) close(fd);
+		free(buf);
+		(void) zfs_error(hdl, EZFS_BADCACHE,
+		    dgettext(TEXT_DOMAIN,
+		    "failed to read cache file contents"));
+		return (NULL);
+	}
+
+	(void) close(fd);
+
+	if (nvlist_unpack(buf, statbuf.st_size, &raw, 0) != 0) {
+		free(buf);
+		(void) zfs_error(hdl, EZFS_BADCACHE,
+		    dgettext(TEXT_DOMAIN,
+		    "invalid or corrupt cache file contents"));
+		return (NULL);
+	}
+
+	free(buf);
+
+	/*
+	 * Go through and get the current state of the pools and refresh their
+	 * state.
+	 */
+	if (nvlist_alloc(&pools, 0, 0) != 0) {
+		(void) no_memory(hdl);
+		nvlist_free(raw);
+		return (NULL);
+	}
+
+	elem = NULL;
+	while ((elem = nvlist_next_nvpair(raw, elem)) != NULL) {
+		verify(nvpair_value_nvlist(elem, &src) == 0);
+
+		verify(nvlist_lookup_string(src, ZPOOL_CONFIG_POOL_NAME,
+		    &name) == 0);
+		verify(nvlist_lookup_uint64(src, ZPOOL_CONFIG_POOL_GUID,
+		    &guid) == 0);
+
+		if (pool_active(hdl, name, guid, &active) != 0) {
+			nvlist_free(raw);
+			nvlist_free(pools);
+			return (NULL);
+		}
+
+		if (active)
+			continue;
+
+		if ((dst = refresh_config(hdl, src)) == NULL) {
+			nvlist_free(raw);
+			nvlist_free(pools);
+			return (NULL);
+		}
+
+		if (nvlist_add_nvlist(pools, nvpair_name(elem), dst) != 0) {
+			(void) no_memory(hdl);
+			nvlist_free(dst);
+			nvlist_free(raw);
+			nvlist_free(pools);
+			return (NULL);
+		}
+
+		nvlist_free(dst);
+	}
+
+	nvlist_free(raw);
+	return (pools);
+}
+
+
 boolean_t
 find_guid(nvlist_t *nv, uint64_t guid)
 {
@@ -944,27 +1057,28 @@ find_guid(nvlist_t *nv, uint64_t guid)
 	return (B_FALSE);
 }
 
-typedef struct spare_cbdata {
+typedef struct aux_cbdata {
+	const char	*cb_type;
 	uint64_t	cb_guid;
 	zpool_handle_t	*cb_zhp;
-} spare_cbdata_t;
+} aux_cbdata_t;
 
 static int
-find_spare(zpool_handle_t *zhp, void *data)
+find_aux(zpool_handle_t *zhp, void *data)
 {
-	spare_cbdata_t *cbp = data;
-	nvlist_t **spares;
-	uint_t i, nspares;
+	aux_cbdata_t *cbp = data;
+	nvlist_t **list;
+	uint_t i, count;
 	uint64_t guid;
 	nvlist_t *nvroot;
 
 	verify(nvlist_lookup_nvlist(zhp->zpool_config, ZPOOL_CONFIG_VDEV_TREE,
 	    &nvroot) == 0);
 
-	if (nvlist_lookup_nvlist_array(nvroot, ZPOOL_CONFIG_SPARES,
-	    &spares, &nspares) == 0) {
-		for (i = 0; i < nspares; i++) {
-			verify(nvlist_lookup_uint64(spares[i],
+	if (nvlist_lookup_nvlist_array(nvroot, cbp->cb_type,
+	    &list, &count) == 0) {
+		for (i = 0; i < count; i++) {
+			verify(nvlist_lookup_uint64(list[i],
 			    ZPOOL_CONFIG_GUID, &guid) == 0);
 			if (guid == cbp->cb_guid) {
 				cbp->cb_zhp = zhp;
@@ -993,7 +1107,7 @@ zpool_in_use(libzfs_handle_t *hdl, int fd, pool_state_t *state, char **namestr,
 	zpool_handle_t *zhp;
 	nvlist_t *pool_config;
 	uint64_t stateval, isspare;
-	spare_cbdata_t cb = { 0 };
+	aux_cbdata_t cb = { 0 };
 	boolean_t isactive;
 
 	*inuse = B_FALSE;
@@ -1011,7 +1125,7 @@ zpool_in_use(libzfs_handle_t *hdl, int fd, pool_state_t *state, char **namestr,
 	verify(nvlist_lookup_uint64(config, ZPOOL_CONFIG_GUID,
 	    &vdev_guid) == 0);
 
-	if (stateval != POOL_STATE_SPARE) {
+	if (stateval != POOL_STATE_SPARE && stateval != POOL_STATE_L2CACHE) {
 		verify(nvlist_lookup_string(config, ZPOOL_CONFIG_POOL_NAME,
 		    &name) == 0);
 		verify(nvlist_lookup_uint64(config, ZPOOL_CONFIG_POOL_GUID,
@@ -1090,7 +1204,24 @@ zpool_in_use(libzfs_handle_t *hdl, int fd, pool_state_t *state, char **namestr,
 		 */
 		cb.cb_zhp = NULL;
 		cb.cb_guid = vdev_guid;
-		if (zpool_iter(hdl, find_spare, &cb) == 1) {
+		cb.cb_type = ZPOOL_CONFIG_SPARES;
+		if (zpool_iter(hdl, find_aux, &cb) == 1) {
+			name = (char *)zpool_get_name(cb.cb_zhp);
+			ret = TRUE;
+		} else {
+			ret = FALSE;
+		}
+		break;
+
+	case POOL_STATE_L2CACHE:
+
+		/*
+		 * Check if any pool is currently using this l2cache device.
+		 */
+		cb.cb_zhp = NULL;
+		cb.cb_guid = vdev_guid;
+		cb.cb_type = ZPOOL_CONFIG_L2CACHE;
+		if (zpool_iter(hdl, find_aux, &cb) == 1) {
 			name = (char *)zpool_get_name(cb.cb_zhp);
 			ret = TRUE;
 		} else {

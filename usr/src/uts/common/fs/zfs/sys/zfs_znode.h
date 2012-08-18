@@ -21,7 +21,6 @@
 /*
  * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
- *
  * Portions Copyright 2007-2008 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
@@ -36,9 +35,12 @@
 #include <sys/isa_defs.h>
 #include <sys/types32.h>
 #endif
+#include <sys/attr.h>
 #include <sys/list.h>
 #include <sys/dmu.h>
 #include <sys/zfs_vfsops.h>
+#include <sys/rrwlock.h>
+#include "maczfs_vnode.h"
 #endif
 #include <sys/zfs_acl.h>
 #include <sys/zil.h>
@@ -74,20 +76,45 @@ extern "C" {
 /*
  * Define special zfs pflags
  */
-#define	ZFS_XATTR	0x1		/* is an extended attribute */
-#define	ZFS_INHERIT_ACE	0x2		/* ace has inheritable ACEs */
-#define	ZFS_ACL_TRIVIAL 0x4		/* files ACL is trivial */
+#define	ZFS_XATTR		0x1		/* is an extended attribute */
+#define	ZFS_INHERIT_ACE		0x2		/* ace has inheritable ACEs */
+#define	ZFS_ACL_TRIVIAL 	0x4		/* files ACL is trivial */
+#define	ZFS_ACL_OBJ_ACE 	0x8		/* ACL has CMPLX Object ACE */
+#define	ZFS_ACL_PROTECTED	0x10		/* ACL protected */
+#define	ZFS_ACL_DEFAULTED	0x20		/* ACL should be defaulted */
+#define	ZFS_ACL_AUTO_INHERIT	0x40		/* ACL should be inherited */
+#define	ZFS_BONUS_SCANSTAMP	0x80		/* Scanstamp in bonus area */
+
+#ifdef __APPLE__
+#define MAXUID          UID_MAX
+#endif
+
+/*
+ * Is ID ephemeral?
+ */
+#define	IS_EPHEMERAL(x)		(x > MAXUID)
+
+/*
+ * Should we use FUIDs?
+ */
+#ifdef __APPLE__
+// FUIDS need XVATTR which we don't have on OSX
+#define USE_FUIDS(version, os) (0)
+#else
+#define	USE_FUIDS(version, os)	(version >= ZPL_VERSION_FUID &&\
+    spa_version(dmu_objset_spa(os)) >= SPA_VERSION_FUID)
+#endif
 
 #define	MASTER_NODE_OBJ	1
 
 /*
- * special attributes for master node.
+ * Special attributes for master node.
  */
 #define	ZFS_FSID		"FSID"
 #define	ZFS_UNLINKED_SET	"DELETE_QUEUE"
 #define	ZFS_ROOT_OBJ		"ROOT"
 #define	ZPL_VERSION_STR		"VERSION"
-
+#define	ZFS_FUID_TABLES		"FUID"
 
 #define	ZFS_MAX_BLOCKSIZE	(SPA_MAXBLOCKSIZE)
 
@@ -137,8 +164,9 @@ typedef struct znode_phys {
 	uint64_t zp_flags;		/* 120 - persistent flags */
 	uint64_t zp_uid;		/* 128 - file owner */
 	uint64_t zp_gid;		/* 136 - owning group */
-	uint64_t zp_pad[4];		/* 144 - future */
-	zfs_znode_acl_t zp_acl;		/* 176 - 263 ACL */
+	uint64_t zp_zap;		/* 144 - extra attributes */
+	uint64_t zp_pad[3];		/* 152 - future */
+	zfs_acl_phys_t zp_acl;		/* 176 - 263 ACL */
 	/*
 	 * Data may pad out any remaining bytes in the znode buffer, eg:
 	 *
@@ -146,7 +174,9 @@ typedef struct znode_phys {
 	 * |<-- dnode (192) --->|<----------- "bonus" buffer (320) ---------->|
 	 *			|<---- znode (264) ---->|<---- data (56) ---->|
 	 *
-	 * At present, we only use this space to store symbolic links.
+	 * At present, we use this space for the following:
+	 *  - symbolic links
+	 *  - 32-byte anti-virus scanstamp (regular files only)
 	 */
 } znode_phys_t;
 
@@ -192,7 +222,6 @@ typedef struct findme {
 
 typedef struct znode {
 	struct zfsvfs	*z_zfsvfs;
-
 	vnode_t		*z_vnode;
 #ifdef __APPLE__
 	uint32_t	z_vid;
@@ -208,7 +237,6 @@ typedef struct znode {
 	avl_tree_t	z_range_avl;	/* avl tree of file range locks */
 	uint8_t		z_unlinked;	/* file has been unlinked */
 	uint8_t		z_atime_dirty;	/* atime needs to be synced */
-	uint8_t		z_dbuf_held;	/* Is z_dbuf already held? */
 	uint8_t		z_zn_prefetch;	/* Prefetch znodes? */
 #ifdef __APPLE__
 	uint8_t		z_mmapped;	/* file has been memory mapped */
@@ -219,10 +247,10 @@ typedef struct znode {
 	uint64_t	z_mapcnt;	/* number of pages mapped to file */
 #endif
 	uint64_t	z_last_itx;	/* last ZIL itx on this znode */
+	uint64_t	z_gen;		/* generation (same as zp_gen) */
 	uint32_t	z_sync_cnt;	/* synchronous open count */
 	kmutex_t	z_acl_lock;	/* acl data lock */
 	list_node_t	z_link_node;	/* all znodes in fs link */
-
 #if defined (__APPLE__) && defined (ZFS_DEBUG)
 	list_t		z_stalker;	/* vnode life tracker */
 #endif
@@ -263,50 +291,55 @@ typedef struct znode {
 /*
  * ZFS_ENTER() is called on entry to each ZFS vnode and vfs operation.
  * ZFS_EXIT() must be called before exitting the vop.
+ * ZFS_VERIFY_ZP() verifies the znode is valid.
  */
 #define	ZFS_ENTER(zfsvfs) \
 	{ \
-		if (rw_tryenter(&(zfsvfs)->z_unmount_lock, RW_READER) == 0) \
-			return (EIO); \
+		rrw_enter(&(zfsvfs)->z_teardown_lock, RW_READER, FTAG); \
 		if ((zfsvfs)->z_unmounted) { \
 			ZFS_EXIT(zfsvfs); \
 			return (EIO); \
 		} \
 	}
 
-#define	ZFS_EXIT(zfsvfs) rw_exit(&(zfsvfs)->z_unmount_lock)
+#define	ZFS_EXIT(zfsvfs) rrw_exit(&(zfsvfs)->z_teardown_lock, FTAG)
+
+#define	ZFS_VERIFY_ZP(zp) \
+	if ((zp)->z_dbuf == NULL) { \
+		ZFS_EXIT((zp)->z_zfsvfs); \
+		return (EIO); \
+	} \
 
 /*
  * Macros for dealing with dmu_buf_hold
  */
-#define	ZFS_OBJ_HASH(obj_num)	(obj_num & (ZFS_OBJ_MTX_SZ - 1))
+#define	ZFS_OBJ_HASH(obj_num)	((obj_num) & (ZFS_OBJ_MTX_SZ - 1))
 #define	ZFS_OBJ_MUTEX(zp)	\
-	(&zp->z_zfsvfs->z_hold_mtx[ZFS_OBJ_HASH(zp->z_id)])
+	(&(zp)->z_zfsvfs->z_hold_mtx[ZFS_OBJ_HASH((zp)->z_id)])
 
 #ifdef __APPLE__
 #define	ZFS_OBJ_HELD(zfsvfs, obj_num) \
-	mutex_owned(&zfsvfs->z_hold_mtx[ZFS_OBJ_HASH(obj_num)])
+	mutex_owned(&(zfsvfs)->z_hold_mtx[ZFS_OBJ_HASH(obj_num)])
 #endif /*__APPLE__*/
 
 #define	ZFS_OBJ_HOLD_ENTER(zfsvfs, obj_num) \
-	mutex_enter(&zfsvfs->z_hold_mtx[ZFS_OBJ_HASH(obj_num)])
-
+	mutex_enter(&(zfsvfs)->z_hold_mtx[ZFS_OBJ_HASH(obj_num)]);
 #define	ZFS_OBJ_HOLD_EXIT(zfsvfs, obj_num) \
-	mutex_exit(&zfsvfs->z_hold_mtx[ZFS_OBJ_HASH(obj_num)])
+	mutex_exit(&(zfsvfs)->z_hold_mtx[ZFS_OBJ_HASH(obj_num)])
 
 /*
  * Macros to encode/decode ZFS stored time values from/to struct timespec
  */
 #define	ZFS_TIME_ENCODE(tp, stmp)		\
 {						\
-	stmp[0] = (uint64_t)(tp)->tv_sec; 	\
-	stmp[1] = (uint64_t)(tp)->tv_nsec;	\
+	(stmp)[0] = (uint64_t)(tp)->tv_sec; 	\
+	(stmp)[1] = (uint64_t)(tp)->tv_nsec;	\
 }
 
 #define	ZFS_TIME_DECODE(tp, stmp)		\
 {						\
-	(tp)->tv_sec = (time_t)stmp[0];		\
-	(tp)->tv_nsec = (long)stmp[1];		\
+	(tp)->tv_sec = (time_t)(stmp)[0];		\
+	(tp)->tv_nsec = (long)(stmp)[1];		\
 }
 
 /*
@@ -328,7 +361,8 @@ typedef struct znode {
 
 extern int	zfs_init_fs(zfsvfs_t *, znode_t **, cred_t *);
 extern void	zfs_set_dataprop(objset_t *);
-extern void	zfs_create_fs(objset_t *os, cred_t *cr, uint64_t, dmu_tx_t *tx);
+extern void	zfs_create_fs(objset_t *os, cred_t *cr, uint64_t, int,
+    dmu_tx_t *tx);
 extern void	zfs_time_stamper(znode_t *, uint_t, dmu_tx_t *);
 extern void	zfs_time_stamper_locked(znode_t *, uint_t, dmu_tx_t *);
 extern void	zfs_grow_blocksize(znode_t *, uint64_t, dmu_tx_t *);
@@ -336,6 +370,7 @@ extern int	zfs_freesp(znode_t *, uint64_t, uint64_t, int, boolean_t);
 extern void	zfs_znode_init(void);
 extern void	zfs_znode_fini(void);
 extern int	zfs_zget(zfsvfs_t *, uint64_t, znode_t **);
+extern int	zfs_rezget(znode_t *);
 extern void	zfs_zinactive(znode_t *);
 #ifdef __APPLE__
 extern int	zfs_attach_vnode(znode_t *zp);
@@ -349,27 +384,33 @@ extern void	zfs_remove_op_tables();
 extern int	zfs_create_op_tables();
 extern int	zfs_sync(vfs_t *vfsp, short flag, cred_t *cr);
 extern dev_t	zfs_cmpldev(uint64_t);
-extern int	zfs_get_stats(objset_t *os, nvlist_t *nv);
+extern int	zfs_get_version(objset_t *os, uint64_t *version);
 extern int	zfs_set_version(const char *name, uint64_t newvers);
+extern int	zfs_get_stats(objset_t *os, nvlist_t *nv);
 
-extern void zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, int txtype,
-    znode_t *dzp, znode_t *zp, char *name);
-extern void zfs_log_remove(zilog_t *zilog, dmu_tx_t *tx, int txtype,
+extern void zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
+    znode_t *dzp, znode_t *zp, char *name, vsecattr_t *, zfs_fuid_info_t *,
+    vattr_t *vap);
+extern int zfs_log_create_txtype(zil_create_t, vsecattr_t *vsecp,
+    vattr_t *vap);
+extern void zfs_log_remove(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
     znode_t *dzp, char *name);
-extern void zfs_log_link(zilog_t *zilog, dmu_tx_t *tx, int txtype,
+extern void zfs_log_link(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
     znode_t *dzp, znode_t *zp, char *name);
-extern void zfs_log_symlink(zilog_t *zilog, dmu_tx_t *tx, int txtype,
+extern void zfs_log_symlink(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
     znode_t *dzp, znode_t *zp, char *name, char *link);
-extern void zfs_log_rename(zilog_t *zilog, dmu_tx_t *tx, int txtype,
+extern void zfs_log_rename(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
     znode_t *sdzp, char *sname, znode_t *tdzp, char *dname, znode_t *szp);
 extern void zfs_log_write(zilog_t *zilog, dmu_tx_t *tx, int txtype,
     znode_t *zp, offset_t off, ssize_t len, int ioflag);
 extern void zfs_log_truncate(zilog_t *zilog, dmu_tx_t *tx, int txtype,
     znode_t *zp, uint64_t off, uint64_t len);
 extern void zfs_log_setattr(zilog_t *zilog, dmu_tx_t *tx, int txtype,
-    znode_t *zp, vattr_t *vap, uint_t mask_applied);
-extern void zfs_log_acl(zilog_t *zilog, dmu_tx_t *tx, int txtype,
-    znode_t *zp, int aclcnt, ace_t *z_ace);
+    znode_t *zp, vattr_t *vap, uint_t mask_applied, zfs_fuid_info_t *fuidp);
+extern void zfs_log_acl(zilog_t *zilog, dmu_tx_t *tx, znode_t *zp,
+    vsecattr_t *vsecp, zfs_fuid_info_t *fuidp);
+extern void zfs_xvattr_set(znode_t *zp, xvattr_t *xvap);
+extern void zfs_upgrade(zfsvfs_t *zfsvfs, dmu_tx_t *tx);
 
 extern zil_get_data_t zfs_get_data;
 extern zil_replay_func_t *zfs_replay_vector[TX_MAX_TYPE];

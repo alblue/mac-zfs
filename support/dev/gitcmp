@@ -1,0 +1,20 @@
+#!/bin/bash
+T1=$1
+T2=$2
+P=$3
+D=`dirname $0`
+
+OUT=/tmp/gitcmp-$$
+mkdir $OUT
+
+mkdir -p $OUT/`dirname $P`
+
+git show refs/tags/$T1:$P | awk -f $D/strip.awk > $OUT/$P.$T1.c
+git show refs/tags/$T2:$P | awk -f $D/strip.awk > $OUT/$P.$T2.c
+
+gcc -U__APPLE__ -E $OUT/$P.$T1.c | awk -f $D/strip2.awk > $OUT/$P.$T1.gcc
+gcc -U__APPLE__ -E $OUT/$P.$T2.c | awk -f $D/strip2.awk > $OUT/$P.$T2.gcc
+
+diff -w -B $OUT/$P.$T1.gcc $OUT/$P.$T2.gcc
+
+rm -rf $OUT

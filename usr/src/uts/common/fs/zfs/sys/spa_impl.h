@@ -58,10 +58,15 @@ typedef struct spa_history_phys {
 	uint64_t sh_records_lost;	/* num of records overwritten */
 } spa_history_phys_t;
 
-typedef struct spa_props {
-	nvlist_t	*spa_props_nvp;
-	list_node_t	spa_list_node;
-} spa_props_t;
+struct spa_aux_vdev {
+	uint64_t	sav_object;		/* MOS object for device list */
+	nvlist_t	*sav_config;		/* cached device config */
+	vdev_t		**sav_vdevs;		/* devices */
+	int		sav_count;		/* number devices */
+	boolean_t	sav_sync;		/* sync the device list */
+	nvlist_t	**sav_pending;		/* pending device additions */
+	uint_t		sav_npending;		/* # pending devices */
+};
 
 struct spa {
 	/*
@@ -92,11 +97,8 @@ struct spa {
 	vdev_t		*spa_root_vdev;		/* top-level vdev container */
 	uint64_t	spa_load_guid;		/* initial guid for spa_load */
 	list_t		spa_dirty_list;		/* vdevs with dirty labels */
-	uint64_t	spa_spares_object;	/* MOS object for spare list */
-	nvlist_t	*spa_sparelist;		/* cached spare config */
-	vdev_t		**spa_spares;		/* available hot spares */
-	int		spa_nspares;		/* number of hot spares */
-	boolean_t	spa_sync_spares;	/* sync the spares list */
+	spa_aux_vdev_t	spa_spares;		/* hot spares */
+	spa_aux_vdev_t	spa_l2cache;		/* L2ARC cache devices */
 	uint64_t	spa_config_object;	/* MOS object for pool config */
 	uint64_t	spa_syncing_txg;	/* txg currently syncing */
 	uint64_t	spa_sync_bplist_obj;	/* object for deferred frees */
@@ -139,12 +141,16 @@ struct spa {
 	uint64_t	spa_history;		/* history object */
 	kmutex_t	spa_history_lock;	/* history lock */
 	vdev_t		*spa_pending_vdev;	/* pending vdev additions */
-	nvlist_t	**spa_pending_spares;	/* pending spare additions */
-	uint_t		spa_pending_nspares;	/* # pending spares */
 	kmutex_t	spa_props_lock;		/* property lock */
 	uint64_t	spa_pool_props_object;	/* object for properties */
 	uint64_t	spa_bootfs;		/* default boot filesystem */
 	boolean_t	spa_delegation;		/* delegation on/off */
+	char		*spa_config_dir;	/* cache file directory */
+	char		*spa_config_file;	/* cache file name */
+	list_t		spa_zio_list;		/* zio error list */
+	kcondvar_t	spa_zio_cv;		/* resume I/O pipeline */
+	kmutex_t	spa_zio_lock;		/* zio error lock */
+	uint8_t		spa_failmode;		/* failure mode for the pool */
 	/*
 	 * spa_refcnt & spa_config_lock must be the last elements
 	 * because refcount_t changes size based on compilation options.

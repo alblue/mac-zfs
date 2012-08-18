@@ -37,6 +37,7 @@
 #include <sys/list.h>
 #include <sys/vfs.h>
 #include <sys/zil.h>
+#include <sys/rrwlock.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -52,13 +53,21 @@ struct zfsvfs {
 	uint64_t	z_unlinkedobj;	/* id of unlinked zapobj */
 	uint64_t	z_max_blksz;	/* maximum block size for files */
 	uint64_t	z_assign;	/* TXG_NOWAIT or set by zil_replay() */
+	uint64_t	z_fuid_obj;	/* fuid table object number */
+	avl_tree_t	z_fuid_idx;	/* fuid tree keyed by index */
+	avl_tree_t	z_fuid_domain;	/* fuid tree keyed by domain */
+	krwlock_t	z_fuid_lock;	/* fuid lock */
+	boolean_t	z_fuid_loaded;	/* fuid tables are loaded */
+	struct zfs_fuid_info	*z_fuid_replay; /* fuid info for replay */
 	zilog_t		*z_log;		/* intent log pointer */
 	uint_t		z_acl_mode;	/* acl chmod/mode behavior */
 	uint_t		z_acl_inherit;	/* acl inheritance behavior */
+	uint_t		z_case;		/* case-insensitive behavior */
+	int		z_norm;		/* normalization flags */
 	boolean_t	z_atime;	/* enable atimes mount option */
 	boolean_t	z_unmounted;	/* unmounted */
-	krwlock_t	z_unmount_lock;
-	krwlock_t	z_unmount_inactive_lock;
+	rrwlock_t	z_teardown_lock;
+	krwlock_t	z_teardown_inactive_lock;
 	list_t		z_all_znodes;	/* all vnodes in the fs */
 	kmutex_t	z_znodes_lock;	/* lock for z_all_znodes */
 	vnode_t		*z_ctldir;	/* .zfs directory pointer */
@@ -70,6 +79,8 @@ struct zfsvfs {
 #endif
 	boolean_t	z_show_ctldir;	/* expose .zfs in the root dir */
 	boolean_t	z_issnap;	/* true if this is a snapshot */
+	boolean_t	z_vscan;	/* virus scan on/off */
+	boolean_t	z_use_fuids;	/* version allows fuids */
 	uint64_t	z_version;
 #define	ZFS_OBJ_MTX_SZ	64
 	kmutex_t	z_hold_mtx[ZFS_OBJ_MTX_SZ];	/* znode hold locks */
@@ -133,6 +144,9 @@ void zfs_init(void);
 void zfs_fini(void);
 #endif /* __APPLE__ */
 	
+extern int zfs_suspend_fs(zfsvfs_t *zfsvfs, char *osname, int *mode);
+extern int zfs_resume_fs(zfsvfs_t *zfsvfs, const char *osname, int mode);
+
 #ifdef	__cplusplus
 }
 #endif

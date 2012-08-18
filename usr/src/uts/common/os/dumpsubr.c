@@ -78,6 +78,7 @@ static u_offset_t dumpvp_limit;	/* maximum write offset */
 char		*dumppath;	/* pathname of dump device */
 int		dump_timeout = 120; /* timeout for dumping page during panic */
 int		dump_timeleft;	/* portion of dump_timeout remaining */
+int		dump_ioerr;	/* dump i/o error */
 
 #ifdef DEBUG
 int		dumpfaildebug = 1;	/* enter debugger if dump fails */
@@ -88,7 +89,6 @@ int		dumpfaildebug = 0;
 static ulong_t	*dump_bitmap;	/* bitmap for marking pages to dump */
 static pgcnt_t	dump_bitmapsize; /* size of bitmap */
 static pid_t	*dump_pids;	/* list of process IDs at dump time */
-static int	dump_ioerr;	/* dump i/o error */
 static offset_t	dumpvp_off;	/* current dump device offset */
 static char	*dump_cmap;	/* VA for dump compression mapping */
 static char	*dumpbuf_cur, *dumpbuf_start, *dumpbuf_end;
@@ -151,7 +151,6 @@ static void
 dumphdr_init(void)
 {
 	pgcnt_t npages = 0;
-	struct memlist *mp;
 
 	ASSERT(MUTEX_HELD(&dump_lock));
 
@@ -173,8 +172,7 @@ dumphdr_init(void)
 		dump_pids = kmem_alloc(v.v_proc * sizeof (pid_t), KM_SLEEP);
 	}
 
-	for (mp = phys_install; mp != NULL; mp = mp->next)
-		npages += mp->size >> PAGESHIFT;
+	npages = num_phys_pages();
 
 	if (dump_bitmapsize != npages) {
 		void *map = kmem_alloc(BT_SIZEOFMAP(npages), KM_SLEEP);
@@ -208,11 +206,11 @@ dumpinit(vnode_t *vp, char *name, int justchecking)
 	 * (1) a real device that's not mounted and has a cb_dump routine, or
 	 * (2) a swapfile on some filesystem that has a vop_dump routine.
 	 */
-	if ((error = VOP_OPEN(&cvp, FREAD | FWRITE, kcred)) != 0)
+	if ((error = VOP_OPEN(&cvp, FREAD | FWRITE, kcred, NULL)) != 0)
 		return (error);
 
 	vattr.va_mask = AT_SIZE | AT_TYPE | AT_RDEV;
-	if ((error = VOP_GETATTR(cvp, &vattr, 0, kcred)) == 0) {
+	if ((error = VOP_GETATTR(cvp, &vattr, 0, kcred, NULL)) == 0) {
 		if (vattr.va_type == VBLK || vattr.va_type == VCHR) {
 			if (devopsp[getmajor(vattr.va_rdev)]->
 			    devo_cb_ops->cb_dump == nodev)
@@ -230,7 +228,8 @@ dumpinit(vnode_t *vp, char *name, int justchecking)
 		error = ENOSPC;
 
 	if (error || justchecking) {
-		(void) VOP_CLOSE(cvp, FREAD | FWRITE, 1, (offset_t)0, kcred);
+		(void) VOP_CLOSE(cvp, FREAD | FWRITE, 1, (offset_t)0,
+		    kcred, NULL);
 		return (error);
 	}
 
@@ -253,24 +252,26 @@ dumpinit(vnode_t *vp, char *name, int justchecking)
 	 */
 	if (cvp->v_type == VBLK &&
 	    (cdev_vp = makespecvp(VTOS(cvp)->s_dev, VCHR)) != NULL) {
-		if (VOP_OPEN(&cdev_vp, FREAD | FWRITE, kcred) == 0) {
+		if (VOP_OPEN(&cdev_vp, FREAD | FWRITE, kcred, NULL) == 0) {
 			size_t blk_size;
 			struct dk_cinfo dki;
 			struct vtoc vtoc;
 
 			if (VOP_IOCTL(cdev_vp, DKIOCGVTOC, (intptr_t)&vtoc,
-			    FKIOCTL, kcred, NULL) == 0 && vtoc.v_sectorsz != 0)
+			    FKIOCTL, kcred, NULL, NULL) == 0 &&
+			    vtoc.v_sectorsz != 0)
 				blk_size = vtoc.v_sectorsz;
 			else
 				blk_size = DEV_BSIZE;
 
 			if (VOP_IOCTL(cdev_vp, DKIOCINFO, (intptr_t)&dki,
-			    FKIOCTL, kcred, NULL) == 0) {
+			    FKIOCTL, kcred, NULL, NULL) == 0) {
 				dump_iosize = dki.dki_maxtransfer * blk_size;
 				dumpbuf_resize();
 			}
 
-			(void) VOP_CLOSE(cdev_vp, FREAD | FWRITE, 1, 0, kcred);
+			(void) VOP_CLOSE(cdev_vp, FREAD | FWRITE, 1, 0,
+			    kcred, NULL);
 		}
 
 		VN_RELE(cdev_vp);
@@ -288,7 +289,7 @@ dumpfini(void)
 
 	kmem_free(dumppath, strlen(dumppath) + 1);
 
-	(void) VOP_CLOSE(dumpvp, FREAD | FWRITE, 1, (offset_t)0, kcred);
+	(void) VOP_CLOSE(dumpvp, FREAD | FWRITE, 1, (offset_t)0, kcred, NULL);
 
 	VN_RELE(dumpvp);
 
@@ -336,7 +337,7 @@ dumpvp_flush(void)
 	} else if (size != 0) {
 		if (panicstr)
 			err = VOP_DUMP(dumpvp, dumpbuf_start,
-			    lbtodb(dumpvp_off), btod(size));
+			    lbtodb(dumpvp_off), btod(size), NULL);
 		else
 			err = vn_rdwr(UIO_WRITE, dumpvp, dumpbuf_start, size,
 			    dumpvp_off, UIO_SYSSPACE, 0, dumpvp_limit,
@@ -480,7 +481,7 @@ dump_ereports(void)
 	if (!panicstr) {
 		(void) VOP_PUTPAGE(dumpvp, dumpvp_start,
 		    (size_t)(dumpvp_off - dumpvp_start),
-		    B_INVAL | B_FORCE, kcred);
+		    B_INVAL | B_FORCE, kcred, NULL);
 	}
 }
 
@@ -523,7 +524,7 @@ dump_messages(void)
 	if (!panicstr) {
 		(void) VOP_PUTPAGE(dumpvp, dumpvp_start,
 		    (size_t)(dumpvp_off - dumpvp_start),
-		    B_INVAL | B_FORCE, kcred);
+		    B_INVAL | B_FORCE, kcred, NULL);
 	}
 }
 
@@ -602,8 +603,8 @@ dumpsys(void)
 
 	if (panicstr) {
 		dumphdr->dump_flags &= ~DF_LIVE;
-		(void) VOP_DUMPCTL(dumpvp, DUMP_FREE, NULL);
-		(void) VOP_DUMPCTL(dumpvp, DUMP_ALLOC, NULL);
+		(void) VOP_DUMPCTL(dumpvp, DUMP_FREE, NULL, NULL);
+		(void) VOP_DUMPCTL(dumpvp, DUMP_ALLOC, NULL, NULL);
 		(void) vsnprintf(dumphdr->dump_panicstring, DUMP_PANICSIZE,
 		    panicstr, panicargs);
 	}

@@ -699,6 +699,9 @@ page_t	*page_get_freelist(struct vnode *, u_offset_t, struct seg *,
 
 page_t	*page_get_cachelist(struct vnode *, u_offset_t, struct seg *,
 		caddr_t, uint_t, struct lgrp *);
+#if defined(__i386) || defined(__amd64)
+int	page_chk_freelist(uint_t);
+#endif
 void	page_list_add(page_t *, int);
 void	page_boot_demote(page_t *);
 void	page_promote_size(page_t *, uint_t);
@@ -834,7 +837,7 @@ extern uint_t		colorequiv;
 extern uchar_t		colorequivszc[];
 
 uint_t	page_num_pagesizes(void);
-uint_t	page_num_user_pagesizes(void);
+uint_t	page_num_user_pagesizes(int);
 size_t	page_get_pagesize(uint_t);
 size_t	page_get_user_pagesize(uint_t n);
 pgcnt_t	page_get_pagecnt(uint_t);

@@ -1266,7 +1266,7 @@ vn_open(char *pnamep, enum uio_seg seg, int filemode, int createmode,
 int
 vn_openat(char *pnamep, enum uio_seg seg, int filemode, int createmode,
 		struct vnode **vpp, enum create crwhy,
-		mode_t umask, struct vnode *startvp)
+		mode_t umask, struct vnode *startvp, int fd)
 {
 	char *path;
 	int pathlen = MAXPATHLEN;
@@ -1447,128 +1447,27 @@ VOP_SPACE(struct vnode *vp, int cmd, void *fl, int flags, offset_t off, cred_t *
 }
 
 int
-VOP_CLOSE(struct vnode *vp, int flag, int count, offset_t off, void *cr)
+VOP_CLOSE(struct vnode *vp, int flag, int count, offset_t off, void *cred, void *ctx)
 {
 	vfs_context_t vctx;
 	int error;
 
-	vctx = vfs_context_create((vfs_context_t)0);
+	vctx = vfs_context_create((vfs_context_t)ctx);
 	error = vnode_close(vp, flag & FWRITE, vctx);
 	(void) vfs_context_rele(vctx);
 	return (error);
 }
 
 int
-VOP_FSYNC(struct vnode *vp, int flags, void* unused)
+VOP_FSYNC(struct vnode *vp, int flags, void* cred, void *ctx)
 {
 	vfs_context_t vctx;
 	int error;
 
-	vctx = vfs_context_create((vfs_context_t)0);
+	vctx = vfs_context_create((vfs_context_t)ctx);
 	error = VNOP_FSYNC(vp, (flags == FSYNC), vctx);
 	(void) vfs_context_rele(vctx);
 	return (error);
-}
-
-/*
- * ACLs
- */
-
-/*
- * ace_trivial:
- * determine whether an ace_t acl is trivial
- *
- * Trivialness implys that the acl is composed of only
- * owner, group, everyone entries.  ACL can't
- * have read_acl denied, and write_owner/write_acl/write_attributes
- * can only be owner@ entry.
- */
-int
-ace_trivial(ace_t *acep, int aclcnt)
-{
-	int i;
-	int owner_seen = 0;
-	int group_seen = 0;
-	int everyone_seen = 0;
-
-	for (i = 0; i != aclcnt; i++) {
-		switch (acep[i].a_flags & 0xf040) {
-		case ACE_OWNER:
-			if (group_seen || everyone_seen)
-				return (1);
-			owner_seen++;
-			break;
-		case ACE_GROUP|ACE_IDENTIFIER_GROUP:
-			if (everyone_seen || owner_seen == 0)
-				return (1);
-			group_seen++;
-			break;
-
-		case ACE_EVERYONE:
-			if (owner_seen == 0 || group_seen == 0)
-				return (1);
-			everyone_seen++;
-			break;
-		default:
-			return (1);
-
-		}
-
-		if (acep[i].a_flags & (ACE_FILE_INHERIT_ACE|
-		    ACE_DIRECTORY_INHERIT_ACE|ACE_NO_PROPAGATE_INHERIT_ACE|
-		    ACE_INHERIT_ONLY_ACE))
-			return (1);
-
-		/*
-		 * Special check for some special bits
-		 *
-		 * Don't allow anybody to deny reading basic
-		 * attributes or a files ACL.
-		 */
-		if ((acep[i].a_access_mask &
-		    (ACE_READ_ACL|ACE_READ_ATTRIBUTES)) &&
-		    (acep[i].a_type == ACE_ACCESS_DENIED_ACE_TYPE))
-			return (1);
-
-		/*
-		 * Allow on owner@ to allow
-		 * write_acl/write_owner/write_attributes
-		 */
-		if (acep[i].a_type == ACE_ACCESS_ALLOWED_ACE_TYPE &&
-		    (!(acep[i].a_flags & ACE_OWNER) && (acep[i].a_access_mask &
-		    (ACE_WRITE_OWNER|ACE_WRITE_ACL|ACE_WRITE_ATTRIBUTES))))
-			return (1);
-	}
-
-	if ((owner_seen == 0) || (group_seen == 0) || (everyone_seen == 0))
-	    return (1);
-
-	return (0);
-}
-
-void
-adjust_ace_pair(ace_t *pair, mode_t mode)
-{
-	if (mode & S_IROTH)
-		pair[1].a_access_mask |= ACE_READ_DATA;
-	else
-		pair[0].a_access_mask |= ACE_READ_DATA;
-	if (mode & S_IWOTH)
-		pair[1].a_access_mask |=
-		    ACE_WRITE_DATA|ACE_APPEND_DATA;
-	else
-		pair[0].a_access_mask |=
-		    ACE_WRITE_DATA|ACE_APPEND_DATA;
-	if (mode & S_IXOTH)
-		pair[1].a_access_mask |= ACE_EXECUTE;
-	else
-		pair[0].a_access_mask |= ACE_EXECUTE;
-}
-
-gid_t
-crgetgid(const cred_t *cr)
-{
-	return kauth_cred_getgid((kauth_cred_t)cr);
 }
 
 /*

@@ -42,8 +42,12 @@
 #include <sys/systm.h>
 #include <sys/debug.h>
 #include <sys/kmem.h>
+#ifdef __APPLE__
+#include <sys/u8_textprep.h>
+#else
 #include <sys/ddi.h>
 #include <sys/sunddi.h>
+#endif /* __APPLE__ */
 #else
 #include <sys/u8_textprep.h>
 #include <strings.h>
@@ -334,7 +338,7 @@ const uint8_t u8_valid_max_2nd_byte[0x100] = {
  * specific to UTF-8 and Unicode.
  */
 int
-u8_validate(char *u8str, size_t n, char **list, int flag, int *errno)
+u8_validate(char *u8str, size_t n, char **list, int flag, int *err)
 {
 	uchar_t *ib;
 	uchar_t *ibtail;
@@ -371,13 +375,13 @@ u8_validate(char *u8str, size_t n, char **list, int flag, int *errno)
 		 */
 		sz = u8_number_of_bytes[*ib];
 		if (sz == U8_ILLEGAL_CHAR) {
-			*errno = EILSEQ;
+			*err = EILSEQ;
 			return (-1);
 		}
 
 		if (sz == U8_OUT_OF_RANGE_CHAR ||
 		    (validate_ucs2_range_only && sz > U8_MAX_BYTES_UCS2)) {
-			*errno = ERANGE;
+			*err = ERANGE;
 			return (-1);
 		}
 
@@ -387,7 +391,7 @@ u8_validate(char *u8str, size_t n, char **list, int flag, int *errno)
 		 * checking higher priority then EINVAL cases.
 		 */
 		if ((ibtail - ib) < sz) {
-			*errno = EINVAL;
+			*err = EINVAL;
 			return (-1);
 		}
 
@@ -407,12 +411,12 @@ u8_validate(char *u8str, size_t n, char **list, int flag, int *errno)
 				if (second) {
 					if (*ib < u8_valid_min_2nd_byte[f] ||
 					    *ib > u8_valid_max_2nd_byte[f]) {
-						*errno = EILSEQ;
+						*err = EILSEQ;
 						return (-1);
 					}
 					second = B_FALSE;
 				} else if (U8_ILLEGAL_NEXT_BYTE_COMMON(*ib)) {
-					*errno = EILSEQ;
+					*err = EILSEQ;
 					return (-1);
 				}
 				ib++;
@@ -432,7 +436,7 @@ u8_validate(char *u8str, size_t n, char **list, int flag, int *errno)
 				}
 
 				if (s1 >= ib && *s2 == '\0') {
-					*errno = EBADF;
+					*err = EBADF;
 					return (-1);
 				}
 			}
@@ -566,7 +570,7 @@ do_case_conv(int uv, uchar_t *u8s, uchar_t *s, int sz, boolean_t is_it_toupper)
  */
 static int
 do_case_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1,
-	size_t n2, boolean_t is_it_toupper, int *errno)
+	size_t n2, boolean_t is_it_toupper, int *err)
 {
 	int f;
 	int sz1;
@@ -583,11 +587,11 @@ do_case_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1,
 		 * Find out what would be the byte length for this UTF-8
 		 * character at string s1 and also find out if this is
 		 * an illegal start byte or not and if so, issue a proper
-		 * errno and yet treat this byte as a character.
+		 * err and yet treat this byte as a character.
 		 */
 		sz1 = u8_number_of_bytes[*s1];
 		if (sz1 < 0) {
-			*errno = EILSEQ;
+			*err = EILSEQ;
 			sz1 = 1;
 		}
 
@@ -612,7 +616,7 @@ do_case_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1,
 			s1++;
 			u8s1[1] = '\0';
 		} else if ((i1 + sz1) > n1) {
-			*errno = EINVAL;
+			*err = EINVAL;
 			for (j = 0; (i1 + j) < n1; )
 				u8s1[j++] = *s1++;
 			u8s1[j] = '\0';
@@ -624,7 +628,7 @@ do_case_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1,
 		/* Do the same for the string s2. */
 		sz2 = u8_number_of_bytes[*s2];
 		if (sz2 < 0) {
-			*errno = EILSEQ;
+			*err = EILSEQ;
 			sz2 = 1;
 		}
 
@@ -636,7 +640,7 @@ do_case_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1,
 			s2++;
 			u8s2[1] = '\0';
 		} else if ((i2 + sz2) > n2) {
-			*errno = EINVAL;
+			*err = EINVAL;
 			for (j = 0; (i2 + j) < n2; )
 				u8s2[j++] = *s2++;
 			u8s2[j] = '\0';
@@ -1383,7 +1387,7 @@ collect_a_seq(size_t uv, uchar_t *u8s, uchar_t **source, uchar_t *slast,
 	boolean_t canonical_decomposition,
 	boolean_t compatibility_decomposition,
 	boolean_t canonical_composition,
-	int *errno, u8_normalization_states_t *state)
+	int *err, u8_normalization_states_t *state)
 {
 	uchar_t *s;
 	int sz;
@@ -1426,7 +1430,7 @@ collect_a_seq(size_t uv, uchar_t *u8s, uchar_t **source, uchar_t *slast,
 	sz = u8_number_of_bytes[*s];
 
 	if (sz < 0) {
-		*errno = EILSEQ;
+		*err = EILSEQ;
 
 		u8s[0] = *s++;
 		u8s[1] = '\0';
@@ -1446,7 +1450,7 @@ collect_a_seq(size_t uv, uchar_t *u8s, uchar_t **source, uchar_t *slast,
 		s++;
 		u8s[1] = '\0';
 	} else if ((s + sz) > slast) {
-		*errno = EINVAL;
+		*err = EINVAL;
 
 		for (i = 0; s < slast; )
 			u8s[i++] = *s++;
@@ -1726,7 +1730,7 @@ TURN_STREAM_SAFE:
  */
 static int
 do_norm_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1, size_t n2,
-	int flag, int *errno)
+	int flag, int *err)
 {
 	int result;
 	size_t sz1;
@@ -1778,7 +1782,7 @@ do_norm_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1, size_t n2,
 			    is_it_toupper, is_it_tolower,
 			    canonical_decomposition,
 			    compatibility_decomposition,
-			    canonical_composition, errno, &state);
+			    canonical_composition, err, &state);
 		}
 
 		if (U8_ISASCII(*s2) && ((s2 + 1) >= s2last ||
@@ -1798,7 +1802,7 @@ do_norm_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1, size_t n2,
 			    is_it_toupper, is_it_tolower,
 			    canonical_decomposition,
 			    compatibility_decomposition,
-			    canonical_composition, errno, &state);
+			    canonical_composition, err, &state);
 		}
 
 		/*
@@ -1842,13 +1846,13 @@ do_norm_compare(size_t uv, uchar_t *s1, uchar_t *s2, size_t n1, size_t n2,
  */
 int
 u8_strcmp(const char *s1, const char *s2, size_t n, int flag, size_t uv,
-		int *errno)
+		int *err)
 {
 	int f;
 	size_t n1;
 	size_t n2;
 
-	*errno = 0;
+	*err = 0;
 
 	/*
 	 * Check on the requested Unicode version, case conversion, and
@@ -1856,7 +1860,7 @@ u8_strcmp(const char *s1, const char *s2, size_t n, int flag, size_t uv,
 	 */
 
 	if (uv > U8_UNICODE_LATEST) {
-		*errno = ERANGE;
+		*err = ERANGE;
 		uv = U8_UNICODE_LATEST;
 	}
 
@@ -1869,14 +1873,14 @@ u8_strcmp(const char *s1, const char *s2, size_t n, int flag, size_t uv,
 			flag |= U8_STRCMP_CS;
 		} else if (f != U8_STRCMP_CS && f != U8_STRCMP_CI_UPPER &&
 		    f != U8_STRCMP_CI_LOWER) {
-			*errno = EBADF;
+			*err = EBADF;
 			flag = U8_STRCMP_CS;
 		}
 
 		f = flag & (U8_CANON_DECOMP | U8_COMPAT_DECOMP | U8_CANON_COMP);
 		if (f && f != U8_STRCMP_NFD && f != U8_STRCMP_NFC &&
 		    f != U8_STRCMP_NFKD && f != U8_STRCMP_NFKC) {
-			*errno = EBADF;
+			*err = EBADF;
 			flag = U8_STRCMP_CS;
 		}
 	}
@@ -1900,19 +1904,19 @@ u8_strcmp(const char *s1, const char *s2, size_t n, int flag, size_t uv,
 	 */
 	if (flag == U8_STRCMP_CI_UPPER) {
 		return (do_case_compare(uv, (uchar_t *)s1, (uchar_t *)s2,
-		    n1, n2, B_TRUE, errno));
+		    n1, n2, B_TRUE, err));
 	} else if (flag == U8_STRCMP_CI_LOWER) {
 		return (do_case_compare(uv, (uchar_t *)s1, (uchar_t *)s2,
-		    n1, n2, B_FALSE, errno));
+		    n1, n2, B_FALSE, err));
 	}
 
 	return (do_norm_compare(uv, (uchar_t *)s1, (uchar_t *)s2, n1, n2,
-	    flag, errno));
+	    flag, err));
 }
 
 size_t
 u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
-	int flag, size_t unicode_version, int *errno)
+	int flag, size_t unicode_version, int *err)
 {
 	int f;
 	int sz;
@@ -1934,20 +1938,20 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 	u8_normalization_states_t state;
 
 	if (unicode_version > U8_UNICODE_LATEST) {
-		*errno = ERANGE;
+		*err = ERANGE;
 		return ((size_t)-1);
 	}
 
 	f = flag & (U8_TEXTPREP_TOUPPER | U8_TEXTPREP_TOLOWER);
 	if (f == (U8_TEXTPREP_TOUPPER | U8_TEXTPREP_TOLOWER)) {
-		*errno = EBADF;
+		*err = EBADF;
 		return ((size_t)-1);
 	}
 
 	f = flag & (U8_CANON_DECOMP | U8_COMPAT_DECOMP | U8_CANON_COMP);
 	if (f && f != U8_TEXTPREP_NFD && f != U8_TEXTPREP_NFC &&
 	    f != U8_TEXTPREP_NFKD && f != U8_TEXTPREP_NFKC) {
-		*errno = EBADF;
+		*err = EBADF;
 		return ((size_t)-1);
 	}
 
@@ -1955,7 +1959,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 		return (0);
 
 	if (outarray == NULL) {
-		*errno = E2BIG;
+		*err = E2BIG;
 		return ((size_t)-1);
 	}
 
@@ -1987,7 +1991,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 
 			if (sz < 0) {
 				if (do_not_ignore_invalid) {
-					*errno = EILSEQ;
+					*err = EILSEQ;
 					ret_val = (size_t)-1;
 					break;
 				}
@@ -1998,7 +2002,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 
 			if (sz == 1) {
 				if (ob >= obtail) {
-					*errno = E2BIG;
+					*err = E2BIG;
 					ret_val = (size_t)-1;
 					break;
 				}
@@ -2013,13 +2017,13 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 				ob++;
 			} else if ((ib + sz) > ibtail) {
 				if (do_not_ignore_invalid) {
-					*errno = EINVAL;
+					*err = EINVAL;
 					ret_val = (size_t)-1;
 					break;
 				}
 
 				if ((obtail - ob) < (ibtail - ib)) {
-					*errno = E2BIG;
+					*err = E2BIG;
 					ret_val = (size_t)-1;
 					break;
 				}
@@ -2038,7 +2042,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 					    ib, sz, is_it_toupper);
 
 					if ((obtail - ob) < i) {
-						*errno = E2BIG;
+						*err = E2BIG;
 						ret_val = (size_t)-1;
 						break;
 					}
@@ -2049,7 +2053,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 						*ob++ = u8s[sz];
 				} else {
 					if ((obtail - ob) < sz) {
-						*errno = E2BIG;
+						*err = E2BIG;
 						ret_val = (size_t)-1;
 						break;
 					}
@@ -2082,7 +2086,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 			if (U8_ISASCII(*ib) && ((ib + 1) >= ibtail ||
 			    ((ib + 1) < ibtail && U8_ISASCII(*(ib + 1))))) {
 				if (ob >= obtail) {
-					*errno = E2BIG;
+					*err = E2BIG;
 					ret_val = (size_t)-1;
 					break;
 				}
@@ -2096,7 +2100,7 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 				ib++;
 				ob++;
 			} else {
-				*errno = 0;
+				*err = 0;
 				state = U8_STATE_START;
 
 				j = collect_a_seq(unicode_version, u8s,
@@ -2106,15 +2110,15 @@ u8_textprep_str(char *inarray, size_t *inlen, char *outarray, size_t *outlen,
 				    canonical_decomposition,
 				    compatibility_decomposition,
 				    canonical_composition,
-				    errno, &state);
+				    err, &state);
 
-				if (*errno && do_not_ignore_invalid) {
+				if (*err && do_not_ignore_invalid) {
 					ret_val = (size_t)-1;
 					break;
 				}
 
 				if ((obtail - ob) < j) {
-					*errno = E2BIG;
+					*err = E2BIG;
 					ret_val = (size_t)-1;
 					break;
 				}

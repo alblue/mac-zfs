@@ -19,7 +19,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2006 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -114,8 +114,8 @@ extern struct pchead pcdhead[];
 extern void pc_init(void);
 extern struct pcnode *pc_getnode(struct pcfs *, daddr_t, int, struct pcdir *);
 extern void pc_rele(struct pcnode *);
-extern void pc_mark_mod(struct pcnode *);
-extern void pc_mark_acc(struct pcnode *);
+extern void pc_mark_mod(struct pcfs *, struct pcnode *);
+extern void pc_mark_acc(struct pcfs *, struct pcnode *);
 extern int pc_nodesync(struct pcnode *);
 extern int pc_nodeupdate(struct pcnode *);
 extern int pc_bmap(struct pcnode *, daddr_t, daddr_t *, uint_t *);
@@ -129,8 +129,10 @@ extern void pc_mark_irrecov(struct pcfs *);
 extern int pc_dirlook(struct pcnode *, char *, struct pcnode **);
 extern int pc_direnter(struct pcnode *, char *, struct vattr *,
 	struct pcnode **);
-extern int pc_dirremove(struct pcnode *, char *, struct vnode *, enum vtype);
-extern int pc_rename(struct pcnode *, struct pcnode *, char *, char *);
+extern int pc_dirremove(struct pcnode *, char *, struct vnode *, enum vtype,
+		caller_context_t *);
+extern int pc_rename(struct pcnode *, struct pcnode *, char *, char *,
+		caller_context_t *);
 extern int pc_blkatoff(struct pcnode *, offset_t, struct buf **,
 	struct pcdir **);
 extern int pc_truncate(struct pcnode *, uint_t);

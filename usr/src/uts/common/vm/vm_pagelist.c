@@ -52,6 +52,7 @@
 #include <vm/page.h>
 #include <vm/seg_kmem.h>
 #include <vm/seg_vn.h>
+#include <sys/vmsystm.h>
 #include <sys/memnode.h>
 #include <vm/vm_dep.h>
 #include <sys/lgrp.h>
@@ -419,10 +420,18 @@ page_szc_user_filtered(size_t pagesize)
  * Return how many page sizes are available for the user to use.  This is
  * what the hardware supports and not based upon how the OS implements the
  * support of different page sizes.
+ *
+ * If legacy is non-zero, return the number of pagesizes available to legacy
+ * applications. The number of legacy page sizes might be less than the
+ * exported user page sizes. This is to prevent legacy applications that
+ * use the largest page size returned from getpagesizes(3c) from inadvertantly
+ * using the 'new' large pagesizes.
  */
 uint_t
-page_num_user_pagesizes(void)
+page_num_user_pagesizes(int legacy)
 {
+	if (legacy)
+		return (mmu_legacy_page_sizes);
 	return (mmu_exported_page_sizes);
 }
 
@@ -3264,9 +3273,8 @@ trimkcage(struct memseg *mseg, pfn_t *lo, pfn_t *hi, pfn_t pfnlo, pfn_t pfnhi)
 			if (kcagepfn >= mseg->pages_base &&
 			    kcagepfn < mseg->pages_end) {
 				ASSERT(decr == 0);
-				*lo = kcagepfn;
-				*hi = MIN(pfnhi,
-				    (mseg->pages_end - 1));
+				*lo = MAX(kcagepfn, pfnlo);
+				*hi = MIN(pfnhi, (mseg->pages_end - 1));
 				rc = 1;
 			}
 		}
@@ -3281,7 +3289,7 @@ trimkcage(struct memseg *mseg, pfn_t *lo, pfn_t *hi, pfn_t pfnlo, pfn_t pfnhi)
 			if (kcagepfn >= mseg->pages_base &&
 			    kcagepfn < mseg->pages_end) {
 				ASSERT(decr);
-				*hi = kcagepfn;
+				*hi = MIN(kcagepfn, pfnhi);
 				*lo = MAX(pfnlo, mseg->pages_base);
 				rc = 1;
 			}
@@ -3311,7 +3319,6 @@ trimkcage(struct memseg *mseg, pfn_t *lo, pfn_t *hi, pfn_t pfnlo, pfn_t pfnhi)
  * 'pfnflag' specifies the subset of the pfn range to search.
  */
 
-
 static page_t *
 page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
     pfn_t pfnlo, pfn_t pfnhi, pgcnt_t pfnflag)
@@ -3330,7 +3337,9 @@ page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
 
 	ASSERT(szc != 0 || (flags & PGI_PGCPSZC0));
 
-	if ((pfnhi - pfnlo) + 1 < szcpgcnt)
+	pfnlo = P2ROUNDUP(pfnlo, szcpgcnt);
+
+	if ((pfnhi - pfnlo) + 1 < szcpgcnt || pfnlo >= pfnhi)
 		return (NULL);
 
 	ASSERT(szc < mmu_page_sizes);
@@ -3368,15 +3377,16 @@ page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
 		pgcnt_t	szcpages;
 		int	slotlen;
 
-		pfnlo = P2ROUNDUP(pfnlo, szcpgcnt);
-		pfnhi = pfnhi & ~(szcpgcnt - 1);
-
+		pfnhi = P2ALIGN((pfnhi + 1), szcpgcnt) - 1;
 		szcpages = ((pfnhi - pfnlo) + 1) / szcpgcnt;
 		slotlen = howmany(szcpages, slots);
+		/* skip if 'slotid' slot is empty */
+		if (slotid * slotlen >= szcpages)
+			return (NULL);
 		pfnlo = pfnlo + (((slotid * slotlen) % szcpages) * szcpgcnt);
 		ASSERT(pfnlo < pfnhi);
 		if (pfnhi > pfnlo + (slotlen * szcpgcnt))
-			pfnhi = pfnlo + (slotlen * szcpgcnt);
+			pfnhi = pfnlo + (slotlen * szcpgcnt) - 1;
 	}
 
 	memsegs_lock(0);
@@ -3395,9 +3405,14 @@ page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
 			/* mseg too small */
 			continue;
 
-		/* trim off kernel cage pages from pfn range */
+		/*
+		 * trim off kernel cage pages from pfn range and check for
+		 * a trimmed pfn range returned that does not span the
+		 * desired large page size.
+		 */
 		if (kcage_on) {
-			if (trimkcage(mseg, &lo, &hi, pfnlo, pfnhi) == 0)
+			if (trimkcage(mseg, &lo, &hi, pfnlo, pfnhi) == 0 ||
+			    ((hi - lo) + 1) < szcpgcnt)
 				continue;
 		} else {
 			lo = MAX(pfnlo, mseg->pages_base);
@@ -3406,8 +3421,9 @@ page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
 
 		/* round to szcpgcnt boundaries */
 		lo = P2ROUNDUP(lo, szcpgcnt);
+
 		MEM_NODE_ITERATOR_INIT(lo, mnode, &it);
-		hi = hi & ~(szcpgcnt - 1);
+		hi = P2ALIGN((hi + 1), szcpgcnt) - 1;
 
 		if (hi <= lo)
 			continue;
@@ -3449,7 +3465,7 @@ page_geti_contig_pages(int mnode, uint_t bin, uchar_t szc, int flags,
 		ASSERT(randpp->p_pagenum == randpfn);
 
 		pp = randpp;
-		endpp =  mseg->pages + (hi - mseg->pages_base);
+		endpp =  mseg->pages + (hi - mseg->pages_base) + 1;
 
 		ASSERT(randpp + szcpgcnt <= endpp);
 
@@ -3565,6 +3581,32 @@ page_get_contig_pages(int mnode, uint_t bin, int mtype, uchar_t szc,
 	return (NULL);
 }
 
+#if defined(__i386) || defined(__amd64)
+/*
+ * Determine the likelihood of finding/coalescing a szc page.
+ * Return 0 if the likelihood is small otherwise return 1.
+ *
+ * For now, be conservative and check only 1g pages and return 0
+ * if there had been previous coalescing failures and the szc pages
+ * needed to satisfy request would exhaust most of freemem.
+ */
+int
+page_chk_freelist(uint_t szc)
+{
+	pgcnt_t		pgcnt;
+
+	if (szc <= 1)
+		return (1);
+
+	pgcnt = page_get_pagecnt(szc);
+	if (pgcpfailcnt[szc] && pgcnt + throttlefree >= freemem) {
+		VM_STAT_ADD(vmm_vmstats.pcf_deny[szc]);
+		return (0);
+	}
+	VM_STAT_ADD(vmm_vmstats.pcf_allow[szc]);
+	return (1);
+}
+#endif
 
 /*
  * Find the `best' page on the freelist for this (vp,off) (as,vaddr) pair.

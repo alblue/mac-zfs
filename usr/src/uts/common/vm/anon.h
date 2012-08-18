@@ -363,7 +363,7 @@ extern int	anon_fill_cow_holes(struct seg *, caddr_t, struct anon_hdr *,
 		    uint_t, struct vpage [], struct cred *);
 extern void	anon_free(struct anon_hdr *, ulong_t, size_t);
 extern void	anon_free_pages(struct anon_hdr *, ulong_t, size_t, uint_t);
-extern void	anon_disclaim(struct anon_map *, ulong_t, size_t, int);
+extern void	anon_disclaim(struct anon_map *, ulong_t, size_t);
 extern int	anon_getpage(struct anon **, uint_t *, struct page **,
 		    size_t, struct seg *, caddr_t, enum seg_rw, struct cred *);
 extern int	swap_getconpage(struct vnode *, u_offset_t, size_t,
@@ -439,11 +439,6 @@ extern void	anon_array_exit(anon_sync_obj_t *);
 #define	LOCK_PAGE	0x2	/* page must be ``logically'' locked */
 
 /*
- * Flags to anon_disclaim
- */
-#define	ANON_PGLOOKUP_BLK	0x1	/* block on locked pages */
-
-/*
  * SEGKP ANON pages that are locked are assumed to be LWP stack pages
  * and thus count towards the user pages locked count.
  * This value is protected by the same lock as availrmem.
@@ -475,6 +470,6 @@ extern int anon_debug;
 }
 #endif
 
-#endif  /* INTENTIONALLY_LEFT_BLANK *//
+#endif  /* INTENTIONALLY_LEFT_BLANK */
 
 #endif	/* _VM_ANON_H */

@@ -363,6 +363,9 @@ vdev_alloc(spa_t *spa, vdev_t **vdp, nvlist_t *nv, vdev_t *parent, uint_t id,
 	} else if (alloctype == VDEV_ALLOC_SPARE) {
 		if (nvlist_lookup_uint64(nv, ZPOOL_CONFIG_GUID, &guid) != 0)
 			return (EINVAL);
+	} else if (alloctype == VDEV_ALLOC_L2CACHE) {
+		if (nvlist_lookup_uint64(nv, ZPOOL_CONFIG_GUID, &guid) != 0)
+			return (EINVAL);
 	}
 
 	/*
@@ -376,7 +379,7 @@ vdev_alloc(spa_t *spa, vdev_t **vdp, nvlist_t *nv, vdev_t *parent, uint_t id,
 	 */
 	islog = 0;
 	(void) nvlist_lookup_uint64(nv, ZPOOL_CONFIG_IS_LOG, &islog);
-	if (islog && spa_version(spa) < ZFS_VERSION_SLOGS)
+	if (islog && spa_version(spa) < SPA_VERSION_SLOGS)
 		return (ENOTSUP);
 
 	/*
@@ -550,6 +553,8 @@ vdev_free(vdev_t *vd)
 
 	if (vd->vdev_isspare)
 		spa_spare_remove(vd);
+	if (vd->vdev_isl2cache)
+		spa_l2cache_remove(vd);
 
 	txg_list_destroy(&vd->vdev_ms_list);
 	txg_list_destroy(&vd->vdev_dtl_list);
@@ -793,6 +798,21 @@ vdev_metaslab_fini(vdev_t *vd)
 	}
 }
 
+int
+vdev_probe(vdev_t *vd)
+{
+	if (vd == NULL)
+		return (EINVAL);
+
+	/*
+	 * Right now we only support status checks on the leaf vdevs.
+	 */
+	if (vd->vdev_ops->vdev_op_leaf)
+		return (vd->vdev_ops->vdev_op_probe(vd));
+
+	return (0);
+}
+
 /*
  * Prepare a virtual device for access.
  */
@@ -916,6 +936,17 @@ vdev_open(vdev_t *vd)
 		    asize > vd->vdev_asize) {
 			vd->vdev_asize = asize;
 		}
+	}
+
+	/*
+	 * Ensure we can issue some IO before declaring the
+	 * vdev open for business.
+	 */
+	error = vdev_probe(vd);
+	if (error) {
+		vdev_set_state(vd, B_TRUE, VDEV_STATE_CANT_OPEN,
+		    VDEV_AUX_OPEN_FAILED);
+		return (error);
 	}
 
 	/*
@@ -1341,14 +1372,14 @@ vdev_load(vdev_t *vd)
 }
 
 /*
- * This special case of vdev_spare() is used for hot spares.  It's sole purpose
- * it to set the vdev state for the associated vdev.  To do this, we make sure
- * that we can open the underlying device, then try to read the label, and make
- * sure that the label is sane and that it hasn't been repurposed to another
- * pool.
+ * The special vdev case is used for hot spares and l2cache devices.  Its
+ * sole purpose it to set the vdev state for the associated vdev.  To do this,
+ * we make sure that we can open the underlying device, then try to read the
+ * label, and make sure that the label is sane and that it hasn't been
+ * repurposed to another pool.
  */
 int
-vdev_validate_spare(vdev_t *vd)
+vdev_validate_aux(vdev_t *vd)
 {
 	nvlist_t *label;
 	uint64_t guid, version;
@@ -1370,8 +1401,6 @@ vdev_validate_spare(vdev_t *vd)
 		nvlist_free(label);
 		return (-1);
 	}
-
-	spa_spare_add(vd);
 
 	/*
 	 * We don't actually check the pool state here.  If it's in fact in
@@ -1467,6 +1496,17 @@ vdev_fault(spa_t *spa, uint64_t guid)
 	vdev_t *rvd, *vd;
 	uint64_t txg;
 
+	/*
+	 * Disregard a vdev fault request if the pool has
+	 * experienced a complete failure.
+	 *
+	 * XXX - We do this here so that we don't hold the
+	 * spa_namespace_lock in the event that we can't get
+	 * the RW_WRITER spa_config_lock.
+	 */
+	if (spa_state(spa) == POOL_STATE_IO_FAILURE)
+		return (EIO);
+
 	txg = spa_vdev_enter(spa);
 
 	rvd = spa->spa_root_vdev;
@@ -1499,7 +1539,7 @@ vdev_fault(spa_t *spa, uint64_t guid)
 		 */
 		vdev_reopen(vd);
 
-		if (!vdev_is_dead(vd)) {
+		if (vdev_readable(vd)) {
 			vdev_set_state(vd, B_FALSE, VDEV_STATE_DEGRADED,
 			    VDEV_AUX_ERR_EXCEEDED);
 		}
@@ -1522,6 +1562,17 @@ vdev_degrade(spa_t *spa, uint64_t guid)
 {
 	vdev_t *rvd, *vd;
 	uint64_t txg;
+
+	/*
+	 * Disregard a vdev fault request if the pool has
+	 * experienced a complete failure.
+	 *
+	 * XXX - We do this here so that we don't hold the
+	 * spa_namespace_lock in the event that we can't get
+	 * the RW_WRITER spa_config_lock.
+	 */
+	if (spa_state(spa) == POOL_STATE_IO_FAILURE)
+		return (EIO);
 
 	txg = spa_vdev_enter(spa);
 
@@ -1563,6 +1614,17 @@ vdev_online(spa_t *spa, uint64_t guid, uint64_t flags,
 {
 	vdev_t *rvd, *vd;
 	uint64_t txg;
+
+	/*
+	 * Disregard a vdev fault request if the pool has
+	 * experienced a complete failure.
+	 *
+	 * XXX - We do this here so that we don't hold the
+	 * spa_namespace_lock in the event that we can't get
+	 * the RW_WRITER spa_config_lock.
+	 */
+	if (spa_state(spa) == POOL_STATE_IO_FAILURE)
+		return (EIO);
 
 	txg = spa_vdev_enter(spa);
 
@@ -1611,6 +1673,17 @@ vdev_offline(spa_t *spa, uint64_t guid, uint64_t flags)
 {
 	vdev_t *rvd, *vd;
 	uint64_t txg;
+
+	/*
+	 * Disregard a vdev fault request if the pool has
+	 * experienced a complete failure.
+	 *
+	 * XXX - We do this here so that we don't hold the
+	 * spa_namespace_lock in the event that we can't get
+	 * the RW_WRITER spa_config_lock.
+	 */
+	if (spa_state(spa) == POOL_STATE_IO_FAILURE)
+		return (EIO);
 
 	txg = spa_vdev_enter(spa);
 
@@ -1662,9 +1735,11 @@ vdev_offline(spa_t *spa, uint64_t guid, uint64_t flags)
  * Clear the error counts associated with this vdev.  Unlike vdev_online() and
  * vdev_offline(), we assume the spa config is locked.  We also clear all
  * children.  If 'vd' is NULL, then the user wants to clear all vdevs.
+ * If reopen is specified then attempt to reopen the vdev if the vdev is
+ * faulted or degraded.
  */
 void
-vdev_clear(spa_t *spa, vdev_t *vd)
+vdev_clear(spa_t *spa, vdev_t *vd, boolean_t reopen_wanted)
 {
 	int c;
 
@@ -1674,16 +1749,17 @@ vdev_clear(spa_t *spa, vdev_t *vd)
 	vd->vdev_stat.vs_read_errors = 0;
 	vd->vdev_stat.vs_write_errors = 0;
 	vd->vdev_stat.vs_checksum_errors = 0;
+	vd->vdev_is_failing = B_FALSE;
 
 	for (c = 0; c < vd->vdev_children; c++)
-		vdev_clear(spa, vd->vdev_child[c]);
+		vdev_clear(spa, vd->vdev_child[c], reopen_wanted);
 
 	/*
 	 * If we're in the FAULTED state, then clear the persistent state and
 	 * attempt to reopen the device.  We also mark the vdev config dirty, so
 	 * that the new faulted state is written out to disk.
 	 */
-	if (vd->vdev_faulted || vd->vdev_degraded) {
+	if (reopen_wanted && (vd->vdev_faulted || vd->vdev_degraded)) {
 		vd->vdev_faulted = vd->vdev_degraded = 0;
 		vdev_reopen(vd);
 		vdev_config_dirty(vd->vdev_top);
@@ -1692,6 +1768,19 @@ vdev_clear(spa_t *spa, vdev_t *vd)
 			spa_async_request(spa, SPA_ASYNC_RESILVER);
 		spa_event_notify(spa, vd, ESC_ZFS_VDEV_CLEAR);
 	}
+}
+
+int
+vdev_readable(vdev_t *vd)
+{
+	/* XXPOLICY */
+	return (!vdev_is_dead(vd));
+}
+
+int
+vdev_writeable(vdev_t *vd)
+{
+	return (!vdev_is_dead(vd) && !vd->vdev_is_failing);
 }
 
 int
@@ -1768,6 +1857,16 @@ vdev_get_stats(vdev_t *vd, vdev_stat_t *vs)
 }
 
 void
+vdev_clear_stats(vdev_t *vd)
+{
+	mutex_enter(&vd->vdev_stat_lock);
+	vd->vdev_stat.vs_space = 0;
+	vd->vdev_stat.vs_dspace = 0;
+	vd->vdev_stat.vs_alloc = 0;
+	mutex_exit(&vd->vdev_stat_lock);
+}
+
+void
 vdev_stat_update(zio_t *zio)
 {
 	vdev_t *vd = zio->io_vd;
@@ -1799,7 +1898,7 @@ vdev_stat_update(zio_t *zio)
 	if (flags & ZIO_FLAG_SPECULATIVE)
 		return;
 
-	if (!vdev_is_dead(vd)) {
+	if (vdev_readable(vd)) {
 		mutex_enter(&vd->vdev_stat_lock);
 		if (type == ZIO_TYPE_READ) {
 			if (zio->io_error == ECKSUM)
@@ -1865,15 +1964,14 @@ vdev_scrub_stat_update(vdev_t *vd, pool_scrub_type_t type, boolean_t complete)
  * Update the in-core space usage stats for this vdev and the root vdev.
  */
 void
-vdev_space_update(vdev_t *vd, int64_t space_delta, int64_t alloc_delta)
+vdev_space_update(vdev_t *vd, int64_t space_delta, int64_t alloc_delta,
+    boolean_t update_root)
 {
 	int64_t dspace_delta = space_delta;
 	spa_t *spa = vd->vdev_spa;
 	vdev_t *rvd = spa->spa_root_vdev;
 
 	ASSERT(vd == vd->vdev_top);
-	ASSERT(rvd == vd->vdev_parent);
-	ASSERT(vd->vdev_ms_count != 0);
 
 	/*
 	 * Apply the inverse of the psize-to-asize (ie. RAID-Z) space-expansion
@@ -1891,18 +1989,23 @@ vdev_space_update(vdev_t *vd, int64_t space_delta, int64_t alloc_delta)
 	vd->vdev_stat.vs_dspace += dspace_delta;
 	mutex_exit(&vd->vdev_stat_lock);
 
-	/*
-	 * Don't count non-normal (e.g. intent log) space as part of
-	 * the pool's capacity.
-	 */
-	if (vd->vdev_mg->mg_class != spa->spa_normal_class)
-		return;
+	if (update_root) {
+		ASSERT(rvd == vd->vdev_parent);
+		ASSERT(vd->vdev_ms_count != 0);
 
-	mutex_enter(&rvd->vdev_stat_lock);
-	rvd->vdev_stat.vs_space += space_delta;
-	rvd->vdev_stat.vs_alloc += alloc_delta;
-	rvd->vdev_stat.vs_dspace += dspace_delta;
-	mutex_exit(&rvd->vdev_stat_lock);
+		/*
+		 * Don't count non-normal (e.g. intent log) space as part of
+		 * the pool's capacity.
+		 */
+		if (vd->vdev_mg->mg_class != spa->spa_normal_class)
+			return;
+
+		mutex_enter(&rvd->vdev_stat_lock);
+		rvd->vdev_stat.vs_space += space_delta;
+		rvd->vdev_stat.vs_alloc += alloc_delta;
+		rvd->vdev_stat.vs_dspace += dspace_delta;
+		mutex_exit(&rvd->vdev_stat_lock);
+	}
 }
 
 /*
@@ -1961,9 +2064,9 @@ vdev_propagate_state(vdev_t *vd)
 	if (vd->vdev_children > 0) {
 		for (c = 0; c < vd->vdev_children; c++) {
 			child = vd->vdev_child[c];
-			if (vdev_is_dead(child))
+			if (vdev_is_dead(child) && !vdev_readable(child))
 				faulted++;
-			else if (child->vdev_state == VDEV_STATE_DEGRADED)
+			else if (child->vdev_state <= VDEV_STATE_DEGRADED)
 				degraded++;
 
 			if (child->vdev_stat.vs_aux == VDEV_AUX_CORRUPT_DATA)
@@ -2019,7 +2122,7 @@ vdev_set_state(vdev_t *vd, boolean_t isopen, vdev_state_t state, vdev_aux_t aux)
 	 * want here.  This is limited to leaf devices, because otherwise
 	 * closing the device will affect other children.
 	 */
-	if (vdev_is_dead(vd) && vd->vdev_ops->vdev_op_leaf)
+	if (!vdev_readable(vd) && vd->vdev_ops->vdev_op_leaf)
 		vd->vdev_ops->vdev_op_close(vd);
 
 	if (vd->vdev_removed &&

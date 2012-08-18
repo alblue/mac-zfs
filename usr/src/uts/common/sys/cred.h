@@ -42,8 +42,37 @@
 #include <sys/ucred.h>
 
 #ifdef _KERNEL
-typedef struct opaque_cred_t  cred_t;
-#endif
+
+typedef struct kauth_cred  cred_t;
+
+#define kcred   (cred_t *)kauth_cred_get()
+
+#define CRED()  (cred_t *)kauth_cred_get()
+
+#define crgetuid(cr)    kauth_cred_getuid((kauth_cred_t)cr)
+#define crgetgid(cr)    kauth_cred_getgid((kauth_cred_t)cr)
+
+#else
+
+typedef int  cred_t;
+
+#define kcred   (cred_t *)NOCRED
+
+#define CRED()  (cred_t *)NOCRED
+
+extern uid_t crgetuid(const cred_t *);
+extern gid_t crgetgid(const cred_t *);
+extern int crgetngroups(cred_t *cr);
+extern gid_t *crgetgroups(cred_t *cr);
+
+#endif /* _KERNEL */
+
+#define crgetzone(cr)           ((zone_t *)0)
+
+#define crgetsid(cr, gr)        (struct ksid *)0
+
+#define crgetsidlist(cr)        ((struct ksidlist *)0)
+
 #else
 
 #include <sys/types.h>
@@ -179,6 +208,8 @@ extern void crsetsidlist(cred_t *, struct ksidlist *);
 
 extern struct ksid *crgetsid(const cred_t *, int);
 extern struct ksidlist *crgetsidlist(const cred_t *);
+
+extern int crsetpriv(cred_t *, ...);
 
 #endif	/* _KERNEL */
 

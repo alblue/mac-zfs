@@ -107,6 +107,10 @@ enum zio_compress {
 #define	ZIO_COMPRESS_ON_VALUE	ZIO_COMPRESS_LZJB
 #define	ZIO_COMPRESS_DEFAULT	ZIO_COMPRESS_OFF
 
+#define	ZIO_FAILURE_MODE_WAIT		0
+#define	ZIO_FAILURE_MODE_CONTINUE	1
+#define	ZIO_FAILURE_MODE_PANIC		2
+
 #define	ZIO_PRIORITY_NOW		(zio_priority_table[0])
 #define	ZIO_PRIORITY_SYNC_READ		(zio_priority_table[1])
 #define	ZIO_PRIORITY_SYNC_WRITE		(zio_priority_table[2])
@@ -142,8 +146,8 @@ enum zio_compress {
 
 #define	ZIO_FLAG_NOBOOKMARK		0x10000
 #define	ZIO_FLAG_USER			0x20000
-
 #define	ZIO_FLAG_METADATA		0x40000
+#define	ZIO_FLAG_WRITE_RETRY		0x80000
 
 #define	ZIO_FLAG_GANG_INHERIT		\
 	(ZIO_FLAG_CANFAIL |		\
@@ -154,7 +158,9 @@ enum zio_compress {
 	ZIO_FLAG_SPECULATIVE |		\
 	ZIO_FLAG_RESILVER |		\
 	ZIO_FLAG_SCRUB |		\
-	ZIO_FLAG_SCRUB_THREAD)
+	ZIO_FLAG_SCRUB_THREAD |		\
+	ZIO_FLAG_USER | 		\
+	ZIO_FLAG_METADATA)
 
 #define	ZIO_FLAG_VDEV_INHERIT		\
 	(ZIO_FLAG_GANG_INHERIT |	\
@@ -217,6 +223,7 @@ struct zio {
 	zio_t		*io_sibling_next;
 	zio_transform_t *io_transform_stack;
 	zio_t		*io_logical;
+	list_node_t	zio_link_node;
 
 	/* Callback info */
 	zio_done_func_t	*io_ready;
@@ -242,8 +249,10 @@ struct zio {
 
 	/* Internal pipeline state */
 	int		io_flags;
+	int		io_orig_flags;
 	enum zio_type	io_type;
 	enum zio_stage	io_stage;
+	enum zio_stage	io_orig_stage;
 	uint8_t		io_stalled;
 	uint8_t		io_priority;
 	struct dk_callback io_dk_callback;
@@ -252,6 +261,7 @@ struct zio {
 	int		io_error;
 	uint32_t	io_numerrors;
 	uint32_t	io_pipeline;
+	uint32_t	io_orig_pipeline;
 	uint32_t	io_async_stages;
 	uint64_t	io_children_notready;
 	uint64_t	io_children_notdone;
@@ -294,11 +304,13 @@ extern zio_t *zio_ioctl(zio_t *pio, spa_t *spa, vdev_t *vd, int cmd,
 
 extern zio_t *zio_read_phys(zio_t *pio, vdev_t *vd, uint64_t offset,
     uint64_t size, void *data, int checksum,
-    zio_done_func_t *done, void *private, int priority, int flags);
+    zio_done_func_t *done, void *private, int priority, int flags,
+    boolean_t labels);
 
 extern zio_t *zio_write_phys(zio_t *pio, vdev_t *vd, uint64_t offset,
     uint64_t size, void *data, int checksum,
-    zio_done_func_t *done, void *private, int priority, int flags);
+    zio_done_func_t *done, void *private, int priority, int flags,
+    boolean_t labels);
 
 extern int zio_alloc_blk(spa_t *spa, uint64_t size, blkptr_t *new_bp,
     blkptr_t *old_bp, uint64_t txg);
@@ -320,6 +332,7 @@ extern void zio_data_buf_free(void *buf, size_t size);
  */
 extern void zio_next_stage(zio_t *zio);
 extern void zio_next_stage_async(zio_t *zio);
+extern void zio_resubmit_stage_async(void *);
 extern void zio_wait_children_done(zio_t *zio);
 
 /*
@@ -339,7 +352,8 @@ extern void zio_set_gang_verifier(zio_t *zio, zio_cksum_t *zcp);
 extern uint8_t zio_checksum_select(uint8_t child, uint8_t parent);
 extern uint8_t zio_compress_select(uint8_t child, uint8_t parent);
 
-boolean_t zio_should_retry(zio_t *zio);
+extern boolean_t zio_should_retry(zio_t *zio);
+extern int zio_vdev_resume_io(spa_t *);
 
 /*
  * Initial setup and teardown.

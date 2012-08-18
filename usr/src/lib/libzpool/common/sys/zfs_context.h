@@ -568,6 +568,8 @@ extern void vpanic(const char *, __va_list);
 	
 #else /* !__APPLE__ */
 
+#define	fm_panic	panic
+
 /* This definition is copied from assert.h. */
 #if defined(__STDC__)
 #if __STDC_VERSION__ - 0 >= 199901L
@@ -693,7 +695,7 @@ typedef struct kthread kthread_t;
 	zk_thread_create(func, arg)
 	
 #ifndef __APPLE__
-#define	thread_exit() thr_exit(0)
+#define	thread_exit() thr_exit(NULL)
 #endif /* !__APPLE__ */
 	
 extern kthread_t *zk_thread_create(void (*func)(), void *arg);
@@ -852,6 +854,9 @@ extern void	taskq_destroy(taskq_t *);
 extern void	taskq_wait(taskq_t *);
 extern int	taskq_member(taskq_t *, void *);
 
+#define	XVA_MAPSIZE	3
+#define	XVA_MAGIC	0x78766174
+
 #ifndef __APPLE__
 /*
  * vnodes
@@ -870,29 +875,30 @@ typedef struct vattr {
 } vattr_t;
 #endif
 
-#define	AT_TYPE		0x0001
-#define	AT_MODE		0x0002
-#define	AT_UID		0x0004
-#define	AT_GID		0x0008
-#define	AT_FSID		0x0010
-#define	AT_NODEID	0x0020
-#define	AT_NLINK	0x0040
-#define	AT_SIZE		0x0080
-#define	AT_ATIME	0x0100
-#define	AT_MTIME	0x0200
-#define	AT_CTIME	0x0400
-#define	AT_RDEV		0x0800
-#define	AT_BLKSIZE	0x1000
-#define	AT_NBLOCKS	0x2000
-#define	AT_SEQ		0x8000
+#define	AT_TYPE		0x00001
+#define	AT_MODE		0x00002
+#define	AT_UID		0x00004
+#define	AT_GID		0x00008
+#define	AT_FSID		0x00010
+#define	AT_NODEID	0x00020
+#define	AT_NLINK	0x00040
+#define	AT_SIZE		0x00080
+#define	AT_ATIME	0x00100
+#define	AT_MTIME	0x00200
+#define	AT_CTIME	0x00400
+#define	AT_RDEV		0x00800
+#define	AT_BLKSIZE	0x01000
+#define	AT_NBLOCKS	0x02000
+#define	AT_SEQ		0x08000
+#define	AT_XVATTR	0x10000
 
 #define	CRCREAT		0
 
-#define	VOP_CLOSE(vp, f, c, o, cr)	0
-#define	VOP_PUTPAGE(vp, of, sz, fl, cr)	0
-#define	VOP_GETATTR(vp, vap, fl, cr)	((vap)->va_size = (vp)->v_size, 0)
+//#define	VOP_CLOSE(vp, f, c, o, cr, ct)	0
+#define	VOP_PUTPAGE(vp, of, sz, fl, cr, ct)	0
+#define	VOP_GETATTR(vp, vap, fl, cr, ct)  ((vap)->va_size = (vp)->v_size, 0)
 
-#define	VOP_FSYNC(vp, f, cr)	fsync((vp)->v_fd)
+//#define	VOP_FSYNC(vp, f, cr, ct)	fsync((vp)->v_fd)
 
 #define	VN_RELE(vp)	vn_close(vp)
 
@@ -900,7 +906,7 @@ typedef struct vattr {
 extern int vn_open(char *path, int x1, int oflags, int mode, vnode_t **vpp,
     int x2, int x3);
 extern int vn_openat(char *path, int x1, int oflags, int mode, vnode_t **vpp,
-    int x2, int x3, vnode_t *vp);
+    int x2, int x3, vnode_t *vp, int fd);
 extern int vn_rdwr(int uio, vnode_t *vp, void *addr, ssize_t len,
     offset_t offset, int x1, int x2, rlim64_t x3, void *x4, ssize_t *residp);
 extern void vn_close(vnode_t *vp);
@@ -1004,6 +1010,21 @@ struct bootstat {
 	uint64_t st_size;
 };
 
+typedef struct ace_object {
+	uid_t		a_who;
+	uint32_t	a_access_mask;
+	uint16_t	a_flags;
+	uint16_t	a_type;
+	uint8_t		a_obj_type[16];
+	uint8_t		a_inherit_obj_type[16];
+} ace_object_t;
+
+
+#define	ACE_ACCESS_ALLOWED_OBJECT_ACE_TYPE	0x05
+#define	ACE_ACCESS_DENIED_OBJECT_ACE_TYPE	0x06
+#define	ACE_SYSTEM_AUDIT_OBJECT_ACE_TYPE	0x07
+#define	ACE_SYSTEM_ALARM_OBJECT_ACE_TYPE	0x08
+
 extern struct _buf *kobj_open_file(char *name);
 extern int kobj_read_file(struct _buf *file, char *buf, unsigned size,
     unsigned off);
@@ -1020,6 +1041,25 @@ extern int zfs_secpolicy_destroy_perms(const char *name, cred_t *cr);
 extern zoneid_t getzoneid(void);
 	
 #endif
+
+/*
+ * UTF-8 text preparation functions and their macros.
+ * (sunddi.h)
+ */
+#define	U8_STRCMP_CS			0x00000001
+#define	U8_STRCMP_CI_UPPER		0x00000002
+#define	U8_STRCMP_CI_LOWER		0x00000004
+
+#define	U8_TEXTPREP_TOUPPER		U8_STRCMP_CI_UPPER
+#define	U8_TEXTPREP_TOLOWER		U8_STRCMP_CI_LOWER
+#define	U8_TEXTPREP_IGNORE_NULL		0x00010000
+
+#define	U8_UNICODE_320			(0)
+#define	U8_UNICODE_500			(1)
+#define	U8_UNICODE_LATEST		U8_UNICODE_500
+
+extern size_t u8_textprep_str(char *, size_t *, char *, size_t *, int, size_t,
+	int *);
 
 #ifdef	__cplusplus
 }

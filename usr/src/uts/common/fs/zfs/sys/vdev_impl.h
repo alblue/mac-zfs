@@ -60,6 +60,7 @@ typedef struct vdev_cache_entry vdev_cache_entry_t;
  */
 typedef int	vdev_open_func_t(vdev_t *vd, uint64_t *size, uint64_t *ashift);
 typedef void	vdev_close_func_t(vdev_t *vd);
+typedef int	vdev_probe_func_t(vdev_t *vd);
 typedef uint64_t vdev_asize_func_t(vdev_t *vd, uint64_t psize);
 typedef void	vdev_io_start_func_t(zio_t *zio);
 typedef void	vdev_io_done_func_t(zio_t *zio);
@@ -68,6 +69,7 @@ typedef void	vdev_state_change_func_t(vdev_t *vd, int, int);
 typedef struct vdev_ops {
 	vdev_open_func_t		*vdev_op_open;
 	vdev_close_func_t		*vdev_op_close;
+	vdev_probe_func_t		*vdev_op_probe;
 	vdev_asize_func_t		*vdev_op_asize;
 	vdev_io_start_func_t		*vdev_op_io_start;
 	vdev_io_done_func_t		*vdev_op_io_done;
@@ -166,6 +168,7 @@ struct vdev {
 	uint8_t		vdev_tmpoffline; /* device taken offline temporarily? */
 	uint8_t		vdev_detached;	/* device detached?		*/
 	uint64_t	vdev_isspare;	/* was a hot spare		*/
+	uint64_t	vdev_isl2cache;	/* was a l2cache device		*/
 	vdev_queue_t	vdev_queue;	/* I/O deadline schedule queue	*/
 	vdev_cache_t	vdev_cache;	/* physical block cache		*/
 	uint64_t	vdev_not_present; /* not present during import	*/
@@ -174,6 +177,10 @@ struct vdev {
 	uint64_t	vdev_unspare;	/* unspare when resilvering done */
 	boolean_t	vdev_checkremove; /* temporary online test	*/
 	boolean_t	vdev_forcefault; /* force online fault		*/
+	boolean_t	vdev_is_failing; /* device errors seen		*/
+#ifdef __APPLE__
+	boolean_t       vdev_fua;       /* true if the device supports FUA */
+#endif
 
 	/*
 	 * For DTrace to work in userland (libzpool) context, these fields must
@@ -246,6 +253,7 @@ typedef struct vdev_label {
 #define	VDEV_ALLOC_LOAD		0
 #define	VDEV_ALLOC_ADD		1
 #define	VDEV_ALLOC_SPARE	2
+#define	VDEV_ALLOC_L2CACHE	3
 
 /*
  * Allocate or free a vdev

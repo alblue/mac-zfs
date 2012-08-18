@@ -96,9 +96,9 @@
 #define	RDISK_ROOT	"/dev"
 #define	BACKUP_SLICE	"s0"
 #else
-#define DISK_ROOT       "/dev/dsk"
-#define RDISK_ROOT      "/dev/rdsk"
-#define BACKUP_SLICE    "s2"
+#define	DISK_ROOT       "/dev/dsk"
+#define	RDISK_ROOT      "/dev/rdsk"
+#define	BACKUP_SLICE    "s2"
 #endif
 
 /*
@@ -416,13 +416,15 @@ static nvlist_t *
 make_leaf_vdev(const char *arg, uint64_t is_log)
 {
 	char path[MAXPATHLEN];
-	struct stat statbuf;
+	struct stat64 statbuf;
 	nvlist_t *vdev = NULL;
 	char *type = NULL;
 	boolean_t wholedisk = B_FALSE;
 
+#ifdef __APPLE__
 	statbuf.st_mode = 0;
-	
+#endif /* __APPLE__*/
+
 	/*
 	 * Determine what type of vdev this is, and put the full path into
 	 * 'path'.  We detect whether this is a device of file afterwards by
@@ -434,7 +436,7 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 		 * examining the file descriptor afterwards.
 		 */
 		wholedisk = is_whole_disk(arg);
-		if (!wholedisk && (stat(arg, &statbuf) != 0)) {
+		if (!wholedisk && (stat64(arg, &statbuf) != 0)) {
 			(void) fprintf(stderr,
 			    gettext("cannot open '%s': %s\n"),
 			    arg, strerror(errno));
@@ -452,7 +454,7 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 		(void) snprintf(path, sizeof (path), "%s/%s", DISK_ROOT,
 		    arg);
 		wholedisk = is_whole_disk(path);
-		if (!wholedisk && (stat(path, &statbuf) != 0)) {
+		if (!wholedisk && (stat64(path, &statbuf) != 0)) {
 			/*
 			 * If we got ENOENT, then the user gave us
 			 * gibberish, so try to direct them with a
@@ -698,7 +700,7 @@ get_replication(nvlist_t *nvroot, boolean_t fatal)
 				}
 
 				/*
-				 * According to stat(2), the value of 'st_size'
+				 * According to stat64(2), the value of 'st_size'
 				 * is undefined for block devices and character
 				 * devices.  But there is no effective way to
 				 * determine the real size in userland.
@@ -713,10 +715,10 @@ get_replication(nvlist_t *nvroot, boolean_t fatal)
 				 * this device altogether.
 				 */
 				if ((fd = open(path, O_RDONLY)) >= 0) {
-					err = fstat(fd, &statbuf);
+					err = fstat64(fd, &statbuf);
 					(void) close(fd);
 				} else {
-					err = stat(path, &statbuf);
+					err = stat64(path, &statbuf);
 				}
 
 				if (err != 0 ||
@@ -999,6 +1001,12 @@ make_disks(zpool_handle_t *zhp, nvlist_t *nv)
 			if ((ret = make_disks(zhp, child[c])) != 0)
 				return (ret);
 
+	if (nvlist_lookup_nvlist_array(nv, ZPOOL_CONFIG_L2CACHE,
+	    &child, &children) == 0)
+		for (c = 0; c < children; c++)
+			if ((ret = make_disks(zhp, child[c])) != 0)
+				return (ret);
+
 	return (0);
 }
 
@@ -1111,6 +1119,14 @@ check_in_use(nvlist_t *config, nvlist_t *nv, int force, int isreplacing,
 			if ((ret = check_in_use(config, child[c], force,
 			    isreplacing, B_TRUE)) != 0)
 				return (ret);
+
+	if (nvlist_lookup_nvlist_array(nv, ZPOOL_CONFIG_L2CACHE,
+	    &child, &children) == 0)
+		for (c = 0; c < children; c++)
+			if ((ret = check_in_use(config, child[c], force,
+			    isreplacing, B_FALSE)) != 0)
+				return (ret);
+
 #endif
 	return (0);
 }
@@ -1148,6 +1164,12 @@ is_grouping(const char *type, int *mindev)
 		return (VDEV_TYPE_LOG);
 	}
 
+	if (strcmp(type, "cache") == 0) {
+		if (mindev != NULL)
+			*mindev = 1;
+		return (VDEV_TYPE_L2CACHE);
+	}
+
 	return (NULL);
 }
 
@@ -1160,8 +1182,8 @@ is_grouping(const char *type, int *mindev)
 nvlist_t *
 construct_spec(int argc, char **argv)
 {
-	nvlist_t *nvroot, *nv, **top, **spares;
-	int t, toplevels, mindev, nspares, nlogs;
+	nvlist_t *nvroot, *nv, **top, **spares, **l2cache;
+	int t, toplevels, mindev, nspares, nlogs, nl2cache;
 	const char *type;
 	uint64_t is_log;
 	boolean_t seen_logs;
@@ -1169,8 +1191,10 @@ construct_spec(int argc, char **argv)
 	top = NULL;
 	toplevels = 0;
 	spares = NULL;
+	l2cache = NULL;
 	nspares = 0;
 	nlogs = 0;
+	nl2cache = 0;
 	is_log = B_FALSE;
 	seen_logs = B_FALSE;
 
@@ -1215,6 +1239,17 @@ construct_spec(int argc, char **argv)
 				continue;
 			}
 
+			if (strcmp(type, VDEV_TYPE_L2CACHE) == 0) {
+				if (l2cache != NULL) {
+					(void) fprintf(stderr,
+					    gettext("invalid vdev "
+					    "specification: 'cache' can be "
+					    "specified only once\n"));
+					return (NULL);
+				}
+				is_log = B_FALSE;
+			}
+
 			if (is_log) {
 				if (strcmp(type, VDEV_TYPE_MIRROR) != 0) {
 					(void) fprintf(stderr,
@@ -1253,6 +1288,10 @@ construct_spec(int argc, char **argv)
 			if (strcmp(type, VDEV_TYPE_SPARE) == 0) {
 				spares = child;
 				nspares = children;
+				continue;
+			} else if (strcmp(type, VDEV_TYPE_L2CACHE) == 0) {
+				l2cache = child;
+				nl2cache = children;
 				continue;
 			} else {
 				verify(nvlist_alloc(&nv, NV_UNIQUE_NAME,
@@ -1294,7 +1333,7 @@ construct_spec(int argc, char **argv)
 		top[toplevels - 1] = nv;
 	}
 
-	if (toplevels == 0 && nspares == 0) {
+	if (toplevels == 0 && nspares == 0 && nl2cache == 0) {
 		(void) fprintf(stderr, gettext("invalid vdev "
 		    "specification: at least one toplevel vdev must be "
 		    "specified\n"));
@@ -1318,13 +1357,20 @@ construct_spec(int argc, char **argv)
 	if (nspares != 0)
 		verify(nvlist_add_nvlist_array(nvroot, ZPOOL_CONFIG_SPARES,
 		    spares, nspares) == 0);
+	if (nl2cache != 0)
+		verify(nvlist_add_nvlist_array(nvroot, ZPOOL_CONFIG_L2CACHE,
+		    l2cache, nl2cache) == 0);
 
 	for (t = 0; t < toplevels; t++)
 		nvlist_free(top[t]);
 	for (t = 0; t < nspares; t++)
 		nvlist_free(spares[t]);
+	for (t = 0; t < nl2cache; t++)
+		nvlist_free(l2cache[t]);
 	if (spares)
 		free(spares);
+	if (l2cache)
+		free(l2cache);
 	free(top);
 
 	return (nvroot);

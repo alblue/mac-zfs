@@ -63,6 +63,7 @@
 #include <sys/ddi_obsolete.h>
 #endif
 #include <sys/u8_textprep.h>
+#include <sys/kiconv.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -443,6 +444,18 @@ extern void *memchr(const void *, int, size_t);
 
 extern int ddi_strtol(const char *, char **, int, long *);
 extern int ddi_strtoul(const char *, char **, int, unsigned long *);
+
+/*
+ * kiconv functions and their macros.
+ */
+#define	KICONV_IGNORE_NULL	(0x0001)
+#define	KICONV_REPLACE_INVALID	(0x0002)
+
+extern kiconv_t kiconv_open(const char *, const char *);
+extern size_t kiconv(kiconv_t, char **, size_t *, char **, size_t *, int *);
+extern int kiconv_close(kiconv_t);
+extern size_t kiconvstr(const char *, const char *, char *, size_t *, char *,
+	size_t *, int, int *);
 
 /*
  * ddi_map_regs
@@ -1909,6 +1922,12 @@ pci_target_enqueue(uint64_t, char *, char *, uint64_t);
 void
 pci_targetq_init(void);
 
+int
+pci_post_suspend(dev_info_t *dip);
+
+int
+pci_pre_resume(dev_info_t *dip);
+
 /*
  * the prototype for the C Language Type Model inquiry.
  */
@@ -2080,6 +2099,26 @@ boolean_t ddi_taskq_suspended(ddi_taskq_t *tq);
  */
 int ddi_parse(const char *, char *, uint_t *);
 
+/*
+ * DDI interrupt priority level
+ */
+#define	DDI_IPL_0	(0)	/* kernel context */
+#define	DDI_IPL_1	(1)	/* interrupt priority level 1 */
+#define	DDI_IPL_2	(2)	/* interrupt priority level 2 */
+#define	DDI_IPL_3	(3)	/* interrupt priority level 3 */
+#define	DDI_IPL_4	(4)	/* interrupt priority level 4 */
+#define	DDI_IPL_5	(5)	/* interrupt priority level 5 */
+#define	DDI_IPL_6	(6)	/* interrupt priority level 6 */
+#define	DDI_IPL_7	(7)	/* interrupt priority level 7 */
+#define	DDI_IPL_8	(8)	/* interrupt priority level 8 */
+#define	DDI_IPL_9	(9)	/* interrupt priority level 9 */
+#define	DDI_IPL_10	(10)	/* interrupt priority level 10 */
+
+/*
+ * DDI periodic timeout interface
+ */
+ddi_periodic_t ddi_periodic_add(void (*)(void *), void *, hrtime_t, int);
+void ddi_periodic_delete(ddi_periodic_t);
 #endif	/* _KERNEL */
 
 #ifdef	__cplusplus

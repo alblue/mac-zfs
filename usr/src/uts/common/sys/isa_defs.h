@@ -29,6 +29,37 @@
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
+#ifdef __APPLE__
+
+#if defined(__LP64__)
+#if !defined(_LP64)
+#define _LP64 /* Solaris vs. Darwin */
+#endif
+#else
+#if !defined(_ILP32)
+#define _ILP32 /* Solaris vs. Darwin */
+#endif
+#endif
+
+#include <mach/machine.h>
+
+#if defined(__BIG_ENDIAN__)
+#if !defined(_BIG_ENDIAN)
+#define _BIG_ENDIAN /* Solaris vs. Darwin */
+#endif
+#elif defined(__LITTLE_ENDIAN__)
+#if !defined(_LITTLE_ENDIAN)
+#define _LITTLE_ENDIAN /* Solaris vs. Darwin */
+#endif
+#else
+#error Unknown endian-ness
+#endif
+
+#include <sys/types.h>
+#include <stdint.h>
+
+#endif /* __APPLE__ */
+
 /*
  * This header file serves to group a set of well known defines and to
  * set these for each instruction set architecture.  These defines may
@@ -461,6 +492,17 @@ extern "C" {
 #error	"unknown SPARC version"
 #endif
 
+#elif defined(__ppc__)
+// OSX PPC
+#if !defined(_BIG_ENDIAN) || defined(_LITTLE_ENDIAN)
+#error "Configuration error for PPC"
+#endif
+
+#elif defined(__ppc64__)
+// OSX PPC 64
+#if !defined(_BIG_ENDIAN) || defined(_LITTLE_ENDIAN)
+#error "Configuration error for PPC64"
+#endif
 /*
  * #error is strictly ansi-C, but works as well as anything for K&R systems.
  */

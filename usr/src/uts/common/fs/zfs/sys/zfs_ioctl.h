@@ -35,6 +35,10 @@
 #include <sys/zio.h>
 #include <sys/dsl_deleg.h>
 
+#ifdef _KERNEL
+#include <sys/nvpair.h>
+#endif	/* _KERNEL */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -45,8 +49,11 @@ extern "C" {
 #define	ZFS_SNAPDIR_HIDDEN		0
 #define	ZFS_SNAPDIR_VISIBLE		1
 
-#define	DMU_BACKUP_VERSION (1ULL)
+#define	DMU_BACKUP_STREAM_VERSION (1ULL)
+#define	DMU_BACKUP_HEADER_VERSION (2ULL)
 #define	DMU_BACKUP_MAGIC 0x2F5bacbacULL
+
+#define	DRR_FLAG_CLONE (1<<0)
 
 /*
  * zfs ioctl command structure
@@ -56,14 +63,14 @@ typedef struct dmu_replay_record {
 		DRR_BEGIN, DRR_OBJECT, DRR_FREEOBJECTS,
 		DRR_WRITE, DRR_FREE, DRR_END,
 	} drr_type;
-	uint32_t drr_pad;
+	uint32_t drr_payloadlen;
 	union {
 		struct drr_begin {
 			uint64_t drr_magic;
 			uint64_t drr_version;
 			uint64_t drr_creation_time;
 			dmu_objset_type_t drr_type;
-			uint32_t drr_pad;
+			uint32_t drr_flags;
 			uint64_t drr_toguid;
 			uint64_t drr_fromguid;
 			char drr_toname[MAXNAMELEN];
@@ -129,15 +136,18 @@ typedef struct zfs_share {
 typedef struct zfs_cmd {
 	char		zc_name[MAXPATHLEN];
 	char		zc_value[MAXPATHLEN * 2];
+	char		zc_string[MAXNAMELEN];
 	uint64_t	zc_guid;
-	uint64_t	zc_nvlist_src;	/* really (char *) */
+	uint64_t	zc_nvlist_conf;		/* really (char *) */
+	uint64_t	zc_nvlist_conf_size;
+	uint64_t	zc_nvlist_src;		/* really (char *) */
 	uint64_t	zc_nvlist_src_size;
-	uint64_t	zc_nvlist_dst;	/* really (char *) */
+	uint64_t	zc_nvlist_dst;		/* really (char *) */
 	uint64_t	zc_nvlist_dst_size;
 	uint64_t	zc_cookie;
 	uint64_t	zc_objset_type;
 	uint64_t	zc_perm_action;
-	uint64_t 	zc_history;	/* really (char *) */
+	uint64_t 	zc_history;		/* really (char *) */
 	uint64_t 	zc_history_len;
 	uint64_t	zc_history_offset;
 	uint64_t	zc_obj;
@@ -151,10 +161,20 @@ typedef struct zfs_cmd {
 #endif
 } zfs_cmd_t;
 
+#ifdef __APPLE__
+/* Let zfs.h know that zfs_cmd_t is now defined */
+#define _ZFS_CMD_TYPE
+#endif
+	
 #define	ZVOL_MAX_MINOR	(1 << 16)
 #define	ZFS_MIN_MINOR	(ZVOL_MAX_MINOR + 1)
 
 #ifdef _KERNEL
+
+typedef struct zfs_creat {
+	int		zct_norm;
+	nvlist_t	*zct_props;
+} zfs_creat_t;
 
 extern dev_info_t *zfs_dip;
 
