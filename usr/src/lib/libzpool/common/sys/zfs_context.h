@@ -168,7 +168,7 @@ enum uio_seg {
 	
 #define ERESTART (-1)
 	
-typedef int cred_t;
+//typedef int cred_t;
 #define kcred (cred_t *)NOCRED
 
 /* Modified from atomic.h */
