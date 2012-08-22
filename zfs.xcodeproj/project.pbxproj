@@ -42,6 +42,9 @@
 		200E788215DB15CD000957FF /* liblibnsl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E784C15DB13A3000957FF /* liblibnsl.a */; };
 		200E788315DB15CD000957FF /* liblibnvpair.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E786215DB14A1000957FF /* liblibnvpair.a */; };
 		200E788615DB16DD000957FF /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E788515DB16DD000957FF /* libz.dylib */; };
+		208E3B8515E4D6ED00DB8F8D /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8415E4D6ED00DB8F8D /* zprop_common.c */; };
+		208E3B8B15E4D78100DB8F8D /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8A15E4D78100DB8F8D /* zpool_prop.c */; };
+		208E3B8F15E4D7E800DB8F8D /* libzfs_sendrecv.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8E15E4D7E800DB8F8D /* libzfs_sendrecv.c */; };
 		20FA076415DBB067007E2315 /* arc.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DB10A38E6300754C9E /* arc.c */; };
 		20FA076515DBB0AF007E2315 /* assfail.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9656A811F1BFA3001E7C56 /* assfail.c */; };
 		20FA076615DBB111007E2315 /* avl.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93765A10A38E6300754C9E /* avl.c */; };
@@ -292,7 +295,7 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 200E787915DB15BE000957FF /* libzpool */;
+			remoteGlobalIDString = 200E787915DB15BE000957FF;
 			remoteInfo = libzpool;
 		};
 		20FA07C015DBB5AE007E2315 /* PBXContainerItemProxy */ = {
@@ -506,6 +509,9 @@
 		200E786215DB14A1000957FF /* liblibnvpair.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = liblibnvpair.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		200E787A15DB15BE000957FF /* libzpool.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libzpool.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		200E788515DB16DD000957FF /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
+		208E3B8415E4D6ED00DB8F8D /* zprop_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zprop_common.c; sourceTree = "<group>"; };
+		208E3B8A15E4D78100DB8F8D /* zpool_prop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zpool_prop.c; sourceTree = "<group>"; };
+		208E3B8E15E4D7E800DB8F8D /* libzfs_sendrecv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libzfs_sendrecv.c; sourceTree = "<group>"; };
 		20FA077C15DBB1DD007E2315 /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
 		20FA077D15DBB1DD007E2315 /* llib-lzpool */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "llib-lzpool"; sourceTree = "<group>"; };
 		20FA077F15DBB1DD007E2315 /* zfs_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_context.h; sourceTree = "<group>"; };
@@ -1097,6 +1103,7 @@
 		FA93756C10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
+				208E3B8E15E4D7E800DB8F8D /* libzfs_sendrecv.c */,
 				FA93756D10A38E6300754C9E /* libzfs.h */,
 				FA93756E10A38E6300754C9E /* libzfs_mount.c */,
 				FA93756F10A38E6300754C9E /* libzfs_graph.c */,
@@ -1459,6 +1466,8 @@
 		FA93764B10A38E6300754C9E /* zfs */ = {
 			isa = PBXGroup;
 			children = (
+				208E3B8A15E4D78100DB8F8D /* zpool_prop.c */,
+				208E3B8415E4D6ED00DB8F8D /* zprop_common.c */,
 				FA9376A110A38FB500754C9E /* zfs_prop.c */,
 				FA9376A210A38FB500754C9E /* zfs_deleg.h */,
 				FA9376A310A38FB500754C9E /* zfs_namecheck.c */,
@@ -2122,6 +2131,9 @@
 				FA0D2AC610A39F8000C63936 /* zfs_prop.c in Sources */,
 				FACE32C9113A779E00A513AE /* uu_misc.c in Sources */,
 				FA9656B311F1BFBC001E7C56 /* assfail.c in Sources */,
+				208E3B8515E4D6ED00DB8F8D /* zprop_common.c in Sources */,
+				208E3B8B15E4D78100DB8F8D /* zpool_prop.c in Sources */,
+				208E3B8F15E4D7E800DB8F8D /* libzfs_sendrecv.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
