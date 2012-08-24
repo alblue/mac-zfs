@@ -196,8 +196,8 @@ get_usage(zpool_help_t idx) {
 	case HELP_CLEAR:
 		return (gettext("\tclear <pool> [device]\n"));
 	case HELP_CREATE:
-		return (gettext("\tcreate  [-fn] [-R root] [-m mountpoint] "
-		    "<pool> <vdev> ...\n"));
+		return (gettext("\tcreate [-fn] [-o property=value] ... \n"
+		    "\t    [-m mountpoint] [-R root] <pool> <vdev> ...\n"));
 	case HELP_DESTROY:
 		return (gettext("\tdestroy [-f] <pool>\n"));
 	case HELP_DETACH:
@@ -446,6 +446,52 @@ print_vdev_tree(zpool_handle_t *zhp, const char *name, nvlist_t *nv, int indent,
 }
 
 /*
+ * Add a property pair (name, string-value) into a property nvlist.
+ */
+static int
+add_prop_list(const char *propname, char *propval, nvlist_t **props,
+    boolean_t poolprop)
+{
+	zpool_prop_t prop = ZPOOL_PROP_INVAL;
+	zfs_prop_t fprop;
+	nvlist_t *proplist;
+	const char *normnm;
+	char *strval;
+
+	if (*props == NULL &&
+	    nvlist_alloc(props, NV_UNIQUE_NAME, 0) != 0) {
+		(void) fprintf(stderr,
+		    gettext("internal error: out of memory\n"));
+		return (1);
+	}
+
+	proplist = *props;
+
+	if (poolprop) {
+		if ((prop = zpool_name_to_prop(propname)) == ZPOOL_PROP_INVAL) {
+			(void) fprintf(stderr, gettext("property '%s' is "
+			    "not a valid pool property\n"), propname);
+			return (2);
+		}
+		normnm = zpool_prop_to_name(prop);
+	} else {
+		if ((fprop = zfs_name_to_prop(propname)) != ZFS_PROP_INVAL) {
+			normnm = zfs_prop_to_name(fprop);
+		} else {
+			normnm = propname;
+		}
+	}
+
+	if (nvlist_add_string(proplist, normnm, propval) != 0) {
+		(void) fprintf(stderr, gettext("internal "
+		    "error: out of memory\n"));
+		return (1);
+	}
+
+	return (0);
+}
+
+/*
  * zpool add [-fn] <pool> <vdev> ...
  *
  *	-f	Force addition of devices, even if they appear in use
@@ -513,7 +559,7 @@ zpool_do_add(int argc, char **argv)
 	}
 
 	/* pass off to get_vdev_spec for processing */
-	nvroot = make_root_vdev(zhp, force, !force, B_FALSE, argc, argv);
+	nvroot = make_root_vdev(zhp, NULL, force, !force, B_FALSE, argc, argv);
 	if (nvroot == NULL) {
 		zpool_close(zhp);
 		return (1);
@@ -589,7 +635,7 @@ zpool_do_remove(int argc, char **argv)
 }
 
 /*
- * zpool create [-fn] [-R root] [-m mountpoint] <pool> <dev> ...
+ * zpool create [-fn] [-o property=value] ... [-R root] [-m mountpoint] <pool> <dev> ...
  *
  *	-f	Force creation, even if devices appear in use
  *	-n	Do not create the pool, but display the resulting layout if it
@@ -597,6 +643,7 @@ zpool_do_remove(int argc, char **argv)
  *      -R	Create a pool under an alternate root
  *      -m	Set default mountpoint for the root dataset.  By default it's
  *      	'/<pool>'
+ *      -o	Set property=value.
  *
  * Creates the named pool according to the given vdev specification.  The
  * bulk of the vdev processing is done in get_vdev_spec() in zpool_vdev.c.  Once
@@ -616,9 +663,11 @@ zpool_do_create(int argc, char **argv)
 	char *mountpoint = NULL;
 	nvlist_t **child;
 	uint_t children;
+	nvlist_t *props = NULL;
+	char *propval = NULL;
 
 	/* check options */
-	while ((c = getopt(argc, argv, ":fnR:m:")) != -1) {
+	while ((c = getopt(argc, argv, ":fnR:m:o:")) != -1) {
 		switch (c) {
 		case 'f':
 			force = B_TRUE;
@@ -631,6 +680,17 @@ zpool_do_create(int argc, char **argv)
 			break;
 		case 'm':
 			mountpoint = optarg;
+			break;
+		case 'o':
+			if ((propval = strchr(optarg, '=')) == NULL) {
+				(void) fprintf(stderr, gettext("missing "
+				    "'=' for -o option\n"));
+				usage(B_FALSE);
+			}
+			*propval = '\0';
+			propval++;
+			if (add_prop_list(optarg, propval, &props, B_TRUE))
+				usage(B_FALSE);
 			break;
 		case ':':
 			(void) fprintf(stderr, gettext("missing argument for "
@@ -672,7 +732,7 @@ zpool_do_create(int argc, char **argv)
 	}
 
 	/* pass off to get_vdev_spec for bulk processing */
-	nvroot = make_root_vdev(NULL, force, !force, B_FALSE, argc - 1,
+	nvroot = make_root_vdev(NULL, props, force, !force, B_FALSE, argc - 1,
 	    argv + 1);
 	if (nvroot == NULL)
 		return (1);
@@ -766,6 +826,12 @@ zpool_do_create(int argc, char **argv)
 		ret = 0;
 	} else {
 		ret = 1;
+		/*
+		 * Add other properties not describing the vdev topology
+		 */
+		if (props)
+			nvlist_add_nvlist(nvroot, ZPOOL_CONFIG_PROPS, props);
+
 		/*
 		 * Hand off to libzfs.
 		 */
@@ -2322,7 +2388,7 @@ zpool_do_attach_or_replace(int argc, char **argv, int replacing)
 		return (1);
 	}
 
-	nvroot = make_root_vdev(zhp, force, B_FALSE, replacing, argc, argv);
+	nvroot = make_root_vdev(zhp, NULL, force, B_FALSE, replacing, argc, argv);
 	if (nvroot == NULL) {
 		zpool_close(zhp);
 		return (1);

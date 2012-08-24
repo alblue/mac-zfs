@@ -399,6 +399,7 @@ zpool_create(libzfs_handle_t *hdl, const char *pool, nvlist_t *nvroot,
 {
 	zfs_cmd_t zc = { 0 };
 	char msg[1024];
+	nvlist_t *props = NULL;
 
 	(void) snprintf(msg, sizeof (msg), dgettext(TEXT_DOMAIN,
 	    "cannot create '%s'"), pool);
@@ -409,6 +410,24 @@ zpool_create(libzfs_handle_t *hdl, const char *pool, nvlist_t *nvroot,
 	if (altroot != NULL && altroot[0] != '/')
 		return (zfs_error_fmt(hdl, EZFS_BADPATH,
 		    dgettext(TEXT_DOMAIN, "bad alternate root '%s'"), altroot));
+
+	/*
+	 * Process additional properties not (directly) describing the
+	 * vdev tree.
+	 */
+
+	if (nvlist_lookup_nvlist(nvroot, ZPOOL_CONFIG_PROPS, &props) == 0) {
+		char errbuf[1024];
+		nvlist_t *newprops = zfs_validate_properties(hdl, ZFS_TYPE_POOL,
+		    pool, props, 0, NULL, errbuf, B_TRUE);
+		nvlist_remove(nvroot, ZPOOL_CONFIG_PROPS, DATA_TYPE_NVLIST);
+		if (newprops) {
+			nvlist_add_nvlist(nvroot, ZPOOL_CONFIG_PROPS, newprops);
+		} else {
+			return(zfs_error(hdl, EZFS_BADPROP, msg));
+		}
+		nvlist_free(newprops);
+	}
 
 	if (zcmd_write_src_nvlist(hdl, &zc, nvroot, NULL) != 0)
 		return (-1);
@@ -2228,7 +2247,7 @@ zpool_set_prop(zpool_handle_t *zhp, const char *propname, const char *propval)
 	}
 
 	if ((realprops = zfs_validate_properties(zhp->zpool_hdl, ZFS_TYPE_POOL,
-	    zhp->zpool_name, nvl, 0, NULL, errbuf)) == NULL) {
+	    zhp->zpool_name, nvl, 0, NULL, errbuf, B_FALSE)) == NULL) {
 		nvlist_free(nvl);
 		return (-1);
 	}
@@ -2267,6 +2286,7 @@ zpool_get_prop_int(zpool_handle_t *zhp, zpool_prop_t prop)
 
 	switch (prop) {
 	case ZPOOL_PROP_AUTOREPLACE:
+	case ZPOOL_PROP_ASHIFT:
 		if (nvlist_lookup_nvlist(zhp->zpool_props,
 		    zpool_prop_to_name(prop), &nvp) != 0) {
 			value = zpool_prop_default_numeric(prop);
@@ -2347,6 +2367,21 @@ zpool_get_prop(zpool_handle_t *zhp, zpool_prop_t prop, char *propbuf,
 		(void) strlcpy(propbuf, value ? "on" : "off", proplen);
 		break;
 
+	case ZPOOL_PROP_ASHIFT:
+		if (nvlist_lookup_nvlist(zhp->zpool_props,
+		    zpool_prop_to_name(prop), &nvp) != 0) {
+			value = zpool_prop_default_numeric(prop);
+			src = ZFS_SRC_DEFAULT;
+		} else {
+			VERIFY(nvlist_lookup_uint64(nvp,
+			    ZFS_PROP_SOURCE, &value) == 0);
+			src = value;
+			VERIFY(nvlist_lookup_uint64(nvp, ZFS_PROP_VALUE,
+			    &value) == 0);
+		}
+		(void) snprintf(propbuf, proplen, "%llu", value);
+		break;
+  
 	default:
 		return (-1);
 	}

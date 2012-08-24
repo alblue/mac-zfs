@@ -1138,6 +1138,7 @@ spa_create(const char *pool, nvlist_t *nvroot, const char *altroot,
 	uint64_t txg = TXG_INITIAL;
 	nvlist_t **spares;
 	uint_t nspares;
+	nvlist_t *props = 0;
 
 	/*
 	 * If this pool already exists, return failure.
@@ -1271,6 +1272,21 @@ spa_create(const char *pool, nvlist_t *nvroot, const char *altroot,
 		(void) spa_history_log(spa, history_str, LOG_CMD_POOL_CREATE);
 
 	mutex_exit(&spa_namespace_lock);
+
+	/*
+	 * Process additional properties not set diectly in above call.
+	 */
+
+	if (nvlist_lookup_nvlist(nvroot, ZPOOL_CONFIG_PROPS, &props) == 0) {
+		/*
+		 * Remove properties already set above
+		 */
+		nvlist_remove(nvroot, zpool_prop_to_name(ZPOOL_PROP_DELEGATION), DATA_TYPE_UINT64);
+		nvlist_remove(nvroot, zpool_prop_to_name(ZPOOL_PROP_BOOTFS), DATA_TYPE_UINT64);
+		
+		/* apply porperties. */
+		spa_set_props(spa, props);
+	}
 
 	return (0);
 }
@@ -3012,6 +3028,15 @@ spa_sync_props(void *arg1, void *arg2, cred_t *cr, dmu_tx_t *tx)
 			VERIFY(zap_update(mos,
 			    spa->spa_pool_props_object,
 			    zpool_prop_to_name(ZPOOL_PROP_AUTOREPLACE), 8, 1,
+			    &intval, tx) == 0);
+			break;
+
+		case ZPOOL_PROP_ASHIFT:
+			VERIFY(nvlist_lookup_uint64(nvp,
+			    nvpair_name(nvpair), &intval) == 0);
+			VERIFY(zap_update(mos,
+			    spa->spa_pool_props_object,
+			    zpool_prop_to_name(ZPOOL_PROP_ASHIFT), 8, 1,
 			    &intval, tx) == 0);
 			break;
 		}

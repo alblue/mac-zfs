@@ -106,6 +106,7 @@ typedef enum {
 	ZPOOL_PROP_DELEGATION,
 	ZFS_PROP_VERSION,
 	ZPOOL_PROP_NAME,
+	ZPOOL_PROP_ASHIFT,
 	ZFS_NUM_PROPS
 } zfs_prop_t;
 
@@ -282,6 +283,9 @@ extern zpool_prop_t zpool_prop_iter(zpool_prop_f, void *);
 #define	ZPOOL_CONFIG_FAULTED		"faulted"
 #define	ZPOOL_CONFIG_DEGRADED		"degraded"
 #define	ZPOOL_CONFIG_REMOVED		"removed"
+
+/* Extra properties passed to spa_create. */
+#define ZPOOL_CONFIG_PROPS		"props"
 
 #define	VDEV_TYPE_ROOT			"root"
 #define	VDEV_TYPE_MIRROR		"mirror"
