@@ -47,7 +47,7 @@ uint_t num_logs(nvlist_t *nv);
  * Virtual device functions
  */
 
-nvlist_t *make_root_vdev(zpool_handle_t *zhp, int force, int check_rep,
+nvlist_t *make_root_vdev(zpool_handle_t *zhp, nvlist_t *props, int force, int check_rep,
     boolean_t isreplace, int argc, char **argv);
 
 /*

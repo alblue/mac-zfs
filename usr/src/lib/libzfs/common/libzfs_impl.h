@@ -119,7 +119,7 @@ zfs_prop_t zfs_prop_iter_common(zfs_prop_f, void *, zfs_type_t, boolean_t,
 zfs_prop_t zfs_name_to_prop_common(const char *, zfs_type_t);
 
 nvlist_t *zfs_validate_properties(libzfs_handle_t *, zfs_type_t, char *,
-	nvlist_t *, uint64_t, zfs_handle_t *zhp, const char *errbuf);
+	nvlist_t *, uint64_t, zfs_handle_t *zhp, const char *errbuf, boolean_t creating);
 
 typedef struct prop_changelist prop_changelist_t;
 
