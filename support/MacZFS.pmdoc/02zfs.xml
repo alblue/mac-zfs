@@ -13,10 +13,17 @@
     <packageStore type="internal" />
     <mod>installFrom.isRelativeType</mod>
     <mod>installTo</mod>
+    <mod>scripts.scriptsDirectoryPath.path</mod>
     <mod>identifier</mod>
     <mod>parent</mod>
     <mod>version</mod>
+    <mod>scripts.postinstall.isRelativeType</mod>
+    <mod>installFrom.isRelativeType</mod>
   </config>
+  <scripts>
+    <postinstall relative="true" mod="true">post-install.sh</postinstall>
+    <scripts-dir relative="true" mod="true">Resources</scripts-dir>
+  </scripts>
   <contents>
     <file-list>02zfs-contents.xml</file-list>
     <component id="com.bandlem.mac.zfs.util"
