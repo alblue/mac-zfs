@@ -11,6 +11,16 @@
     <versions min-spec="1.000000" />
     <scripts></scripts>
   </distribution>
+  <description>Welcome to MacZFS, a free implementation of the ZFS file system for Mac OSX Leopard and newer.
+
+MacZFS offers nearly unlimited storage capacity, only limited by the amount and size of hard disks connected to an computer.  It offers data replication in mirror or raidz configuration, dynamic stripping and build-in storage pool based volume management.
+
+MacZFS has end-to-end compression and strong data checksumming, including self-healing of bit-rot or any other read problem in redundant pools and offers unlimited, nearly-instantaneous snapshot support for backup and ecovery.  Snapshots can be mount for read-only inspection, efficiently transfered between storage pools for off-site backups or promoted to full read-write filesystems.
+
+MacZFS is based on the original Sun implementation of the ZFS file system and Apple's initial port to Leopard whch was discontinued before public release.
+
+Today, MacZFS is developed by a community effort on www.maczfs.org and released under the CDDL and APSL liecenses.
+  </description>
   <contents>
     <choice title="ZFS for Leopard" id="zfs105"
     tooltip="ZFS for Leopard"
@@ -61,6 +71,7 @@
 
 \f0\fs26 \cf0 This will install the next-generation ZFS support for Mac OSX systems running either Leopard or Snow Leopard and newer.}]]>
 </resource>
+      <resource relative="true" mod="true" type="conclusion">../CREDITS.txt</resource>
     </locale>
   </resources>
   <requirements>
@@ -75,4 +86,5 @@
   <item type="file">01zfs.xml</item>
   <item type="file">02zfs.xml</item>
   <mod>properties.title</mod>
+  <mod>description</mod>
 </pkmkdoc>
