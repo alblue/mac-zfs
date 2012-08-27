@@ -791,6 +791,8 @@ kmem_slab_destroy(kmem_cache_t *cp, kmem_slab_t *sp)
 	vmem_t *vmp = cp->cache_arena;
 	void *slab = (void *)P2ALIGN((uintptr_t)sp->slab_base, vmp->vm_quantum);
 
+	ASSERT(sp->slab_cache == cp);
+
 	if (cp->cache_flags & KMF_HASH) {
 		kmem_bufctl_t *bcp;
 		while ((bcp = sp->slab_head) != NULL) {

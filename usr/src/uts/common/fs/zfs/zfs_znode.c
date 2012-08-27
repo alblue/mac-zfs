@@ -1071,22 +1071,22 @@ zfs_zinactive(znode_t *zp)
 #ifdef __APPLE__
 		zfs_znode_free(zp);
 #else
-                VFS_RELE(zfsvfs->z_vfs);
+		VFS_RELE(zfsvfs->z_vfs);
 #endif /* __APPLE__ */
 		return;
 	}
 #ifndef __APPLE__
-        ASSERT(zp->z_phys);
-        ASSERT(zp->z_dbuf_held);
+	ASSERT(zp->z_phys);
+	ASSERT(zp->z_dbuf_held);
 
-        zp->z_dbuf_held = 0;
+	zp->z_dbuf_held = 0;
 #endif /* __APPLE__ */
-	
+
 	mutex_exit(&zp->z_lock);
 	dmu_buf_rele(zp->z_dbuf, NULL);
 	ZFS_OBJ_HOLD_EXIT(zfsvfs, z_id);
 #ifdef __APPLE__
-        zfs_znode_free(zp);
+	zfs_znode_free(zp);
 #else
         VFS_RELE(zfsvfs->z_vfs);
 #endif /* __APPLE__ */
@@ -1588,6 +1588,8 @@ zfs_obj_to_path(objset_t *osp, uint64_t obj, char *buf, int len)
 }
 
 #ifdef __APPLE__
+#ifndef LIBZPOOL_HACK
+
 uint32_t
 zfs_getbsdflags(znode_t *zp)
 {
@@ -1647,9 +1649,11 @@ zfs_setbsdflags(znode_t *zp, uint32_t bsdflags)
 
 	zp->z_phys->zp_flags = zflags;
 }
+#endif /* LIBZPOOL_HACK */
 
 #ifdef _KERNEL
 #ifdef ZFS_DEBUG
+#ifndef LIBZPOOL_HACK
 char *
 n_event_to_str(whereami_t event); // the prototype that removes gcc warning
 char *
@@ -1708,6 +1712,7 @@ znode_stalker_fini(znode_t *zp)
         }
 	list_destroy(&zp->z_stalker);
 }
+#endif /* LIBZPOOL_HACK */
 #endif /* ZFS_DEBUG */
 #endif /* _KERNEL */
 #endif /* __APPLE__ */

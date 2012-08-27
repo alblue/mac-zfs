@@ -26,9 +26,13 @@
           </f>
         </f>
       </f>
+      <f n="bin" o="root" g="wheel" p="16749">
+        <f n="ztest" o="root" g="wheel" p="33133" />
+      </f>
       <f n="sbin" o="root" g="wheel" p="16749">
         <f n="zpool" o="root" g="wheel" p="33133" />
         <f n="zfs" o="root" g="wheel" p="33133" />
+        <f n="zdb" o="root" g="wheel" p="33133" />
       </f>
     </f>
     <f n="System" o="root" g="wheel" p="16749">

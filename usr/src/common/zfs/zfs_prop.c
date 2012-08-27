@@ -70,7 +70,14 @@
 typedef enum {
 	PROP_DEFAULT,
 	PROP_READONLY,
-	PROP_INHERIT
+	PROP_INHERIT,
+	/*
+	 * ONETIME properties are a sort of conglomeration of READONLY
+	 * and INHERIT. They can be set only during object creation,
+	 * after that they are READONLY. If not explicitly set during
+	 * creation, they can be inherited.
+	 */
+	PROP_ONETIME
 } prop_attr_t;
 
 typedef struct zfs_index {
@@ -326,9 +333,14 @@ zfs_prop_init(void)
 	register_number(ZFS_PROP_COMPRESSRATIO, "compressratio", 0,
 	    PROP_READONLY, ZFS_TYPE_ANY,
 	    "<1.00x or higher if compressed>", "RATIO");
+
+	/* readonly onetime number properties */
+	register_number(ZPOOL_PROP_ASHIFT, "ashift", 0, PROP_ONETIME,
+	    ZFS_TYPE_POOL, "<ashift, 9-17, or 0=default>", "ASHIFT");
 	register_number(ZFS_PROP_VOLBLOCKSIZE, "volblocksize", 8192,
-	    PROP_READONLY,
+	    PROP_ONETIME,
 	    ZFS_TYPE_VOLUME, "512 to 128k, power of 2",	"VOLBLOCK");
+
 
 	/* default number properties */
 	register_number(ZFS_PROP_QUOTA, "quota", 0, PROP_DEFAULT,
@@ -616,7 +628,17 @@ zpool_prop_default_numeric(zpool_prop_t prop)
 int
 zfs_prop_readonly(zfs_prop_t prop)
 {
-	return (zfs_prop_table[prop].pd_attr == PROP_READONLY);
+	return (zfs_prop_table[prop].pd_attr == PROP_READONLY ||
+	    zfs_prop_table[prop].pd_attr == PROP_ONETIME);
+}
+
+/*
+ * Returns TRUE if the property is only allowed to be set once.
+ */
+boolean_t
+zfs_prop_setonce(zfs_prop_t prop)
+{
+	return (zfs_prop_table[prop].pd_attr == PROP_ONETIME);
 }
 
 /*
@@ -645,7 +667,8 @@ zpool_prop_to_name(zpool_prop_t prop)
 int
 zfs_prop_inheritable(zfs_prop_t prop)
 {
-	return (zfs_prop_table[prop].pd_attr == PROP_INHERIT);
+	return (zfs_prop_table[prop].pd_attr == PROP_INHERIT ||
+	    zfs_prop_table[prop].pd_attr == PROP_ONETIME);
 }
 
 /*

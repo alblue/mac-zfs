@@ -19,7 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ *
+ * Portions Copyright 2009 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -83,7 +86,9 @@
 #include <sys/dmu_objset.h>
 #include <sys/poll.h>
 #include <sys/stat.h>
+#ifndef __APPLE__
 #include <sys/time.h>
+#endif
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
@@ -96,11 +101,13 @@
 #include <sys/dsl_prop.h>
 #include <sys/refcount.h>
 #include <stdio.h>
+#ifndef __APPLE__
 #include <stdio_ext.h>
+#endif
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <umem.h>
+//#include <umem.h>
 #include <dlfcn.h>
 #include <ctype.h>
 #include <math.h>
@@ -125,6 +132,11 @@ static int zopt_init = 1;
 static char *zopt_dir = "/tmp";
 static uint64_t zopt_time = 300;	/* 5 minutes */
 static int zopt_maxfaults;
+#ifdef __APPLE__
+static uint64_t zopt_seed = 0;
+volatile int ztest_forever = 0;
+int zdb_forever = 0;
+#endif
 
 typedef struct ztest_args {
 	char		*za_pool;
@@ -166,6 +178,9 @@ ztest_func_t ztest_spa_rename;
 
 typedef struct ztest_info {
 	ztest_func_t	*zi_func;	/* test function */
+#ifdef __APPLE__
+	char 		*zi_name;		/* test function name */
+#endif
 	uint64_t	*zi_interval;	/* execute every <interval> seconds */
 	uint64_t	zi_calls;	/* per-pass count */
 	uint64_t	zi_call_time;	/* per-pass time */
@@ -178,6 +193,7 @@ uint64_t zopt_often = 1;		/* every second */
 uint64_t zopt_sometimes = 10;		/* every 10 seconds */
 uint64_t zopt_rarely = 60;		/* every 60 seconds */
 
+#ifndef __APPLE__
 ztest_info_t ztest_info[] = {
 	{ ztest_dmu_read_write,			&zopt_always	},
 	{ ztest_dmu_write_parallel,		&zopt_always	},
@@ -196,6 +212,58 @@ ztest_info_t ztest_info[] = {
 	{ ztest_vdev_add_remove,		&zopt_vdevtime	},
 	{ ztest_scrub,				&zopt_vdevtime	},
 };
+#else
+ztest_info_t ztest_info[] = {
+	{ ztest_dmu_read_write,
+		"ztest_dmu_read_write",
+		&zopt_always},
+	{ ztest_dmu_write_parallel,
+		"ztest_dmu_write_parallel",
+		&zopt_always},
+	{ ztest_dmu_object_alloc_free,
+		"ztest_dmu_object_alloc_free",
+		&zopt_always},
+	{ ztest_zap,
+		"ztest_zap",
+		&zopt_always},
+	{ ztest_zap_parallel,
+		"ztest_zap_parallel",
+		&zopt_always},
+	{ ztest_traverse,
+		"ztest_traverse",
+		&zopt_often},
+	{ ztest_dsl_prop_get_set,
+		"ztest_dsl_prop_get_set",
+		&zopt_sometimes},
+	{ ztest_dmu_objset_create_destroy,
+		"ztest_dmu_objset_create_destroy",
+		&zopt_sometimes},
+	{ ztest_dmu_snapshot_create_destroy,
+		"ztest_dmu_snapshot_create_destroy",
+		&zopt_rarely},
+	{ ztest_spa_create_destroy,
+		"ztest_spa_create_destroy",
+		&zopt_sometimes},
+	{ ztest_fault_inject,
+		"ztest_fault_inject",
+		&zopt_sometimes},
+	{ ztest_spa_rename,
+		"ztest_spa_rename",
+		&zopt_rarely},
+	{ ztest_vdev_attach_detach,
+		"ztest_vdev_attach_detach",
+		&zopt_rarely},
+	{ ztest_vdev_LUN_growth,
+		"ztest_vdev_LUN_growth",
+		&zopt_rarely},
+	{ ztest_vdev_add_remove,
+		"ztest_vdev_add_remove",
+		&zopt_vdevtime},
+	{ ztest_scrub,
+		"ztest_scrub",
+		&zopt_vdevtime},
+};
+#endif
 
 #define	ZTEST_FUNCS	(sizeof (ztest_info) / sizeof (ztest_info_t))
 
@@ -231,7 +299,11 @@ typedef struct ztest_block_tag {
 static char ztest_dev_template[] = "%s/%s.%llua";
 static ztest_shared_t *ztest_shared;
 
+#ifdef __APPLE__
+static mutex_t ztest_random_mtx = PTHREAD_MUTEX_INITIALIZER;
+#else
 static int ztest_random_fd;
+#endif
 static int ztest_dump_core = 1;
 
 extern uint64_t zio_gang_bang;
@@ -244,7 +316,11 @@ extern uint16_t zio_zil_fail_shift;
 #define	ZTEST_DIROBJ_BLOCKSIZE	(1 << 10)
 #define	ZTEST_DIRSIZE		256
 
+#ifdef __APPLE__
+static void usage(boolean_t) __attribute__ ((noreturn));
+#else
 static void usage(boolean_t) __NORETURN;
+#endif
 
 /*
  * These libumem hooks provide a reasonable set of defaults for the allocator's
@@ -376,6 +452,10 @@ usage(boolean_t requested)
 	    "\t[-T time] total run time (default: %llu sec)\n"
 	    "\t[-P passtime] time per pass (default: %llu sec)\n"
 	    "\t[-z zil failure rate (default: fail every 2^%llu allocs)]\n"
+#ifdef __APPLE__
+	    "\t[-S random seed (default: randomly chosen)]\n"
+	    "\t[-D] wait in child process for GDB to attach.  (After attaching say 'set ztest_forever=0')\n"
+#endif
 	    "\t[-h] (print help)\n"
 	    "",
 	    cmdname,
@@ -406,8 +486,14 @@ ztest_random(uint64_t range)
 	if (range == 0)
 		return (0);
 
+#ifdef __APPLE__
+	pthread_mutex_lock(&ztest_random_mtx);
+	r = random();
+	pthread_mutex_unlock(&ztest_random_mtx);	
+#else
 	if (read(ztest_random_fd, &r, sizeof (r)) != sizeof (r))
 		fatal(1, "short read from /dev/urandom");
+#endif
 
 	return (r % range);
 }
@@ -432,7 +518,11 @@ process_options(int argc, char **argv)
 	zio_zil_fail_shift = 5;
 
 	while ((opt = getopt(argc, argv,
+#ifdef __APPLE__	    
+		"v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:z:h:S:D")) != EOF) {
+#else
 	    "v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:z:h")) != EOF) {
+#endif
 		value = 0;
 		switch (opt) {
 		case 'v':
@@ -449,6 +539,9 @@ process_options(int argc, char **argv)
 		case 'T':
 		case 'P':
 		case 'z':
+#ifdef __APPLE__
+		case 'S':
+#endif
 			value = nicenumtoull(optarg);
 		}
 		switch (opt) {
@@ -506,6 +599,19 @@ process_options(int argc, char **argv)
 		case 'z':
 			zio_zil_fail_shift = MIN(value, 16);
 			break;
+#ifdef __APPLE__
+	    case 'S':
+			zopt_seed = value;
+			break;
+		case 'D':
+			if (ztest_forever == 0) {
+				ztest_forever = 1;
+			} else {
+				zdb_forever = 1;
+				ztest_forever = 0;
+			}
+			break;
+#endif
 		case 'h':
 			usage(B_TRUE);
 			break;
@@ -845,8 +951,14 @@ ztest_vdev_add_remove(ztest_args_t *za)
 	/*
 	 * Make 1/4 of the devices be log devices.
 	 */
+#ifndef __APPLE__
 	nvroot = make_vdev_root(zopt_vdev_size,
 	    ztest_random(4) == 0, zopt_raidz, zopt_mirrors, 1);
+#else
+	/* XXX/b94: turning this off, since we don't support log devices */
+	nvroot = make_vdev_root(zopt_vdev_size,
+	    0, zopt_raidz, zopt_mirrors, 1);
+#endif
 
 	error = spa_vdev_add(spa, nvroot);
 	nvlist_free(nvroot);
@@ -2840,6 +2952,10 @@ ztest_replace_one_disk(spa_t *spa, uint64_t vdev)
 	nvlist_free(root);
 }
 
+/* fake getexecname() by just saving Arg0, which is supposed to be the
+   full path to the executable. */
+char *getexecname_fake=0;
+
 static void
 ztest_verify_blocks(char *pool)
 {
@@ -2851,7 +2967,34 @@ ztest_verify_blocks(char *pool)
 	char *isa;
 	int isalen;
 	FILE *fp;
+	
+#ifdef __APPLE__
+	/* Assume zdb is always located at /usr/sbin/zdb */
+	/* snprintf(zdb, 15, "%s", "/usr/bin/ztest"); */
+	(void) realpath(getexecname_fake, zdb);
 
+	ztest = strstr(zdb, "/ztest");
+#ifdef ZDB_STATIC
+	strcpy(ztest, "/" ZDB_STATIC);
+#else
+	strcpy(ztest, "/zdb");
+#endif
+	if (access(zdb, F_OK) != 0) {
+		/* zdb not found in same path as ztest. */
+		printf("Failed to find zdb as '%s'\n", zdb);
+#ifdef ZDB_STATIC
+		strcpy(zdb,"/usr/sbin/" ZDB_STATIC);
+#else
+		strcpy(zdb,"/usr/sbin/zdb");
+#endif
+	}
+	bin = strdup(zdb);
+	(void) sprintf(zdb, "%s -bc%s%s -U -O %s %s",
+	    bin,
+	    zopt_verbose >= 3 ? "s" : "",
+	    zopt_verbose >= 4 ? "v" : "",
+	    ztest_random(2) == 0 ? "pre" : "post", pool);
+	#else
 	(void) realpath(getexecname(), zdb);
 
 	/* zdb lives in /usr/sbin, while ztest lives in /usr/bin */
@@ -2868,9 +3011,17 @@ ztest_verify_blocks(char *pool)
 	    zopt_verbose >= 4 ? "v" : "",
 	    ztest_random(2) == 0 ? "pre" : "post", pool);
 	free(isa);
+	#endif
+
+#ifdef __APPLE__
+	if (zdb_forever) {
+		strcat(zdb, " -D");
+	}
+#endif
 
 	if (zopt_verbose >= 5)
-		(void) printf("Executing %s\n", strstr(zdb, "zdb "));
+	  (void) printf("Executing '%s'\n", zdb);
+	  /*		(void) printf("Executing %s\n", strstr(zdb, "zdb ")); */
 
 	fp = popen(zdb, "r");
 
@@ -3049,10 +3200,15 @@ ztest_thread(void *arg)
 		atomic_add_64(&zi->zi_call_time, functime);
 
 		if (zopt_verbose >= 4) {
+#ifdef __APPLE__
+			(void) printf("%6.2f sec in %s\n",
+				(double)functime / NANOSEC, zi->zi_name);
+#else
 			Dl_info dli;
 			(void) dladdr((void *)zi->zi_func, &dli);
 			(void) printf("%6.2f sec in %s\n",
 			    (double)functime / NANOSEC, dli.dli_sname);
+#endif
 		}
 
 		/*
@@ -3351,12 +3507,36 @@ main(int argc, char **argv)
 	/* Override location of zpool.cache */
 	spa_config_dir = "/tmp";
 
+#ifdef __APPLE__
+	zopt_seed = time(0);
+#else
 	ztest_random_fd = open("/dev/urandom", O_RDONLY);
+#endif
+
+#ifdef __APPLE__
+	/* fake getexecname() by just saving Arg0, which is supposed
+	   to be the full path to the executable. */
+	getexecname_fake = strdup(argv[0]);
+#endif
 
 	process_options(argc, argv);
+#ifdef __APPLE__
+	srandom(zopt_seed);
+#endif
 
 	argc -= optind;
 	argv += optind;
+
+#ifdef __APPLE__
+	/*
+	 * Check zopt_dir, as ztest_init() will fail if path is not absolute
+	 */
+	
+	if (zopt_dir[0] != '/') {
+		fprintf(stderr, "%s: -f : path must start with '/'.\n", getexecname_fake);
+		exit(1);
+	}
+#endif
 
 	dprintf_setup(&argc, argv);
 
@@ -3371,10 +3551,17 @@ main(int argc, char **argv)
 	    PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
 
 	if (zopt_verbose >= 1) {
+#ifdef __APPLE__
+		(void) printf("%llu vdevs, %d datasets, %d threads,"
+		    " %llu seconds, seeding with %llu...\n",
+		    (u_longlong_t)zopt_vdevs, zopt_datasets, zopt_threads,
+		    (u_longlong_t)zopt_time, (u_longlong_t)zopt_seed);
+#else
 		(void) printf("%llu vdevs, %d datasets, %d threads,"
 		    " %llu seconds...\n",
 		    (u_longlong_t)zopt_vdevs, zopt_datasets, zopt_threads,
 		    (u_longlong_t)zopt_time);
+#endif
 	}
 
 	/*
@@ -3426,9 +3613,16 @@ main(int argc, char **argv)
 		pid = fork();
 
 		if (pid == -1)
-			fatal(1, "fork failed");
+			fatal(1, "fork of ztest failed");
 
 		if (pid == 0) {	/* child */
+			/* To debug the child with gdb, uncomment these lines
+			 * and then attach and do "set variable forever=0" */
+#ifdef __APPLE__
+			printf("forever=%d\n", ztest_forever);
+			while (ztest_forever) {}
+#endif
+
 			struct rlimit rl = { 1024, 1024 };
 			(void) setrlimit(RLIMIT_NOFILE, &rl);
 			(void) enable_extended_FILE_stdio(-1, -1);
@@ -3442,21 +3636,21 @@ main(int argc, char **argv)
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status) != 0) {
 				(void) fprintf(stderr,
-				    "child exited with code %d\n",
-				    WEXITSTATUS(status));
+				    "child %s exited with code %d\n",
+				    argv[0], WEXITSTATUS(status));
 				exit(2);
 			}
 		} else if (WIFSIGNALED(status)) {
 			if (WTERMSIG(status) != SIGKILL) {
 				(void) fprintf(stderr,
-				    "child died with signal %d\n",
-				    WTERMSIG(status));
+				    "child %s died with signal %d\n",
+				    argv[0], WTERMSIG(status));
 				exit(3);
 			}
 			kills++;
 		} else {
 			(void) fprintf(stderr, "something strange happened "
-			    "to child\n");
+			    "to child %s\n", argv[0]);
 			exit(4);
 		}
 
@@ -3487,6 +3681,13 @@ main(int argc, char **argv)
 			(void) printf("%7s %9s   %s\n",
 			    "-----", "----", "--------");
 			for (f = 0; f < ZTEST_FUNCS; f++) {
+				#ifdef __APPLE__
+				zi = &zs->zs_info[f];
+				print_time(zi->zi_call_time, timebuf);
+				(void) printf("%7llu %9s   %s\n",
+				    (u_longlong_t)zi->zi_calls, timebuf,
+				    zi->zi_name);
+				#else
 				Dl_info dli;
 
 				zi = &zs->zs_info[f];
@@ -3495,6 +3696,7 @@ main(int argc, char **argv)
 				(void) printf("%7llu %9s   %s\n",
 				    (u_longlong_t)zi->zi_calls, timebuf,
 				    dli.dli_sname);
+				#endif
 			}
 			(void) printf("\n");
 		}

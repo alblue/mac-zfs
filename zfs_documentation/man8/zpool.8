@@ -67,20 +67,20 @@ zpool \- configures ZFS storage pools
 .LP
 .nf
 \fBzpool import\fR [\fB-o \fImntopts\fR\fR] [\fB-o\fR \fIproperty=value\fR] ...
-     [\fB-d\fR \fIdir\fR | \fB-c\fR \fIcachefile\fR] 
+     [\fB-d\fR \fIdir\fR]
      [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fB-a\fR
 .fi
 
 .LP
 .nf
 \fBzpool import\fR [\fB-o \fImntopts\fR\fR] [\fB-o\fR \fIproperty=value\fR] ...
-     [\fB-d\fR \fIdir\fR | \fB-c\fR \fIcachefile\fR]
+     [\fB-d\fR \fIdir\fR]
      [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fIpool\fR |\fIid\fR [\fInewpool\fR]
 .fi
 
 .LP
 .nf
-\fBzpool iostat\fR [\fB-T\fR u | d ] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
+\fBzpool iostat\fR [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
 .fi
 
 .LP
@@ -193,18 +193,11 @@ A mirror of two or more devices. Data is replicated in an identical fashion acro
 \fB\fBraidz1\fR\fR
 .ad
 .br
-.na
-\fB\fBraidz2\fR\fR
-.ad
-.br
-.na
-\fB\fBraidz3\fR\fR
-.ad
 .RS 10n
 .rt  
 A variation on \fBRAID-5\fR that allows for better distribution of parity and eliminates the "\fBRAID-5\fR write hole" (in which data and parity become inconsistent after a power loss). Data and parity is striped across all disks within a \fBraidz\fR group.
 .sp
-A \fBraidz\fR group can have single-, double- , or triple parity, meaning that the \fBraidz\fR group can sustain one, two, or three failures, respectively, without losing any data. The \fBraidz1\fR \fBvdev\fR type specifies a single-parity \fBraidz\fR group; the \fBraidz2\fR \fBvdev\fR type specifies a double-parity \fBraidz\fR group; and the \fBraidz3\fR \fBvdev\fR type specifies a triple-parity \fBraidz\fR group. The \fBraidz\fR \fBvdev\fR type is an alias for \fBraidz1\fR.
+A \fBraidz\fR group can have single parity, meaning that the \fBraidz\fR group can sustain one failure without losing any data. The \fBraidz1\fR \fBvdev\fR type specifies a single-parity \fBraidz\fR group. The \fBraidz\fR \fBvdev\fR type is an alias for \fBraidz1\fR.
 .sp
 A \fBraidz\fR group with \fIN\fR disks of size \fIX\fR with \fIP\fR parity disks can hold approximately (\fIN-P\fR)*\fIX\fR bytes and can withstand \fIP\fR device(s) failing before data integrity is compromised. The minimum number of devices in a \fBraidz\fR group is one more than the number of parity disks. The recommended number is between 3 and 9 to help increase performance.
 .RE
@@ -229,17 +222,6 @@ A special pseudo-\fBvdev\fR which keeps track of available hot spares for a pool
 .RS 10n
 .rt  
 A separate-intent log device. If more than one log device is specified, then writes are load-balanced between devices. Log devices can be mirrored. However, \fBraidz\fR \fBvdev\fR types are not supported for the intent log. For more information, see the "Intent Log" section.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBcache\fR\fR
-.ad
-.RS 10n
-.rt  
-A device used to cache storage pool data. A cache device cannot be cannot be configured as a mirror or \fBraidz\fR group. For more information, see the "Cache Devices" section.
 .RE
 
 .sp
@@ -411,128 +393,11 @@ Multiple log devices can also be specified, and they can be mirrored. See the EX
 .sp
 .LP
 Log devices can be added, replaced, attached, detached, and imported and exported as part of the larger pool. Mirrored log devices can be removed by specifying the top-level mirror for the log.
-.SS "Cache Devices"
-.sp
-.LP
-Devices can be added to a storage pool as "cache devices." These devices provide an additional layer of caching between main memory and disk. For read-heavy workloads, where the working set size is much larger than what can be cached in main memory, using cache devices allow much more of this working set to be served from low latency media. Using cache devices provides the greatest performance improvement for random read-workloads of mostly static content.
-.sp
-.LP
-To create a pool with cache devices, specify a "cache" \fBvdev\fR with any number of devices. For example:
-.sp
-.in +2
-.nf
-\fB# zpool create pool disk1 disk2 cache disk3 disk4\fR
-.fi
-.in -2
-.sp
 
-.sp
-.LP
-Cache devices cannot be mirrored or part of a \fBraidz\fR configuration. If a read error is encountered on a cache device, that read \fBI/O\fR is reissued to the original storage pool device, which might be part of a mirrored or \fBraidz\fR configuration.
-.sp
-.LP
-The content of the cache devices is considered volatile, as is the case with other system caches.
 .SS "Properties"
 .sp
 .LP
 Each pool has several properties associated with it. Some properties are read-only statistics while others are configurable and change the behavior of the pool. The following are read-only properties:
-.sp
-.ne 2
-.mk
-.na
-\fB\fBavailable\fR\fR
-.ad
-.RS 20n
-.rt  
-Amount of storage available within the pool. This property can also be referred to by its shortened column name, "avail".
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBcapacity\fR\fR
-.ad
-.RS 20n
-.rt  
-Percentage of pool space used. This property can also be referred to by its shortened column name, "cap".
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBhealth\fR\fR
-.ad
-.RS 20n
-.rt  
-The current health of the pool. Health can be "\fBONLINE\fR", "\fBDEGRADED\fR", "\fBFAULTED\fR", " \fBOFFLINE\fR", "\fBREMOVED\fR", or "\fBUNAVAIL\fR".
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBguid\fR\fR
-.ad
-.RS 20n
-.rt  
-A unique identifier for the pool.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBsize\fR\fR
-.ad
-.RS 20n
-.rt  
-Total size of the storage pool.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBused\fR\fR
-.ad
-.RS 20n
-.rt  
-Amount of storage space used within the pool.
-.RE
-
-.sp
-.LP
-These space usage properties report actual physical space available to the storage pool. The physical space can be different from the total amount of space that any contained datasets can actually use. The amount of space used in a \fBraidz\fR configuration depends on the characteristics of the data being written. In addition, \fBZFS\fR reserves some space for internal accounting that the \fBzfs\fR(8) command takes into account, but the \fBzpool\fR command does not. For non-full pools of a reasonable size, these effects should be invisible. For small pools, or pools that are close to being completely full, these discrepancies may become more noticeable.
-.sp
-.LP
-The following property can be set at creation time and import time:
-.sp
-.ne 2
-.mk
-.na
-\fB\fBaltroot\fR\fR
-.ad
-.sp .6
-.RS 4n
-Alternate root directory. If set, this directory is prepended to any mount points within the pool. This can be used when examining an unknown pool where the mount points cannot be trusted, or in an alternate boot environment, where the typical paths are not valid. \fBaltroot\fR is not a persistent property. It is valid only while the system is up. Setting \fBaltroot\fR defaults to using \fBcachefile\fR=none, though this may be overridden	 using an explicit setting.
-.RE
-
-.sp
-.LP
-The following properties can be set at creation time and import time, and later changed with the \fBzpool set\fR command:
-.sp
-.ne 2
-.mk
-.na
-\fB\fBautoexpand\fR=\fBon\fR | \fBoff\fR\fR
-.ad
-.sp .6
-.RS 4n
-Controls automatic pool expansion when the underlying LUN is grown. If set to \fBon\fR, the pool will be resized according to the size of the expanded device. If the device is part of a mirror or \fBraidz\fR then all devices within that mirror/\fBraidz\fR group must be expanded before the new space is made available to the pool. The default behavior is \fBoff\fR. This property can also be referred to by its shortened column name, \fBexpand\fR.
-.RE
-
 .sp
 .ne 2
 .mk
@@ -559,90 +424,11 @@ Identifies the default bootable dataset for the root pool. This property is expe
 .ne 2
 .mk
 .na
-\fB\fBcachefile\fR=\fIpath\fR | \fBnone\fR\fR
-.ad
-.sp .6
-.RS 4n
-Controls the location of where the pool configuration is cached. Discovering all pools on system startup requires a cached copy of the configuration data that is stored on the root file system. All pools in this cache are automatically imported when the system boots. Some environments, such as install and clustering, need to cache this information in a different location so that pools are not automatically imported. Setting this property caches the pool configuration in a different location that can later be imported with "\fBzpool import -c\fR". Setting it to the special value "\fBnone\fR" creates a temporary pool that is never cached, and the special value \fB\&''\fR (empty string) uses the default location. 
-.sp
-Multiple pools can share the same cache file. Because the kernel destroys and recreates this file when pools are added and removed, care should be taken when attempting to access this file. When the last pool using a \fBcachefile\fR is exported or destroyed, the file is removed.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
 \fB\fBdelegation\fR=\fBon\fR | \fBoff\fR\fR
 .ad
 .sp .6
 .RS 4n
 Controls whether a non-privileged user is granted access based on the dataset permissions defined on the dataset. See \fBzfs\fR(8) for more information on \fBZFS\fR delegated administration.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBfailmode\fR=\fBwait\fR | \fBcontinue\fR | \fBpanic\fR\fR
-.ad
-.sp .6
-.RS 4n
-Controls the system behavior in the event of catastrophic pool failure. This condition is typically a result of a loss of connectivity to the underlying storage device(s) or a failure of all devices within the pool. The behavior of such an event is determined as follows:
-.sp
-.ne 2
-.mk
-.na
-\fB\fBwait\fR\fR
-.ad
-.RS 12n
-.rt  
-Blocks all \fBI/O\fR access until the device connectivity is recovered and the errors are cleared. This is the default behavior.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBcontinue\fR\fR
-.ad
-.RS 12n
-.rt  
-Returns \fBEIO\fR to any new write \fBI/O\fR requests but allows reads to any of the remaining healthy devices. Any write requests that have yet to be committed to disk would be blocked.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBpanic\fR\fR
-.ad
-.RS 12n
-.rt  
-Prints out a message to the console and generates a system crash dump.
-.RE
-
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBlistsnaps\fR=on | off\fR
-.ad
-.sp .6
-.RS 4n
-Controls whether information about snapshots associated with this pool is output when "\fBzfs list\fR" is run without the \fB-t\fR option. The default value is "off".
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fBversion\fR=\fIversion\fR\fR
-.ad
-.sp .6
-.RS 4n
-The current on-disk version of the pool. This can be increased, but never decreased. The preferred method of updating pools is with the "\fBzpool upgrade\fR" command, though this property can be used when a specific version is needed for backwards compatibility. This property can be any number between 1 and the current version reported by "\fBzpool upgrade -v\fR".
 .RE
 
 .SS "Subcommands"
@@ -736,7 +522,7 @@ Clears device errors in a pool. If no arguments are specified, all device errors
 .na
 \fB\fBzpool create\fR [\fB-fn\fR] [\fB-o\fR \fIproperty=value\fR] ...
     [\fB-O\fR \fIfile-system-property=value\fR] ...
-    [\fB-m\fR \fImountpoint\fR] [\fB-R\fR \fIroot\fR] \fIpool\fR \fIvdev\fR ...\fR
+    [\fB-m\fR \fImountpoint\fR] \fIpool\fR \fIvdev\fR ...\fR
 .ad
 .sp .6
 .RS 4n
@@ -793,17 +579,6 @@ Sets the given pool properties. See the "Properties" section for a list of valid
 .sp .6
 .RS 4n
 Sets the given file system properties in the root file system of the pool. See the "Properties" section of \fBzfs\fR(8) for a list of valid properties that can be set.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-R\fR \fIroot\fR\fR
-.ad
-.sp .6
-.RS 4n
-Equivalent to "-o cachefile=none,altroot=\fIroot\fR"
 .RE
 
 .sp
@@ -940,24 +715,13 @@ Displays log records in long format, which in addition to standard format includ
 .ne 2
 .mk
 .na
-\fB\fBzpool import\fR [\fB-d\fR \fIdir\fR | \fB-c\fR \fIcachefile\fR] [\fB-D\fR]\fR
+\fB\fBzpool import\fR [\fB-d\fR \fIdir\fR] [\fB-D\fR]\fR
 .ad
 .sp .6
 .RS 4n
 Lists pools available to import. If the \fB-d\fR option is not specified, this command searches for devices in "/dev". The \fB-d\fR option can be specified multiple times, and all directories are searched. If the device appears to be part of an exported pool, this command displays a summary of the pool with the name of the pool, a numeric identifier, as well as the \fIvdev\fR layout and current health of the device for each device or file. Destroyed pools, pools that were previously destroyed with the "\fBzpool destroy\fR" command, are not listed unless the \fB-D\fR option is specified. 
 .sp
 The numeric identifier is unique, and can be used instead of the pool name when multiple exported pools of the same name are available.
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-c\fR \fIcachefile\fR\fR
-.ad
-.RS 16n
-.rt  
-Reads configuration from the given \fBcachefile\fR that was created with the "\fBcachefile\fR" pool property. This \fBcachefile\fR is used instead of searching for devices.
-.RE
-
 .sp
 .ne 2
 .mk
@@ -987,7 +751,7 @@ Lists destroyed pools only.
 .mk
 .na
 \fB\fBzpool import\fR [\fB-o\fR \fImntopts\fR] [ \fB-o\fR \fIproperty\fR=\fIvalue\fR] ... 
-    [\fB-d\fR \fIdir\fR | \fB-c\fR \fIcachefile\fR] [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fB-a\fR\fR
+    [\fB-d\fR \fIdir\fR] [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fB-a\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -1012,17 +776,6 @@ Comma-separated list of mount options to use when mounting datasets within the p
 .RS 21n
 .rt  
 Sets the specified property on the imported pool. See the "Properties" section for more information on the available pool properties.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-c\fR \fIcachefile\fR\fR
-.ad
-.RS 21n
-.rt  
-Reads configuration from the given \fBcachefile\fR that was created with the "\fBcachefile\fR" pool property. This \fBcachefile\fR is used instead of searching for devices.
 .RE
 
 .sp
@@ -1087,7 +840,7 @@ Sets the "\fBcachefile\fR" property to "\fBnone\fR" and the "\fIaltroot\fR" prop
 .mk
 .na
 \fB\fBzpool import\fR [\fB-o\fR \fImntopts\fR] [ \fB-o\fR \fIproperty\fR=\fIvalue\fR] ...
-    [\fB-d\fR \fIdir\fR | \fB-c\fR \fIcachefile\fR] [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fIpool\fR | \fIid\fR [\fInewpool\fR]\fR
+    [\fB-d\fR \fIdir\fR] [\fB-D\fR] [\fB-f\fR] [\fB-R\fR \fIroot\fR] \fIpool\fR | \fIid\fR [\fInewpool\fR]\fR
 .ad
 .sp .6
 .RS 4n
@@ -1114,17 +867,6 @@ Comma-separated list of mount options to use when mounting datasets within the p
 .sp .6
 .RS 4n
 Sets the specified property on the imported pool. See the "Properties" section for more information on the available pool properties.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-c\fR \fIcachefile\fR\fR
-.ad
-.sp .6
-.RS 4n
-Reads configuration from the given \fBcachefile\fR that was created with the "\fBcachefile\fR" pool property. This \fBcachefile\fR is used instead of searching for devices.
 .RE
 
 .sp
@@ -1177,24 +919,11 @@ Sets the "\fBcachefile\fR" property to "\fBnone\fR" and the "\fIaltroot\fR" prop
 .ne 2
 .mk
 .na
-\fB\fBzpool iostat\fR [\fB-T\fR \fBu\fR | \fBd\fR] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
+\fB\fBzpool iostat\fR [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
 .ad
 .sp .6
 .RS 4n
 Displays \fBI/O\fR statistics for the given pools. When given an interval, the statistics are printed every \fIinterval\fR seconds until \fBCtrl-C\fR is pressed. If no \fIpools\fR are specified, statistics for every pool in the system is shown. If \fIcount\fR is specified, the command exits after \fIcount\fR reports are printed.
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-T\fR \fBu\fR | \fBd\fR\fR
-.ad
-.RS 12n
-.rt  
-Display a time stamp.
-.sp
-Specify \fBu\fR for a printed representation of the internal representation of time. See \fBtime\fR(2). Specify \fBd\fR for standard date format. See \fBdate\fR(1).
-.RE
-
 .sp
 .ne 2
 .mk
@@ -1675,33 +1404,7 @@ The following command creates a ZFS storage pool consisting of two, two-way mirr
 .sp
 
 .LP
-\fBExample 13 \fRAdding Cache Devices to a ZFS Pool
-.sp
-.LP
-The following command adds two disks for use as cache devices to a ZFS storage pool:
-
-.sp
-.in +2
-.nf
-# \fBzpool add pool cache disk3 disk4\fR
-.fi
-.in -2
-.sp
-
-.sp
-.LP
-Once added, the cache devices gradually fill with content from main memory. Depending on the size of your cache devices, it could take over an hour for them to fill. Capacity and reads can be monitored using the \fBiostat\fR option as follows: 
-
-.sp
-.in +2
-.nf
-# \fBzpool iostat -v pool 5\fR
-.fi
-.in -2
-.sp
-
-.LP
-\fBExample 14 \fRRemoving a Mirrored Log Device
+\fBExample 13 \fRRemoving a Mirrored Log Device
 .sp
 .LP
 The following command removes the mirrored log device \fBmirror-2\fR.

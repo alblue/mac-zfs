@@ -1,0 +1,64 @@
+Credits
+
+Many people contributed to ZFS in general and to Mac OSX port MacZFS.  Those we know of are listed here:
+
+   The inventors and principal engineers of ZFS, at Sun Microsystems
+     * Jeff Bonwick and Matthew Ahrens, and their team (possibly listed
+       below; clarification is needed)
+
+   Co-founders of ZFS on Mac OS, at Apple, Inc:
+     * Chris Emura, the Filesystem Development Manager within Apple's
+       CoreOS organization (cemura at apple.com)
+     * Don Brady, principal software engineer
+
+   Other original contributors at Apple, Inc
+     * Noel Dellofano, software engineer
+     * who else?
+
+   Contributors to the public MacZFS project
+     * Dustin Sallings: software engineer
+     * Jason R. McNeil: software engineer
+     * Bjšrn Kahl: software engineer, documentation -- Github
+     * Alex Blewitt, software engineer, release engineer, documentation --
+       Github
+     * Daniel Bethe -- webmaster, documentation
+     * Lucien Pullen -- documentation
+     * Matthew Earlywine -- launchd scripts
+     * KonaB1end -- launchd scripts and hard core hacking
+
+   These additional names were harvested from the git repository, dating
+   back to the original ZFS code. They are presented in no significant
+   order.
+
+   When it comes to a volunteer project, remember this above all...
+
+There are NO small roles. The community thanks you all.
+
+   johansen, esaxe, elowe, dp78419, dm120769, casper, mh27603, ly149593,
+   frankho, susans, stans, rm160521, mishra, eota, edp, ck153898, anish,
+   egillett, dv142724, dp, cindi, vb160487, trevtom, szhou, stevel, sethg,
+   rg137905, rd117015, qiao, meem, jg, gt29601, govinda, cwb, akolb,
+   zh199473, wesolows, vsakar, vikram, th199096, tabriz, stephh, sp92102,
+   schwartz, rsb, robinson, rica, ramat, phitran, peterte, paulsan, mrj,
+   maheshvs, llai1, kupfer, krgopi, kp158701, jjc, is, ha137994, gjelinek,
+   evanl, eh208807, dougm, dilpreet, dduvall, darrenm, carlsonj, bmc,
+   blakej, billm, ae112802, yq193411, vb70745, udpa, tsien, taylor,
+   sudheer, seb, rs135747, rb150246, prabahar, peteh, ns92644, nordmark,
+   nn35248, myers, mws, mlf, ml93401, mjnelson, lclee, ksn, krishna,
+   kk112340, kg150529, josephb, jkennedy, jdunham, jarrett, gp87344,
+   georges, gd78059, fr157268, fl147353, esolom, ericheng, eg155566,
+   dr146992, dmick, dh155122, bs21162, baban, artem, Timeless, yz147069,
+   yx209491, yt160523, yl150051, xy158873, xs154138, wroche, wentaoy,
+   webaker, vv149972, vivek, ton, timh, timf, swilcox, stevel@tonic-gate,
+   ss146032, srust, sommerfe, sjelinek, sherrym, shepler, sdebnath, robj,
+   rh87107, rbourbon, randyf, rab, ps57422, pramodbg, pm145316, petede,
+   pd144616, paulson, owenr, osaeed, nw141292, nr123932, nf202958,
+   mp46848, mp204432, mm156350, ml29623, micheng, mcneal, mc142369,
+   mb158278, masputra, lq150181, kz151634, kcpoon, kalai, kais, jwahlig,
+   jwadams, jpk, johnny, johnlev, jl139090, jj204856, jj146644, jimp, jhd,
+   jfrank, jchu, jc25722, jacobs, ja97890, hx147065, huah, hiremath,
+   hg115875, gz161490, gm149974, girish, ggredvig, gfaden, gavinm,
+   ethindra, et142600, dstaff, dp201428, dg199075, craigm, convert-repo,
+   cm136836, cg149915, bm42561, bg159949, batschul, ayznaga, at204353,
+   as145665, ap25164, andyb, andrei, agiri, acruz, achartre, ab196087
+
