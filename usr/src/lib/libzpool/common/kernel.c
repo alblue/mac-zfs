@@ -437,11 +437,7 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 	vnode_t *vp;
 	int old_umask;
 	char realpath[MAXPATHLEN];
-#if _DARWIN_FEATURE_64_BIT_INODE
-	struct stat st;
-#else
 	struct stat64 st;
-#endif
 
 	/*
 	 * If we're accessing a real disk from userland, we need to use
@@ -458,11 +454,7 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 		fd = open64(path, O_RDONLY);
 		if (fd == -1)
 			return (errno);
-#if _DARWIN_FEATURE_64_BIT_INODE
-		if (fstat(fd, &st) == -1) {
-#else
 		if (fstat64(fd, &st) == -1) {
-#endif
 			close(fd);
 			return (errno);
 		}
@@ -474,11 +466,7 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 			    dsk + 1);
 	} else {
 		(void) sprintf(realpath, "%s", path);
-#if _DARWIN_FEATURE_64_BIT_INODE
-		if (!(flags & FCREAT) && stat(realpath, &st) == -1)
-#else
 		if (!(flags & FCREAT) && stat64(realpath, &st) == -1)
-#endif
 			return (errno);
 	}
 
@@ -497,11 +485,7 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 	if (fd == -1)
 		return (errno);
 
-#if _DARWIN_FEATURE_64_BIT_INODE
-	if (fstat(fd, &st) == -1) {		
-#else
 	if (fstat64(fd, &st) == -1) {
-#endif
 		close(fd);
 		return (errno);
 	}
@@ -802,18 +786,10 @@ kobj_close_file(struct _buf *file)
 int
 kobj_get_filesize(struct _buf *file, uint64_t *size)
 {
-#if _DARWIN_FEATURE_64_BIT_INODE
-	struct stat st;
-#else
 	struct stat64 st;
-#endif
 	vnode_t *vp = (vnode_t *)file->_fd;
 
-#if _DARWIN_FEATURE_64_BIT_INODE
-	if (fstat(vp->v_fd, &st) == -1) {	
-#else
 	if (fstat64(vp->v_fd, &st) == -1) {
-#endif
 		vn_close(vp);
 		return (errno);
 	}
@@ -901,7 +877,6 @@ random_get_pseudo_bytes(uint8_t *ptr, size_t len)
 	return (random_get_bytes_common(ptr, len, "/dev/urandom"));
 }
 
-#ifndef __APPLE__
 int
 ddi_strtoul(const char *hw_serial, char **nptr, int base, unsigned long *result)
 {
@@ -912,7 +887,6 @@ ddi_strtoul(const char *hw_serial, char **nptr, int base, unsigned long *result)
 		return (errno);
 	return (0);
 }
-#endif
 
 /*
  * =========================================================================
@@ -966,7 +940,6 @@ kernel_fini(void)
 	spa_fini();
 }
 
-//#ifndef __APPLE__
 int
 z_uncompress(void *dst, size_t *dstlen, const void *src, size_t srclen)
 {
@@ -991,7 +964,6 @@ z_compress_level(void *dst, size_t *dstlen, const void *src, size_t srclen,
 
 	return (ret);
 }
-//#endif
 
 /*ARGSUSED*/
 size_t u8_textprep_str(char *i, size_t *il, char *o, size_t *ol, int nf,
@@ -1013,7 +985,6 @@ crgetgid(cred_t *cr)
 	return (0);
 }
 
-#ifndef __APPLE__
 int
 crgetngroups(cred_t *cr)
 {
@@ -1025,7 +996,6 @@ crgetgroups(cred_t *cr)
 {
 	return (NULL);
 }
-#endif
 
 int
 zfs_secpolicy_snapshot_perms(const char *name, cred_t *cr)
@@ -1039,11 +1009,8 @@ zfs_secpolicy_rename_perms(const char *from, const char *to, cred_t *cr)
 	return (0);
 }
 
-#ifndef __APPLE__
 int
 zfs_secpolicy_destroy_perms(const char *name, cred_t *cr)
 {
 	return (0);
 }
-
-#endif

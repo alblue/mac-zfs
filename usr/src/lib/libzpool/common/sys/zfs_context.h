@@ -88,6 +88,9 @@ extern "C" {
 #include <sys/sysevent/eventdefs.h>
 #endif
 
+// compatibility
+typedef uint64_t uint64;
+
 #ifdef __APPLE__
   /*
    * Apple's zfs_znode.c needs access to (a subset of) znode_t even
@@ -167,9 +170,6 @@ enum uio_seg {
 };
 	
 #define ERESTART (-1)
-	
-//typedef int cred_t;
-#define kcred (cred_t *)NOCRED
 
 /* Modified from atomic.h */
 /* We need the userspace atomic operations. */
@@ -231,7 +231,9 @@ extern void membar_producer(void);
 
 	
 #define RLIM64_INFINITY     ((rlim64_t)-3)
-	
+#define        RLIM64_SAVED_MAX        ((rlim64_t)-2)
+#define        RLIM64_SAVED_CUR        ((rlim64_t)-1)
+
 #define open64 open
 #define pread64 pread
 #define pwrite64 pwrite
@@ -317,20 +319,12 @@ struct vnode {
 extern int vn_open(char *path, int x1, int oflags, int mode, vnode_t **vpp,
     int x2, int x3);
 extern int vn_openat(char *path, int x1, int oflags, int mode, vnode_t **vpp,
-#ifdef __APPLE__
-    int x2, int x3, vnode_t *vp);
-#else
     int x2, int x3, vnode_t *vp, int fd);
-#endif
 extern int vn_rdwr(int uio, vnode_t *vp, void *addr, ssize_t len,
     offset_t offset, int x1, int x2, rlim64_t x3, void *x4, ssize_t *residp);
 extern void vn_close(vnode_t *vp);
 
 #define getrootdir() (struct vnode *)0xabcd1234
-
-struct _buf {
-	vnode_t *	 _fd;
-};
 	
 /* From user.h */
 /*
@@ -370,87 +364,8 @@ typedef struct vfs_context * vfs_context_t;
 #define IO_NOAUTH       0x8000          /* No authorization checks. */
 
 
-
-/* A subset of the kernel vnode_attr structure. */ 
-struct vnode_attr {
-	/* bitfields */
-	uint64_t	va_supported;
-	uint64_t	va_active;
-	
-	/*
-	 * Control flags.  The low 16 bits are reserved for the
-	 * ioflags being passed for truncation operations.
-	 */
-	int		va_vaflags;
-	
-	/* traditional stat(2) parameter fields */
-	u_offset_t	va_data_size;	/* file size in bytes */
-};
-
-#define va_mask         va_active
-#define va_size         va_data_size
-
+struct vnode_attr;
 typedef struct vnode_attr vattr_t;
-
-#if 0
-struct vnode_attr {
-	/* bitfields */
-	uint64_t	va_supported;
-	uint64_t	va_active;
-
-	/*
-	 * Control flags.  The low 16 bits are reserved for the
-	 * ioflags being passed for truncation operations.
-	 */
-	int		va_vaflags;
-	
-	/* traditional stat(2) parameter fields */
-	dev_t		va_rdev;	/* device id (device nodes only) */
-	uint64_t	va_nlink;	/* number of references to this file */
-	uint64_t	va_total_size;	/* size in bytes of all forks */
-	uint64_t	va_total_alloc;	/* disk space used by all forks */
-	uint64_t	va_data_size;	/* size in bytes of the fork managed by current vnode */
-	uint64_t	va_data_alloc;	/* disk space used by the fork managed by current vnode */
-	uint32_t	va_iosize;	/* optimal I/O blocksize */
-
-	/* file security information */
-	uid_t		va_uid;		/* owner UID */
-	gid_t		va_gid;		/* owner GID */
-	mode_t		va_mode;	/* posix permissions */
-	uint32_t	va_flags;	/* file flags */
-	struct kauth_acl *va_acl;	/* access control list */
-
-	/* timestamps */
-	struct timespec	va_create_time;	/* time of creation */
-	struct timespec	va_access_time;	/* time of last access */
-	struct timespec	va_modify_time;	/* time of last data modification */
-	struct timespec	va_change_time;	/* time of last metadata change */
-	struct timespec	va_backup_time;	/* time of last backup */
-	
-	/* file parameters */
-	uint64_t	va_fileid;	/* file unique ID in filesystem */
-	uint64_t	va_linkid;	/* file link unique ID */
-	uint64_t	va_parentid;	/* parent ID */
-	uint32_t	va_fsid;	/* filesystem ID */
-	uint64_t	va_filerev;	/* file revision counter */	/* XXX */
-	uint32_t	va_gen;		/* file generation count */	/* XXX - relationship of
-									* these two? */
-	/* misc parameters */
-	uint32_t	va_encoding;	/* filename encoding script */
-
-	enum vtype	va_type;	/* file type (create only) */
-	char *		va_name;	/* Name for ATTR_CMN_NAME; MAXPATHLEN bytes */
-	guid_t		va_uuuid;	/* file owner UUID */
-	guid_t		va_guuid;	/* file group UUID */
-	
-	/* Meaningful for directories only */
-	uint64_t	va_nchildren;     /* Number of items in a directory */
-	uint64_t	va_dirlinkcount;  /* Real references to dir (i.e. excluding "." and ".." refs) */
-
-	/* add new fields here only */
-		
-};
-#endif
 
 /*
  * Vnode attributes, new-style.
@@ -561,14 +476,14 @@ extern void vcmn_err(int, const char *, __va_list);
 extern void panic(const char *, ...);
 extern void vpanic(const char *, __va_list);
 
+#define	fm_panic	panic
+
 #ifdef __APPLE__
 	
 #define	verify(ex) (void)((ex) || \
 (assert(ex), 0))
 	
 #else /* !__APPLE__ */
-
-#define	fm_panic	panic
 
 /* This definition is copied from assert.h. */
 #if defined(__STDC__)
@@ -646,42 +561,19 @@ _NOTE(CONSTCOND) } while (0)
  * kernel.  If they're being used in kernel code, re-define them out of
  * existence for their counterparts in libzpool.
  */
-	
-#ifdef __APPLE__
+
 #undef	DTRACE_PROBE1
 #define	DTRACE_PROBE1(a, b, c)	((void)0)
-	
+
 #undef	DTRACE_PROBE2
 #define	DTRACE_PROBE2(a, b, c, d, e)	((void)0)
-	
+
 #undef	DTRACE_PROBE3
 #define	DTRACE_PROBE3(a, b, c, d, e, f, g)	((void)0)
 
-#else /* !__APPLE__ */
-	
-#ifdef DTRACE_PROBE1
-#undef	DTRACE_PROBE1
-#define	DTRACE_PROBE1(a, b, c)	((void)0)
-#endif	/* DTRACE_PROBE1 */
-
-#ifdef DTRACE_PROBE2
-#undef	DTRACE_PROBE2
-#define	DTRACE_PROBE2(a, b, c, d, e)	((void)0)
-#endif	/* DTRACE_PROBE2 */
-
-#ifdef DTRACE_PROBE3
-#undef	DTRACE_PROBE3
-#define	DTRACE_PROBE3(a, b, c, d, e, f, g)	((void)0)
-#endif	/* DTRACE_PROBE3 */
-
-#ifdef DTRACE_PROBE4
 #undef	DTRACE_PROBE4
 #define	DTRACE_PROBE4(a, b, c, d, e, f, g, h, i)	((void)0)
-#endif	/* DTRACE_PROBE4 */
 
-#endif /* !__APPLE__ */
-	
-	
 /*
  * Threads
  */
@@ -690,14 +582,14 @@ _NOTE(CONSTCOND) } while (0)
 #ifndef __APPLE__
 typedef struct kthread kthread_t;
 #endif /* !__APPLE__ */
-	
+
 #define	thread_create(stk, stksize, func, arg, len, pp, state, pri)	\
 	zk_thread_create(func, arg)
 	
 #ifndef __APPLE__
 #define	thread_exit() thr_exit(NULL)
 #endif /* !__APPLE__ */
-	
+
 extern kthread_t *zk_thread_create(void (*func)(), void *arg);
 
 #define	issig(why)	(FALSE)
@@ -868,13 +760,6 @@ typedef struct vnode {
 } vnode_t;
 #endif /* !__APPLE__ */
 
-#if 0
-typedef struct vattr {
-	uint_t		va_mask;	/* bit-mask of attributes */
-	u_offset_t	va_size;	/* file size in bytes */
-} vattr_t;
-#endif
-
 #define	AT_TYPE		0x00001
 #define	AT_MODE		0x00002
 #define	AT_UID		0x00004
@@ -894,11 +779,23 @@ typedef struct vattr {
 
 #define	CRCREAT		0
 
-//#define	VOP_CLOSE(vp, f, c, o, cr, ct)	0
+/* file flags */
+
+#define	FSYNC		0x10	/* file (data+inode) integrity while writing */
+#define	FDSYNC		0x40	/* file data only integrity while writing */
+#define	FRSYNC		0x8000	/* sync read operations at same level of */
+				/* integrity as specified for writes by */
+				/* FSYNC and FDSYNC flags */
+#define	FOFFMAX		0x2000	/* large file */
+//#define	FNONBLOCK	0x80
+
+//#define	FMASK		0xa0ff	/* all flags that can be changed by F_SETFL */
+
+#define	VOP_CLOSE(vp, f, c, o, cr, ct)	0
 #define	VOP_PUTPAGE(vp, of, sz, fl, cr, ct)	0
 #define	VOP_GETATTR(vp, vap, fl, cr, ct)  ((vap)->va_size = (vp)->v_size, 0)
 
-//#define	VOP_FSYNC(vp, f, cr, ct)	fsync((vp)->v_fd)
+#define	VOP_FSYNC(vp, f, cr, ct)	fsync((vp)->v_fd)
 
 #define	VN_RELE(vp)	vn_close(vp)
 
@@ -951,7 +848,7 @@ extern void delay(clock_t ticks);
 #define	CPU_SEQID	(thr_self() & (max_ncpus - 1))
 
 #endif
-/*#define	kcred		NULL*/
+#define	kcred		NULL
 #define	CRED()		NULL
 
 extern uint64_t physmem;
@@ -998,13 +895,11 @@ extern char hw_serial[];
 extern int ddi_strtoul(const char *str, char **nptr, int base,
     unsigned long *result);
 
-#ifndef __APPLE__
 /* ZFS Boot Related stuff. */
 
 struct _buf {
 	intptr_t	_fd;
 };
-#endif
 
 struct bootstat {
 	uint64_t st_size;
@@ -1025,6 +920,8 @@ typedef struct ace_object {
 #define	ACE_SYSTEM_AUDIT_OBJECT_ACE_TYPE	0x07
 #define	ACE_SYSTEM_ALARM_OBJECT_ACE_TYPE	0x08
 
+typedef int zoneid_t;
+	
 extern struct _buf *kobj_open_file(char *name);
 extern int kobj_read_file(struct _buf *file, char *buf, unsigned size,
     unsigned off);
@@ -1034,13 +931,9 @@ extern int zfs_secpolicy_snapshot_perms(const char *name, cred_t *cr);
 extern int zfs_secpolicy_rename_perms(const char *from, const char *to,
     cred_t *cr);
 extern int zfs_secpolicy_destroy_perms(const char *name, cred_t *cr);
+extern zoneid_t getzoneid(void);
 
 #define get_disk_size get_disk_size_libzpool
-
-#ifndef __APPLE__
-extern zoneid_t getzoneid(void);
-	
-#endif
 
 /*
  * UTF-8 text preparation functions and their macros.
