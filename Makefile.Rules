@@ -70,6 +70,15 @@ ARCH_EXTRA_ppc_CFLAGS := -arch ppc  -mtune=G5
 ARCH_EXTRA_ppc_CXXFLAGS := $(ARCH_EXTRA_ppc_CFLAGS)
 ARCH_EXTRA_ppc_LDFLAGS := -arch ppc
 
+# Since we do not (yet) support variants (i.e. compiling a target
+# multiple times for an architecture using different flags or SDKs), we
+# need to build the i386 for MacOS 10.5.x version by using a fake
+# architecture i386_5
+ARCH_EXTRA_i386_5_CFLAGS := -arch i386
+ARCH_EXTRA_i386_5_CXXFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+ARCH_EXTRA_i386_5_LDFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+
+
 #
 # Here starts the magic.  Touch and burn at your own risk.
 #
