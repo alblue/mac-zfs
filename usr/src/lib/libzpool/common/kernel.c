@@ -974,13 +974,13 @@ size_t u8_textprep_str(char *i, size_t *il, char *o, size_t *ol, int nf,
 }
 
 uid_t
-crgetuid(cred_t *cr)
+crgetuid(const cred_t *cr)
 {
 	return (0);
 }
 
 gid_t
-crgetgid(cred_t *cr)
+crgetgid(const cred_t *cr)
 {
 	return (0);
 }
