@@ -14,13 +14,26 @@
 #
 
 
+# Build host specific definitions should go into Makefile-host.
+#
+# For example, if you get weired linker errors or missing / doubled
+# definitions, then make sure your CPATH and LIBRARY_PATH do not contain
+# unwanted extra includes or libraries. 
+#
+# Example: fix library problems with macports & Co.
+#CPATH :=
+#export CPATH
+#LIBRARY_PATH :=
+#export LIBRARY_PATH
+
+
 # 1) what to build
 #
 # specify executables, libraries and kernel extensions.  Do *not* use
 # extensions like ".exe" or ".a" etc.!
 #
 # here go all normal executable files:
-ALL_EXE := zfs zpool
+ALL_EXE := zfs zpool zfsutil zoink
 
 #
 # here go all libraries build in this folder.  Do not specify
@@ -106,6 +119,10 @@ ALL_KEXT := zfskext
 
 src := usr/src
 
+# base identifier.  note that this is only the prefix, the string
+# ".zfs.fs" will be added.
+identifier ?= org.maczfs
+
 libzfs_SOURCES := $(addprefix $(src)/common/,avl/avl.c devid/devid.c nvpair/nvpair.c nvpair/nvpair_alloc_fixed.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
 libzfs_SOURCES += $(addprefix $(src)/lib/,libdevid/deviceid.c libnsl/rpc/xdr.c libnsl/rpc/xdr_array.c libnsl/rpc/xdr_mem.c libnvpair/libnvpair.c libnvpair/nvpair_alloc_system.c)
 libzfs_SOURCES += $(addprefix $(src)/lib/libuutil/common/,uu_alloc.c uu_avl.c uu_dprintf.c uu_ident.c uu_list.c uu_misc.c uu_open.c uu_pname.c uu_strtoint.c)
@@ -123,6 +140,7 @@ libzfs_INSTHDRS += $(addprefix $(src)/lib/,libdevid/libdevid.h libnsl/include/mt
 libzfs_INSTHDRS += $(addprefix $(src)/uts/common/,fs/zfs/sys/zvol.h rpc/types.h rpc/xdr.h sys/fs/zfs.h sys/mntent.h sys/mnttab.h)
 
 libzfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+libzfs_i386_5_CFLAGS := $(libzfs_ppc_CFLAGS)
 
 
 zfs_SOURCES := $(addprefix $(src)/,cmd/zfs/zfs_iter.c cmd/zfs/zfs_main.c maczfs/assfail.c)
@@ -131,7 +149,10 @@ zfs_LDLIBS := -lc
 zfs_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
 zfs_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zfs maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair) $(src)
 
+zfs_INSTEXEDIR := usr/sbin
+
 zfs_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zfs_i386_5_CFLAGS := $(zfs_ppc_CFLAGS)
 
 
 zpool_SOURCES := $(addprefix $(src)/,cmd/zpool/zpool_iter.c cmd/zpool/zpool_main.c cmd/zpool/zpool_util.c cmd/zpool/zpool_vdev.c maczfs/assfail.c)
@@ -140,7 +161,35 @@ zpool_LDLIBS := -lc
 zpool_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
 zpool_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
 
+zpool_INSTEXEDIR := usr/sbin
+
 zpool_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zpool_i386_5_CFLAGS := $(zpool_ppc_CFLAGS)
+
+
+zfsutil_SOURCES := zfs_bundle/zfsutil.c $(src)/maczfs/assfail.c
+zfsutil_INSTNAME := zfs.util
+zfsutil_LIBS := libzfs
+zfsutil_LDLIBS := -lc
+zfsutil_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zfsutil_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
+
+zfsutil_INSTEXEDIR := System/Library/Filesystems/zfs.fs
+
+zfsutil_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zfsutil_i386_5_CFLAGS := $(zfsutil_ppc_CFLAGS)
+
+
+zoink_SOURCES := zfs_commands/zoink/zoink.c $(src)/maczfs/assfail.c
+zoink_LIBS := libzfs
+zoink_LDLIBS := -lc -lcurses
+zoink_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h
+zoink_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
+
+zoink_INSTEXEDIR := usr/local/bin
+
+zoink_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zoink_i386_5_CFLAGS := $(zoink_ppc_CFLAGS)
 
 
 zfskext_SOURCES := $(addprefix $(src)/common/,avl/avl.c nvpair/nvpair.c util/qsort.c zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c)
@@ -164,7 +213,7 @@ zfskext_LDFLAGS := -lcpp_kext -Xlinker -kext -nostdlib -lkmodc++  -lkmod -lcc_ke
 
 zfskext_KEXT_START := zfs_module_start
 zfskext_KEXT_STOP := zfs_module_stop
-zfskext_KEXT_ID := com.bandlem.mac.zfs.fs
+zfskext_KEXT_ID := $(identifier).zfs.fs
 zfskext_KEXT_DESCRIPTION := $(shell git describe --tags --long --match 'maczfs*' 2> /dev/null)
 zfskext_KEXT_VERSION := $(shell echo $(zfskext_KEXT_DESCRIPTION) | awk -f support/version.awk)
 zfskext_KEXT_PLIST := zfs_kext/Info.plist
@@ -173,6 +222,7 @@ zfskext_VERSION := $(zfskext_KEXT_VERSION)
 zfskext_DESCRIPTION := $(zfskext_KEXT_DESCRIPTION)
 
 zfskext_INSTNAME := zfs
+zfskext_INSTKEXTDIR := System/Library/Extensions
 zfskext_KEXT_KERNEL := /mach_kernel
 
 zfskext_i386_CFLAGS :=  -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6
@@ -184,7 +234,66 @@ zfskext_x86_64_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair
 zfskext_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
 zfskext_ppc_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  $(addprefix /Developer/SDKs/MacOSX10.5.sdk,/System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers)
 
+zfskext_i386_5_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zfskext_i386_5_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  $(addprefix /Developer/SDKs/MacOSX10.5.sdk,/System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers)
+
 # 3) include Makefile.Rules
 #
 # This has all the magic that does the actual multi-architecture builds.
 include ./Makefile.Rules
+
+.PHONY: release
+
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_EXE),$(i)_$(i2)_INSTEXEDIR_FIN))
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_EXE),$(i)_$(i2)_INSTNAME_FIN))
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_LIBS),$(i)_$(i2)_INSTLIBDIR_FIN))
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_LIBS),$(i)_$(i2)_INSTNAME_FIN))
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_KEXT),$(i)_$(i2)_INSTKEXTDIR_FIN))
+export $(foreach i2,$(ARCH_AVAIL),$(foreach i,$(ALL_KEXT),$(i)_$(i2)_INSTNAME_FIN))
+
+install_version := $(shell ./support/version.sh)
+build_user := $(shell id -un)
+build_group := $(shell id -gn)
+install_user := root
+install_group := wheel
+
+
+release: install
+	mkdir -pv build/ZFS105 build/ZFS106
+	@echo Preparing MacOS 10.6.x package
+	set -x -v ; for i in $(ALL_EXE) ; do n386=$${i}_i386_INSTEXEDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTEXEDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; mkdir -pv build/ZFS106/$${!n386}; lipo $${p386} $(INSTBASE)/x86_64/$${!n64}/$${!in64} -create -output build/ZFS106/$${!n386}/$${!in386} ; done
+	set -x -v ; for i in $(ALL_LIBS) ; do n386=$${i}_i386_INSTLIBDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTLIBDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; if [ -e "$${p386}.dylib" ] ; then mkdir -pv build/ZFS106/$${!n386}; lipo $${p386}.dylib $(INSTBASE)/x86_64/$${!n64}/$${!in64}.dylib -create -output build/ZFS106/$${!n386}/$${!in386}.dylib ; else echo "skipping archive $${i}" ; fi ; done
+	@echo
+	mkdir -pv  build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}
+	cp -pr $(INSTBASE)/i386/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}/
+	lipo $(INSTBASE)/i386/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs $(INSTBASE)/x86_64/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs  -create -output build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
+	@echo
+	mkdir -pv build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/Resources/English.lproj
+	cp -v zfs_bundle/Info.plist zfs_bundle/PkgInfo  build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/
+	cp -v zfs_bundle/VolumeIcon.icns  build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/Resources/
+	cp -vr zfs_bundle/English.lproj  build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/Resources/
+	@echo
+	@echo Preparing MacOS 10.5.x package
+	for i in $(ALL_EXE) ; do n386_5=$${i}_i386_5_INSTEXEDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTEXEDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5} $(INSTBASE)/ppc/$${!nppc}/$${!inppc} -create -output build/ZFS105/$${!n386_5}/$${!in386_5} ; done
+	for i in $(ALL_LIBS) ; do n386_5=$${i}_i386_5_INSTLIBDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTLIBDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; if [ -e "$${p386_5}.dylib" ] ; then mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5}.dylib $(INSTBASE)/ppc/$${!nppc}/$${!inppc}.dylib -create -output build/ZFS105/$${!n386_5}/$${!in386_5}.dylib ; else echo "skipping archive $${i}" ; fi ; done
+	@echo
+	mkdir -pv  build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}
+	cp -pr $(INSTBASE)/i386_5/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}/
+	lipo $(INSTBASE)/i386_5/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs $(INSTBASE)/ppc/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs  -create -output build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
+	@echo
+	mkdir -pv build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/Resources/English.lproj
+	cp -v zfs_bundle/Info.plist zfs_bundle/PkgInfo  build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/
+	cp -v zfs_bundle/VolumeIcon.icns  build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/Resources/
+	cp -vr zfs_bundle/English.lproj  build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/Resources/
+	@echo
+	@echo Creating combined installer package
+	cp -vr support/MacZFS.pmdoc build/ 
+	sed -i~  -e "s/0\\.0\\.0/$(install_version)/g"  build/MacZFS.pmdoc/*
+	sed -i~ -e "s/com.bandlem.mac/$(identifier)/g"  build/MacZFS.pmdoc/*  build/ZFS10?/System/Library/Filesystems/zfs.fs/Contents/Info.plist
+	find build/ZFS10? build/MacZFS.pmdoc -iname '*~'  -print0 | xargs -0 rm -v
+	@echo
+	@echo "explicitly setting group and ownership, enter sudo password if prompted"
+	sudo chown -Rv $(install_user):$(install_group) build/ZFS10? build/MacZFS.pmdoc
+	tree -pug build/ZFS10? build/MacZFS.pmdoc
+	cd build && sudo packagemaker --doc MacZFS.pmdoc --version $(install_version) --title "Mac ZFS $(install_version)" --out MacZFS-$(install_version).pkg --target 10.5
+	sudo chown -R $(build_user):$(build_group) build/ZFS10? build/MacZFS.pmdoc build/MacZFS-$(install_version).pkg
