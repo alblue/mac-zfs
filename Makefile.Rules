@@ -160,6 +160,9 @@ INSTEXEDEF ?= usr/bin
 #
 INSTKEXTDEF ?= Library/Extensions
 
+# all makefiles that have been read in
+MAKEFILE_DEP ?= $(MAKEFILE_LIST)
+
 .PHONY: all libs exe kext all-docs all-pdf
 
 all: libs exe kext
@@ -194,13 +197,13 @@ $(BUILDBASE)/%/.dir:
 # src-dir = source directory with trailing "/"
 define obj_arch_tpl
 
-$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.c  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.c  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CC) -MMD -o $$@ -c $$< $(CFLAGS) $$(ARCH_EXTRA_$(2)_CFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
-$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.cc  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.cc  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
-$(BUILDBASE)/$(1)_$(4)/%.o: $(SRCROOT)/$(3)%.cpp  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(4)/%.o: $(SRCROOT)/$(3)%.cpp  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
 #
