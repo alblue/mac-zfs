@@ -242,6 +242,9 @@ $(1)_$(2)_LDFLAGS_ALL :=  $($(1)_LDFLAGS)  $($(1)_$(2)_LDFLAGS)
 $(1)_$(2)_INCSYS_ALL := $($(1)_INCSYS)  $($(1)_$(2)_INCSYS)
 $(1)_$(2)_INC_ALL := $($(1)_INC)  $($(1)_$(2)_INC)
 
+$(1)_$(2)_DEF_ALL := $($(1)_DEF)  $($(1)_$(2)_DEF)
+$(1)_$(2)_DEF_REAL_ALL := $(sort $(filter -D%,$($(1)_CFLAGS)  $($(1)_$(2)_CFLAGS) $($(1)_CXXFLAGS)  $($(1)_$(2)_CXXFLAGS)) $($(1)_DEF)  $($(1)_$(2)_DEF))
+
 # next three variables are intermediaries.  The real answer on what is
 # linked statically and what dynamically is computed in
 # tget_prep_libs_tpl.
@@ -433,6 +436,12 @@ distclean-$(1): $(foreach i,$($(1)_BUILD_ARCHS),distclean-$(1)-$(i))
 conf-$(1): $(foreach i,$($(1)_BUILD_ARCHS),conf-$(1)-$(i))
 	@echo Done showing configuration $(1)
 
+source-$(1): $(foreach i,$($(1)_BUILD_ARCHS),source-$(1)-$(i))
+	@echo Done showing sources of $(1)
+
+flags-$(1): $(foreach i,$($(1)_BUILD_ARCHS),flags-$(1)-$(i))
+	@echo Done showing flags for $(1)
+
 help-$(1):
 	@echo "$(1)         : build all architectures"
 	@echo "$(foreach i,$($(1)_BUILD_ARCHS),$(1)_$(i)) : build named architecture"
@@ -540,7 +549,22 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 	@echo "   $($(1)_$(2)_INSTNAME_FIN)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)"
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 #
 endef
@@ -742,6 +766,9 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
 	@echo "   $($(1)_$(2)_INSTNAME_FIN).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)"
 endif
@@ -753,6 +780,18 @@ ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
 	@echo "   header src :  $($(1)_$(2)_INSTHDRS_ALL)"
 	@echo "   header dest:  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)/"
 endif
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 #
 endef
@@ -939,11 +978,26 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
 	@echo "   $($(1)_$(2)_INSTNAME_FIN).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext"
 
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 test-$(1)-$(2): install-$(1)-$(2)
 ifneq ($(strip $($(1)_$(2)_KEXT_KERNEL_FIN))x,x)
