@@ -114,6 +114,8 @@
 		20FA07EE15DBB806007E2315 /* zdb.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FA07EC15DBB806007E2315 /* zdb.c */; };
 		20FA07EF15DBB806007E2315 /* zdb_il.c in Sources */ = {isa = PBXBuildFile; fileRef = 20FA07ED15DBB806007E2315 /* zdb_il.c */; };
 		20FA082C15DBBEF8007E2315 /* libzpool.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 200E787A15DB15BE000957FF /* libzpool.dylib */; };
+		20FD6A7215F2D522001DE234 /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8A15E4D78100DB8F8D /* zpool_prop.c */; };
+		20FD6A7515F2D57E001DE234 /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8415E4D6ED00DB8F8D /* zprop_common.c */; };
 		2611F7400ACDD29E00E5D4E2 /* zfsutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 2611F73F0ACDD29E00E5D4E2 /* zfsutil.c */; };
 		2611F7F60ACDE5F200E5D4E2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2611F7F50ACDE5F200E5D4E2 /* InfoPlist.strings */; };
 		2611F8040ACDE72900E5D4E2 /* zfs.util in CopyFiles */ = {isa = PBXBuildFile; fileRef = 2611F7360ACDD13900E5D4E2 /* zfs.util */; };
@@ -2008,6 +2010,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20FD6A7515F2D57E001DE234 /* zprop_common.c in Sources */,
+				20FD6A7215F2D522001DE234 /* zpool_prop.c in Sources */,
 				20FA07B715DBB58D007E2315 /* zfs_fm.c in Sources */,
 				20FA07B815DBB58D007E2315 /* zfs_znode.c in Sources */,
 				20FA07B915DBB58D007E2315 /* zil.c in Sources */,
@@ -2852,6 +2856,8 @@
 				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
 					"-isystem",
+					"$(SRCROOT)/usr/src/maczfs",
+					"-isystem",
 					"$(SRCROOT)/usr/src/head",
 					"-isystem",
 					"$(SRCROOT)/usr/src/lib",
@@ -2907,6 +2913,8 @@
 				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
 					"-isystem",
+					"$(SRCROOT)/usr/src/maczfs",
+					"-isystem",
 					"$(SRCROOT)/usr/src/head",
 					"-isystem",
 					"$(SRCROOT)/usr/src/lib",
@@ -2960,6 +2968,8 @@
 				HEADER_SEARCH_PATHS = "";
 				INSTALL_PATH = /usr/lib;
 				OTHER_CFLAGS = (
+					"-isystem",
+					"$(SRCROOT)/usr/src/maczfs",
 					"-isystem",
 					"$(SRCROOT)/usr/src/head",
 					"-isystem",
