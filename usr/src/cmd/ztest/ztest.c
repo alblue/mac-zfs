@@ -2967,6 +2967,13 @@ ztest_replace_one_disk(spa_t *spa, uint64_t vdev)
    full path to the executable. */
 char *getexecname_fake=0;
 
+/* Since stringification happens before expansion, a macro value can not
+ * directly stringified.  One has to use an indirect call.  See manual
+ * for cpp for details.
+ */
+#define ZDB_STR(x) #x
+#define ZDB_STR2(x)  ZDB_STR(x)
+
 static void
 ztest_verify_blocks(char *pool)
 {
@@ -2986,7 +2993,7 @@ ztest_verify_blocks(char *pool)
 
 	ztest = strstr(zdb, "/ztest");
 #ifdef ZDB_STATIC
-	strcpy(ztest, "/" ZDB_STATIC);
+	strcpy(ztest, "/" ZDB_STR2(ZDB_STATIC));
 #else
 	strcpy(ztest, "/zdb");
 #endif
@@ -2994,7 +3001,7 @@ ztest_verify_blocks(char *pool)
 		/* zdb not found in same path as ztest. */
 		printf("Failed to find zdb as '%s'\n", zdb);
 #ifdef ZDB_STATIC
-		strcpy(zdb,"/usr/sbin/" ZDB_STATIC);
+		strcpy(zdb,"/usr/sbin/" ZDB_STR2(ZDB_STATIC));
 #else
 		strcpy(zdb,"/usr/sbin/zdb");
 #endif
