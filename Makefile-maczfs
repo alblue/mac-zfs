@@ -33,12 +33,12 @@
 # extensions like ".exe" or ".a" etc.!
 #
 # here go all normal executable files:
-ALL_EXE := zfs zpool zfsutil zoink
+ALL_EXE := zfs zpool zfsutil zoink zdb ztest ztest_static zdb_static
 
 #
 # here go all libraries build in this folder.  Do not specify
 # libraries used here but build elsewhere!
-ALL_LIBS := libzfs
+ALL_LIBS := libzfs libnsl libnvpair libzpool
 
 #
 # all kernel extensions
@@ -130,6 +130,7 @@ libzfs_SOURCES += $(addprefix $(src)/lib/libzfs/common/,libzfs_changelist.c libz
 libzfs_SOURCES += $(addprefix $(src)/,libgen/common/mkdirp.c maczfs/assfail.c)
 
 libzfs_DYLIB := YES
+libzfs_INSTARLIB := YES
 libzfs_VERS := 1
 libzfs_LDLIBS := -lc
 libzfs_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
@@ -237,6 +238,113 @@ zfskext_ppc_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair co
 
 zfskext_i386_5_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
 zfskext_i386_5_INC := $(src) $(addprefix $(src)/,maczfs common/avl common/nvpair common/util common/zfs maczfs/kernel uts/common/ uts/common/fs uts/common/os uts/common/rpc uts/common/zmod uts/common/fs/zfs)  $(addprefix /Developer/SDKs/MacOSX10.5.sdk,/System/Library/Frameworks/Kernel.framework/PrivateHeaders /System/Library/Frameworks/Kernel.framework/Headers)
+
+
+libnsl_SOURCES := $(addprefix $(src)/lib/libnsl/rpc/,xdr.c xdr_array.c xdr_mem.c)
+libnsl_INSTHDRS := 
+libnsl_DYLIB := NO
+libnsl_VERS := 1
+libnsl_INSTARLIB := YES
+libnsl_INC := $(src)/lib/libnsl/rpc $(src)/lib/libnsl/include 
+libnsl_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
+libnsl_INCSYS := $(src)/uts/common
+
+libnsl_INSTEXEDIR := usr/local/lib
+
+libnsl_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+libnsl_i386_5_CFLAGS := $(libnsl_ppc_CFLAGS)
+
+
+libnvpair_SOURCES := $(addprefix $(src)/lib/libnvpair/,libnvpair.c nvpair_alloc_system.c)  $(addprefix $(src)/common/nvpair/,nvpair_alloc_fixed.c nvpair.c)
+libnvpair_INSTHDRS := $(src)/lib/libnvpair/libnvpair.h
+libnvpair_DYLIB := NO
+libnvpair_VERS := 1
+libnvpair_INSTARLIB := YES
+libnvpair_CFLAGS := -include usr/src/uts/common/fs/zfs/sys/zfs_context.h -include usr/src/uts/common/sys/types.h -DTEXT_DOMAIN=0
+libnvpair_INCSYS := $(src)/uts/common
+
+libnvpair_INSTEXEDIR := usr/local/lib
+
+libnvpair_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+libnvpair_i386_5_CFLAGS := $(libnvpair_ppc_CFLAGS)
+
+
+libzpool_SOURCES := $(addprefix $(src)/common/,avl/avl.c)
+libzpool_SOURCES += $(addprefix $(src)/common/,zfs/zfs_deleg.c zfs/zfs_namecheck.c zfs/zfs_prop.c zfs/zpool_prop.c zfs/zprop_common.c)
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,arc.c bplist.c dbuf.c dmu.c dmu_object.c dmu_objset.c dmu_send.c dmu_traverse.c dmu_tx.c dmu_zfetch.c)
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,dnode.c dnode_sync.c dsl_dataset.c dsl_deleg.c dsl_dir.c dsl_pool.c dsl_prop.c dsl_synctask.c fletcher.c gzip.c lzjb.c metaslab.c refcount.c)
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,rprwlock.c sha256.c spa.c spa_config.c spa_errlog.c spa_history.c spa_misc.c space_map.c txg.c uberblock.c unique.c vdev.c vdev_cache.c)
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,vdev_file.c vdev_label.c vdev_mirror.c vdev_missing.c vdev_queue.c vdev_raidz.c vdev_root.c zap.c zap_leaf.c zap_micro.c)
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_byteswap.c)
+libzpool_SOURCES += $(src)/uts/common/fs/zfs/zfs_fm.c
+libzpool_SOURCES += $(addprefix $(src)/uts/common/fs/zfs/,zfs_znode.c zil.c zio.c zio_checksum.c zio_compress.c zio_inject.c)
+libzpool_SOURCES += $(src)/uts/common/os/list.c
+libzpool_SOURCES += $(addprefix $(src)/lib/libzpool/common/,kernel.c taskq.c util.c)
+libzpool_SOURCES += $(src)/maczfs/zfs_context_libzpool.c $(src)/maczfs/assfail.c
+libzpool_DYLIB := YES
+libzpool_VERS := 1
+libzpool_INSTARLIB := YES
+libzpool_LIBS := libnsl libnvpair
+libzpool_LDLIBS := -lc -lz
+libzpool_INC := $(addprefix $(src)/,head lib lib/libzfs lib/libuutil lib/libuutil/common lib/libnvpair)
+libzpool_INC += $(addprefix $(src)/,lib/libzfs/common lib/libzpool/common libgen/common common)
+libzpool_INC += $(addprefix $(src)/,common/zfs uts/common uts/common/fs uts/common/fs/zfs)
+libzpool_INC += $(addprefix $(src)/,uts/common/sys)
+libzpool_CFLAGS := $(addprefix -D,TEXT_DOMAIN=0 LIBZPOOL_HACK __APPLE_API_UNSTABLE NAMEDSTREAMS=1)
+
+libzpool_inc_cflags := -include $(src)/lib/libzpool/common/sys/zfs_context.h -include $(src)/uts/common/sys/types.h
+
+libzpool_i386_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6 $(libzpool_inc_cflags)
+libzpool_x86_64_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6 $(libzpool_inc_cflags)
+
+libzpool_INCSYS := $(addprefix $(src)/,uts/common head uts/common/sys, maczfs)
+
+libzpool_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk  $(libzpool_inc_cflags)
+libzpool_i386_5_CFLAGS := $(libzpool_ppc_CFLAGS)
+
+
+
+ztest_SOURCES := $(src)/cmd/ztest/ztest.c
+ztest_LIBS := libzpool
+ztest_LDLIBS := -lc
+ztest_CFLAGS := -include $(src)/uts/common/sys/types.h -include $(src)/lib/libzpool/common/sys/zfs_context.h
+ztest_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common uts/common/sys cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
+
+ztest_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+ztest_i386_5_CFLAGS := $(ztest_ppc_CFLAGS)
+
+
+ztest_static_SOURCES := $(ztest_SOURCES)
+ztest_static_LIBS_AR := $(ztest_LIBS)
+ztest_static_LDLIBS := $(ztest_LDLIBS) -lz
+ztest_static_CFLAGS := -DZDB_STATIC=zdb_static $(ztest_CFLAGS)
+ztest_static_INCSYS := $(ztest_INCSYS)
+
+ztest_static_ppc_CFLAGS := $(ztest_ppc_CFLAGS)
+ztest_static_i386_5_CFLAGS := $(ztest_ppc_CFLAGS)
+
+
+zdb_SOURCES := $(addprefix $(src)/cmd/zdb/,zdb.c zdb_il.c)
+zdb_LIBS := libzfs libzpool
+zdb_LDLIBS := -lc
+zdb_CFLAGS := -include $(src)/uts/common/sys/types.h -include $(src)/lib/libzpool/common/sys/zfs_context.h
+zdb_INCSYS := $(addprefix $(src)/,head uts/common/fs/zfs uts/common uts/common/sys cmd/zpool maczfs lib/libzfs/common lib/libuutil/common lib/libnvpair)  $(src)
+
+zdb_INSTEXEDIR := usr/sbin
+
+zdb_ppc_CFLAGS := -DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_5 -mmacosx-version-min=10.5 -isysroot /Developer/SDKs/MacOSX10.5.sdk 
+zdb_i386_5_CFLAGS := $(zdb_ppc_CFLAGS)
+
+
+zdb_static_SOURCES := $(zdb_SOURCES)
+zdb_static_LIBS_AR := $(zdb_LIBS)
+zdb_static_LDLIBS := $(zdb_LDLIBS) -lz
+zdb_static_CFLAGS := $(zdb_CFLAGS)
+zdb_static_INCSYS := $(zdb_INCSYS)
+zdb_static_INSTEXEDIR := $(zdb_INSTEXEDIR)
+
+zdb_static_ppc_CFLAGS := $(zdb_ppc_CFLAGS)
+zdb_static_i386_5_CFLAGS := $(zdb_ppc_CFLAGS)
 
 # 3) include Makefile.Rules
 #
