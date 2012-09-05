@@ -1671,8 +1671,13 @@ top:
 			zflg |= ZCILOOK;
 #endif
 
+#ifdef __APPLE__
+		error = zfs_dirent_lock(&dl, dzp, ct->componentname, &zp, zflg,
+        NULL, NULL);
+#else
 		error = zfs_dirent_lock(&dl, dzp, name, &zp, zflg,
 		    NULL, NULL);
+#endif
 		if (error) {
 			if (strcmp(name, "..") == 0)
 				error = EISDIR;
