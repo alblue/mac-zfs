@@ -70,6 +70,15 @@ ARCH_EXTRA_ppc_CFLAGS := -arch ppc  -mtune=G5
 ARCH_EXTRA_ppc_CXXFLAGS := $(ARCH_EXTRA_ppc_CFLAGS)
 ARCH_EXTRA_ppc_LDFLAGS := -arch ppc
 
+# Since we do not (yet) support variants (i.e. compiling a target
+# multiple times for an architecture using different flags or SDKs), we
+# need to build the i386 for MacOS 10.5.x version by using a fake
+# architecture i386_5
+ARCH_EXTRA_i386_5_CFLAGS := -arch i386
+ARCH_EXTRA_i386_5_CXXFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+ARCH_EXTRA_i386_5_LDFLAGS := $(ARCH_EXTRA_i386_CFLAGS)
+
+
 #
 # Here starts the magic.  Touch and burn at your own risk.
 #
@@ -151,6 +160,9 @@ INSTEXEDEF ?= usr/bin
 #
 INSTKEXTDEF ?= Library/Extensions
 
+# all makefiles that have been read in
+MAKEFILE_DEP ?= $(MAKEFILE_LIST)
+
 .PHONY: all libs exe kext all-docs all-pdf
 
 all: libs exe kext
@@ -185,13 +197,13 @@ $(BUILDBASE)/%/.dir:
 # src-dir = source directory with trailing "/"
 define obj_arch_tpl
 
-$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.c  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.c  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CC) -MMD -o $$@ -c $$< $(CFLAGS) $$(ARCH_EXTRA_$(2)_CFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
-$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.cc  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(2)/%.o: $(SRCROOT)/$(3)%.cc  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
-$(BUILDBASE)/$(1)_$(4)/%.o: $(SRCROOT)/$(3)%.cpp  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_LIST)
+$(BUILDBASE)/$(1)_$(4)/%.o: $(SRCROOT)/$(3)%.cpp  $(BUILDBASE)/$(1)_$(2)/.dir $(MAKEFILE_DEP)
 	$(CXX) -MMD -o $$@ -c $$< $(CXXFLAGS) $$(ARCH_EXTRA_$(2)_CXXFLAGS) $$(addprefix -isystem,$$($(1)_$(2)_INCSYS_ALL)) $$(addprefix -I,$$($(1)_$(2)_INC)) $$($(1)_$(2)_CXXFLAGS_ALL) $$(addprefix -I,$$($(1)_INC))
 
 #
@@ -241,6 +253,9 @@ $(1)_$(2)_LDFLAGS_ALL :=  $($(1)_LDFLAGS)  $($(1)_$(2)_LDFLAGS)
 
 $(1)_$(2)_INCSYS_ALL := $($(1)_INCSYS)  $($(1)_$(2)_INCSYS)
 $(1)_$(2)_INC_ALL := $($(1)_INC)  $($(1)_$(2)_INC)
+
+$(1)_$(2)_DEF_ALL := $($(1)_DEF)  $($(1)_$(2)_DEF)
+$(1)_$(2)_DEF_REAL_ALL := $(sort $(filter -D%,$($(1)_CFLAGS)  $($(1)_$(2)_CFLAGS) $($(1)_CXXFLAGS)  $($(1)_$(2)_CXXFLAGS)) $($(1)_DEF)  $($(1)_$(2)_DEF))
 
 # next three variables are intermediaries.  The real answer on what is
 # linked statically and what dynamically is computed in
@@ -433,6 +448,12 @@ distclean-$(1): $(foreach i,$($(1)_BUILD_ARCHS),distclean-$(1)-$(i))
 conf-$(1): $(foreach i,$($(1)_BUILD_ARCHS),conf-$(1)-$(i))
 	@echo Done showing configuration $(1)
 
+source-$(1): $(foreach i,$($(1)_BUILD_ARCHS),source-$(1)-$(i))
+	@echo Done showing sources of $(1)
+
+flags-$(1): $(foreach i,$($(1)_BUILD_ARCHS),flags-$(1)-$(i))
+	@echo Done showing flags for $(1)
+
 help-$(1):
 	@echo "$(1)         : build all architectures"
 	@echo "$(foreach i,$($(1)_BUILD_ARCHS),$(1)_$(i)) : build named architecture"
@@ -540,7 +561,22 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 	@echo "   $($(1)_$(2)_INSTNAME_FIN)  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTEXEDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN)"
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 #
 endef
@@ -600,8 +636,8 @@ else
 $(1)_$(2)_LIBS_AR_DY_OK_PATH := $(foreach i,$($(1)_$(2)_LIBS_AR_DY_OK),$(BUILDBASE)/$(i)_$(2)/$($(i)_$(2)_INSTNAME_FIN).$(LNKEXT))
 
 $(BUILDBASE)/$(1)_$(2)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT): $($(1)_$(2)_OBJ_ALL) $$($(1)_$(2)_LIBS_AR_DY_OK_PATH)
-	mkdir $$@.tax
-	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -o x $$${i} ; done
+	mkdir -pv $$@.tax
+	cd $$@.tax ; for i in $$($(1)_$(2)_LIBS_AR_DY_OK_PATH) ; do ar -x -o  $$$${i} ; done
 	ar rs $$@ $$@.tax/* $($(1)_$(2)_OBJ_ALL)
 	rm -r $$@.tax
 endif
@@ -742,6 +778,9 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 ifeq ($($(1)_$(2)_INSTARLIB_FIN),YES)
 	@echo "   $($(1)_$(2)_INSTNAME_FIN).$(LNKEXT) ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTLIBDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).$(LNKEXT)"
 endif
@@ -753,6 +792,18 @@ ifeq ($($(1)_$(2)_DO_INST_HDRS),YES)
 	@echo "   header src :  $($(1)_$(2)_INSTHDRS_ALL)"
 	@echo "   header dest:  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTHDRSDIR_FIN)/"
 endif
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 #
 endef
@@ -939,11 +990,26 @@ endif
 ifneq ($(strip $($(1)_$(2)_LIBS_DY_OK))x,x)
 	@echo "   + $(addsuffix .$(DYEXT),$($(1)_$(2)_LIBS_DY_OK))"
 endif
+ifneq ($(strip $($(1)_$(2)_LDLIBS_ALL))x,x)
+	@echo "   + $($(1)_$(2)_LDLIBS_ALL)"
+endif
 ifneq ($(strip $($(1)_$(2)_KEXT_PLIST_FIN))x,x)
 	@echo "   + $(strip $($(1)_$(2)_KEXT_PLIST_FIN))"
 endif
 	@echo "   $($(1)_$(2)_INSTNAME_FIN).kext  ->  $(INSTBASE)/$(2)/$($(1)_$(2)_INSTKEXTDIR_FIN)/$($(1)_$(2)_INSTNAME_FIN).kext"
 
+
+source-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "SRC = $($(1)_$(2)_SOURCES_ALL)"
+
+flags-$(1)-$(2):
+	@echo "$(1): $(2)"
+	@echo "DEF = $($(1)_$(2)_DEF_REAL_ALL)"
+	@echo "INC = $($(1)_$(2)_INC) $($(1)_INC)"
+	@echo "SYS = $($(1)_$(2)_INCSYS_ALL)"
+	@echo "FLAGS = $(CFLAGS) $(ARCH_EXTRA_$(2)_CFLAGS) $(addprefix -isystem,$($(1)_$(2)_INCSYS_ALL)) $(addprefix -I,$($(1)_$(2)_INC)) $($(1)_$(2)_CFLAGS_ALL) $(addprefix -I,$($(1)_INC))"
+	@echo "LDFLAGS = $(LDFLAGS) $(ARCH_EXTRA_$(2)_LDFLAGS) $($(1)_$(2)_LDFLAGS_ALL)"
 
 test-$(1)-$(2): install-$(1)-$(2)
 ifneq ($(strip $($(1)_$(2)_KEXT_KERNEL_FIN))x,x)
