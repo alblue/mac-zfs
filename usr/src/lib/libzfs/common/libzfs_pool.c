@@ -355,7 +355,7 @@ zpool_validate_properties(libzfs_handle_t *hdl, const char *poolname,
 			break;
 
 		case ZPOOL_PROP_ASHIFT:
-			if (!flags.create) {
+			if (!create_or_import) {
 				zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
 				    "property '%s' can only be set at "
 				    "creation time"), propname);
