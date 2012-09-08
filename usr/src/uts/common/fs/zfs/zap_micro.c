@@ -680,8 +680,9 @@ zap_lookup_norm(objset_t *os, uint64_t zapobj, const char *name,
 				err = EINVAL;
 			} else {
 				*(uint64_t *)buf = mze->mze_phys.mze_value;
-				(void) strlcpy(realname,
-				    mze->mze_phys.mze_name, rn_len);
+				if (rn_len > 0) /* strlcpy may not be called with size == 0 */
+					(void) strlcpy(realname,
+					    mze->mze_phys.mze_name, rn_len);
 				if (ncp) {
 					*ncp = mzap_normalization_conflict(zap,
 					    zn, mze);

@@ -67,6 +67,8 @@ space_map_create(space_map_t *sm, uint64_t start, uint64_t size, uint8_t shift,
 	sm->sm_size = size;
 	sm->sm_shift = shift;
 	sm->sm_lock = lp;
+
+	cv_init(&sm->sm_load_cv, NULL, CV_DEFAULT, NULL);
 }
 
 void
@@ -75,6 +77,8 @@ space_map_destroy(space_map_t *sm)
 	ASSERT(!sm->sm_loaded && !sm->sm_loading);
 	VERIFY3U(sm->sm_space, ==, 0);
 	avl_destroy(&sm->sm_root);
+
+	cv_destroy(&sm->sm_load_cv);
 }
 
 void
