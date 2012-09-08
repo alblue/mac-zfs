@@ -11,6 +11,16 @@
     <versions min-spec="1.000000" />
     <scripts></scripts>
   </distribution>
+  <description>Welcome to MacZFS, a free implementation of the ZFS file system for Mac OSX Leopard and newer.
+
+MacZFS offers nearly unlimited storage capacity, only limited by the amount and size of hard disks connected to an computer.  It offers data replication in mirror or raidz configuration, dynamic stripping and build-in storage pool based volume management.
+
+MacZFS has end-to-end compression and strong data checksumming, including self-healing of bit-rot or any other read problem in redundant pools and offers unlimited, nearly-instantaneous snapshot support for backup and ecovery.  Snapshots can be mount for read-only inspection, efficiently transfered between storage pools for off-site backups or promoted to full read-write filesystems.
+
+MacZFS is based on the original Sun implementation of the ZFS file system and Apple's initial port to Leopard whch was discontinued before public release.
+
+Today, MacZFS is developed by a community effort on www.maczfs.org and released under the CDDL and APSL liecenses.
+  </description>
   <contents>
     <choice title="ZFS for Leopard" id="zfs105"
     tooltip="ZFS for Leopard"
@@ -29,9 +39,9 @@
         startHidden="unchanged" />
       </choice-reqs>
     </choice>
-    <choice title="ZFS for Snow Leopard and Lion" id="zfs106"
-    tooltip="ZFS for Snow Leopard and Lion"
-    description="ZFS for Snow Leopard and Lion on Intel 32 bit and 64 bit machines"
+    <choice title="ZFS for Snow Leopard, Lion and Mountain Lion" id="zfs106"
+    tooltip="ZFS for Snow Leopard to Mountain Lion"
+    description="ZFS for Snow Leopard, Lion and Mountain Lion on Intel 32 bit and 64 bit machines"
     starts_selected="true" starts_enabled="true"
     starts_hidden="false">
       <pkgref id="com.bandlem.mac.zfs.106.pkg" />
@@ -40,7 +50,7 @@
         selected="no" enabled="no" hidden="yes"
         startSelected="unchanged" startEnabled="unchanged"
         startHidden="unchanged" />
-        <requirement id="tosv" operator="lt" value="'10.8'"
+        <requirement id="tosv" operator="lt" value="'10.9'"
         selected="no" enabled="no" hidden="yes"
         startSelected="unchanged" startEnabled="unchanged"
         startHidden="unchanged" />
@@ -59,7 +69,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
 
-\f0\fs26 \cf0 This will install the next-generation ZFS support for Mac OSX systems running either Leopard or Snow Leopard. Preview support for Lion is available.}]]>
+\f0\fs26 \cf0 This will install the next-generation ZFS support for Mac OSX systems running either Leopard or Snow Leopard and newer.}]]>
 </resource>
     </locale>
   </resources>
@@ -67,12 +77,13 @@
     <requirement id="tosv" operator="ge" value="'10.5'">
       <message>Mac ZFS needs at least Leopard to run.</message>
     </requirement>
-    <requirement id="tosv" operator="lt" value="'10.8'">
-      <message>Mac ZFS is only certified to run on Leopard and Snow Leopard at this time, though preview support for Lion is available.</message>
+    <requirement id="tosv" operator="lt" value="'10.9'">
+      <message>Mac ZFS is only certified to run on Mac OSX Leopard to Mountain Lion.</message>
     </requirement>
   </requirements>
   <flags />
   <item type="file">01zfs.xml</item>
   <item type="file">02zfs.xml</item>
   <mod>properties.title</mod>
+  <mod>description</mod>
 </pkmkdoc>
