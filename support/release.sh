@@ -4,6 +4,8 @@
 DIR=`dirname $0`
 BUILD=build
 
+DEFAULT_IDENTIFIER=com.bandlem.mac
+
 VERSION=`${DIR}/version.sh`
 if [ -z "${VERSION}" ]
 then
@@ -12,6 +14,7 @@ then
 fi
 
 CONFIG=Release
+IDENTIFIER=${DEFAULT_IDENTIFIER}
 INSTALL=No
 
 while [[ $1 == -* ]]; do
@@ -20,6 +23,7 @@ while [[ $1 == -* ]]; do
   case $OPT in
     --debug) CONFIG=Debug ;;
     --install) INSTALL=Yes ;;
+    --id) IDENTIFIER="$1" ; shift ;;
     --) break; ;;
     *) echo "Unknown arguments $OPT $*"; exit 1; ;;
   esac
@@ -32,7 +36,6 @@ then
 fi
 
 USER=`whoami`
-GROUP=`id -n -g`
 
 (
 mkdir -p ${DIR}/../${BUILD}
@@ -40,14 +43,17 @@ rm -rf ${DIR}/../${BUILD}/ZFS105
 rm -rf ${DIR}/../${BUILD}/ZFS106
 cp -R ${DIR}/MacZFS.pmdoc ${DIR}/../${BUILD}
 sed -i~  -e "s/0\\.0\\.0/${VERSION}/g" ${DIR}/../${BUILD}/MacZFS.pmdoc/*
+if [ "${DEFAULT_IDENTIFIER}" != "${IDENTIFIER}" ] ; then
+  sed -i~ -e "s/${DEFAULT_IDENTIFIER}/${IDENTIFIER}/g" ${DIR}/../${BUILD}/MacZFS.pmdoc/*  #${DIR}/../zfs_bundle/Info.plist
+fi
 
 cd ${DIR}/..
-xcodebuild -sdk macosx10.5 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} INSTALL_GROUP=${GROUP} SYMROOT=${BUILD}/${CONFIG}105 DSTROOT=${BUILD}/ZFS105 || exit 2
+xcodebuild -sdk macosx10.5 -configuration ${CONFIG} -parallelizeTargets install MODULE_NAME=${IDENTIFIER}.zfs.fs INSTALL_OWNER=${USER} SYMROOT=${BUILD}/${CONFIG}105 DSTROOT=${BUILD}/ZFS105 || exit 2
 
 # No point in building on 10.5, it'll just do the same thing again
 if [ "`sysctl -b kern.osrelease`" != "9.8.0" ] 
 then
-	xcodebuild -sdk macosx10.6 -configuration ${CONFIG} -parallelizeTargets install INSTALL_OWNER=${USER} INSTALL_GROUP=${GROUP} SYMROOT=${BUILD}/${CONFIG}106 DSTROOT=${BUILD}/ZFS106 || exit 3
+	xcodebuild -sdk macosx10.6 -configuration ${CONFIG} -parallelizeTargets install MODULE_NAME=${IDENTIFIER}.zfs.fs INSTALL_OWNER=${USER} SYMROOT=${BUILD}/${CONFIG}106 DSTROOT=${BUILD}/ZFS106 || exit 3
 fi
 
 cd ${BUILD}
