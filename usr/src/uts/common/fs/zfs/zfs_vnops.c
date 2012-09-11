@@ -7050,7 +7050,6 @@ int (**zfs_fifoops) (void *);
 struct vnodeopv_entry_desc zfs_fifoops_template[] = {
 	{&vnop_default_desc,    (VOPFUNC)vn_default_error},
 // Issue 9
-#if 0
 	{&vnop_lookup_desc,     (VOPFUNC)fifo_lookup},
 	{&vnop_open_desc,       (VOPFUNC)fifo_open},
 	{&vnop_close_desc,      (VOPFUNC)fifo_close},
@@ -7058,9 +7057,8 @@ struct vnodeopv_entry_desc zfs_fifoops_template[] = {
 	{&vnop_write_desc,      (VOPFUNC)fifo_write},
 	{&vnop_ioctl_desc,      (VOPFUNC)fifo_ioctl},
 	{&vnop_select_desc,     (VOPFUNC)fifo_select},
-	{&vnop_revoke_desc,     (VOPFUNC)fifo_revoke},
+	{&vnop_revoke_desc,     (VOPFUNC)zfs_vnop_revoke},
 	{&vnop_pathconf_desc,   (VOPFUNC)fifo_pathconf},
-#endif
 	{&vnop_fsync_desc,      (VOPFUNC)zfs_vnop_fsync},
 	{&vnop_getattr_desc,    (VOPFUNC)zfs_vnop_getattr},
 	{&vnop_setattr_desc,    (VOPFUNC)zfs_vnop_setattr},
