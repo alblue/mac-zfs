@@ -916,7 +916,8 @@ zio_ready(zio_t *zio)
 		    &pio->io_children_notready);
 
 	if (zio->io_bp)
-		zio->io_bp_copy = *zio->io_bp;
+		if (&zio->io_bp_copy != zio->io_bp) /* do not copy block over itself. */
+			zio->io_bp_copy = *zio->io_bp;
 
 	zio_next_stage(zio);
 }

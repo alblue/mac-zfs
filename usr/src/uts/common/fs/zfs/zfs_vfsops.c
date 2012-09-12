@@ -155,8 +155,9 @@ extern struct vnodeopv_desc zfs_fvnodeop_opv_desc;
 extern struct vnodeopv_desc zfs_symvnodeop_opv_desc;
 extern struct vnodeopv_desc zfs_xdvnodeop_opv_desc;
 extern struct vnodeopv_desc zfs_evnodeop_opv_desc;
+extern struct vnodeopv_desc zfs_fifoop_opv_desc;
 
-#define ZFS_VNOP_TBL_CNT	5
+#define ZFS_VNOP_TBL_CNT	6
 
 static struct vnodeopv_desc *zfs_vnodeop_opv_desc_list[ZFS_VNOP_TBL_CNT] =
 {
@@ -165,6 +166,7 @@ static struct vnodeopv_desc *zfs_vnodeop_opv_desc_list[ZFS_VNOP_TBL_CNT] =
 	&zfs_symvnodeop_opv_desc,
 	&zfs_xdvnodeop_opv_desc,
 	&zfs_evnodeop_opv_desc,
+	&zfs_fifoop_opv_desc,
 };
 
 static vfstable_t zfs_vfsconf;
