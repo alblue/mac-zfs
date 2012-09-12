@@ -470,7 +470,7 @@ zpool_do_add(int argc, char **argv)
 	}
 
 	/* pass off to get_vdev_spec for processing */
-	nvroot = make_root_vdev(zhp, force, !force, B_FALSE, argc, argv);
+	nvroot = make_root_vdev(zhp, NULL, force, !force, B_FALSE, argc, argv);
 	if (nvroot == NULL) {
 		zpool_close(zhp);
 		return (1);
@@ -657,7 +657,7 @@ zpool_do_create(int argc, char **argv)
 	}
 
 	/* pass off to get_vdev_spec for bulk processing */
-	nvroot = make_root_vdev(NULL, force, !force, B_FALSE, argc - 1,
+	nvroot = make_root_vdev(NULL, props, force, !force, B_FALSE, argc - 1,
 	    argv + 1);
 	if (nvroot == NULL)
 		return (1);
@@ -2264,7 +2264,7 @@ zpool_do_attach_or_replace(int argc, char **argv, int replacing)
 		return (1);
 	}
 
-	nvroot = make_root_vdev(zhp, force, B_FALSE, replacing, argc, argv);
+	nvroot = make_root_vdev(zhp, NULL, force, B_FALSE, replacing, argc, argv);
 	if (nvroot == NULL) {
 		zpool_close(zhp);
 		return (1);

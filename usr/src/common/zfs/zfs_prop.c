@@ -298,9 +298,14 @@ zfs_prop_init(void)
 	register_number(ZFS_PROP_COMPRESSRATIO, "compressratio", 0,
 	    PROP_READONLY, ZFS_TYPE_DATASET,
 	    "<1.00x or higher if compressed>", "RATIO");
+
+	/* readonly onetime number properties */
+	register_number(ZPOOL_PROP_ASHIFT, "ashift", 0, PROP_ONETIME,
+	    ZFS_TYPE_POOL, "<ashift, 9-17, or 0=default>", "ASHIFT");
 	register_number(ZFS_PROP_VOLBLOCKSIZE, "volblocksize", 8192,
 	    PROP_ONETIME,
 	    ZFS_TYPE_VOLUME, "512 to 128k, power of 2",	"VOLBLOCK");
+
 
 	/* default number properties */
 	register_number(ZFS_PROP_QUOTA, "quota", 0, PROP_DEFAULT,
