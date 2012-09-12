@@ -262,12 +262,13 @@ install_group := wheel
 release: install
 	mkdir -pv build/ZFS105 build/ZFS106
 	@echo Preparing MacOS 10.6.x package
-	set -x -v ; for i in $(ALL_EXE) ; do n386=$${i}_i386_INSTEXEDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTEXEDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; mkdir -pv build/ZFS106/$${!n386}; lipo $${p386} $(INSTBASE)/x86_64/$${!n64}/$${!in64} -create -output build/ZFS106/$${!n386}/$${!in386} ; done
-	set -x -v ; for i in $(ALL_LIBS) ; do n386=$${i}_i386_INSTLIBDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTLIBDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; if [ -e "$${p386}.dylib" ] ; then mkdir -pv build/ZFS106/$${!n386}; lipo $${p386}.dylib $(INSTBASE)/x86_64/$${!n64}/$${!in64}.dylib -create -output build/ZFS106/$${!n386}/$${!in386}.dylib ; else echo "skipping archive $${i}" ; fi ; done
+	set -x -v ; for i in $(ALL_EXE) ; do n386=$${i}_i386_INSTEXEDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTEXEDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; mkdir -pv build/ZFS106/$${!n386}; lipo $${p386} $(INSTBASE)/x86_64/$${!n64}/$${!in64} -create -output build/ZFS106/$${!n386}/$${!in386} ; dsymutil --verbose build/ZFS106/$${!n386}/$${!in386} ; done
+	set -x -v ; for i in $(ALL_LIBS) ; do n386=$${i}_i386_INSTLIBDIR_FIN; in386=$${i}_i386_INSTNAME_FIN; n64=$${i}_x86_64_INSTLIBDIR_FIN; in64=$${i}_x86_64_INSTNAME_FIN; p386=$(INSTBASE)/i386/$${!n386}/$${!in386}; if [ -e "$${p386}.dylib" ] ; then mkdir -pv build/ZFS106/$${!n386}; lipo $${p386}.dylib $(INSTBASE)/x86_64/$${!n64}/$${!in64}.dylib -create -output build/ZFS106/$${!n386}/$${!in386}.dylib ; dsymutil --verbose build/ZFS106/$${!n386}/$${!in386}.dylib ; else echo "skipping archive $${i}" ; fi ; done
 	@echo
 	mkdir -pv  build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}
 	cp -pr $(INSTBASE)/i386/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}/
 	lipo $(INSTBASE)/i386/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs $(INSTBASE)/x86_64/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs  -create -output build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
+	dsymutil --verbose build/ZFS106/$${zfskext_i386_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
 	@echo
 	mkdir -pv build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/Resources/English.lproj
 	cp -v zfs_bundle/Info.plist zfs_bundle/PkgInfo  build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/
@@ -275,12 +276,13 @@ release: install
 	cp -vr zfs_bundle/English.lproj  build/ZFS106/System/Library/Filesystems/zfs.fs/Contents/Resources/
 	@echo
 	@echo Preparing MacOS 10.5.x package
-	for i in $(ALL_EXE) ; do n386_5=$${i}_i386_5_INSTEXEDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTEXEDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5} $(INSTBASE)/ppc/$${!nppc}/$${!inppc} -create -output build/ZFS105/$${!n386_5}/$${!in386_5} ; done
-	for i in $(ALL_LIBS) ; do n386_5=$${i}_i386_5_INSTLIBDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTLIBDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; if [ -e "$${p386_5}.dylib" ] ; then mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5}.dylib $(INSTBASE)/ppc/$${!nppc}/$${!inppc}.dylib -create -output build/ZFS105/$${!n386_5}/$${!in386_5}.dylib ; else echo "skipping archive $${i}" ; fi ; done
+	for i in $(ALL_EXE) ; do n386_5=$${i}_i386_5_INSTEXEDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTEXEDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5} $(INSTBASE)/ppc/$${!nppc}/$${!inppc} -create -output build/ZFS105/$${!n386_5}/$${!in386_5} ; dsymutil --verbose build/ZFS105/$${!n386_5}/$${!in386_5} ; done
+	for i in $(ALL_LIBS) ; do n386_5=$${i}_i386_5_INSTLIBDIR_FIN; in386_5=$${i}_i386_5_INSTNAME_FIN; nppc=$${i}_ppc_INSTLIBDIR_FIN; inppc=$${i}_ppc_INSTNAME_FIN; p386_5=$(INSTBASE)/i386_5/$${!n386_5}/$${!in386_5}; if [ -e "$${p386_5}.dylib" ] ; then mkdir -pv build/ZFS105/$${!n386_5}; lipo $${p386_5}.dylib $(INSTBASE)/ppc/$${!nppc}/$${!inppc}.dylib -create -output build/ZFS105/$${!n386_5}/$${!in386_5}.dylib ; dsymutil --verbose build/ZFS105/$${!n386_5}/$${!in386_5}.dylib ; else echo "skipping archive $${i}" ; fi ; done
 	@echo
 	mkdir -pv  build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}
 	cp -pr $(INSTBASE)/i386_5/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}/
 	lipo $(INSTBASE)/i386_5/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs $(INSTBASE)/ppc/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs  -create -output build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
+	dsymutil --verbose build/ZFS105/$${zfskext_i386_5_INSTKEXTDIR_FIN}/zfs.kext/Contents/MacOS/zfs
 	@echo
 	mkdir -pv build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/Resources/English.lproj
 	cp -v zfs_bundle/Info.plist zfs_bundle/PkgInfo  build/ZFS105/System/Library/Filesystems/zfs.fs/Contents/
