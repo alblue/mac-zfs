@@ -27,6 +27,11 @@
 
 #ifdef ZTEST
 
+#ifdef __APPLE__
+#import <maczfs-thread.h>
+#import <sys/mount.h>
+#endif /* __APPLE__ */
+
 #include <assert.h>
 #include <sys/ztest_context.h>
 #include <poll.h>
@@ -36,7 +41,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/spa.h>
+#ifndef __APPLE__
 #include <sys/processor.h>
+#endif
 
 /*
  * Emulation of kernel services in userland.

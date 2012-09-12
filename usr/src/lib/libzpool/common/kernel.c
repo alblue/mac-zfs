@@ -19,7 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ *
+ * Portions Copyright 2009 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
@@ -34,7 +37,9 @@
 #include <zlib.h>
 #include <sys/spa.h>
 #include <sys/stat.h>
+#ifndef __APPLE__
 #include <sys/processor.h>
+#endif
 #include <sys/zfs_context.h>
 #include <sys/zmod.h>
 #include <sys/utsname.h>
@@ -47,9 +52,11 @@ uint64_t physmem;
 vnode_t *rootdir = (vnode_t *)0xabcd1234;
 char hw_serial[11];
 
+#ifndef __APPLE__
 struct utsname utsname = {
 	"userland", "libzpool", "1", "1", "na"
 };
+#endif
 
 /*
  * =========================================================================
@@ -68,6 +75,7 @@ zk_thread_create(void (*func)(), void *arg)
 	return ((void *)(uintptr_t)tid);
 }
 
+#ifndef __APPLE__
 /*
  * =========================================================================
  * kstats
@@ -90,6 +98,7 @@ kstat_install(kstat_t *ksp)
 void
 kstat_delete(kstat_t *ksp)
 {}
+#endif
 
 /*
  * =========================================================================
@@ -164,8 +173,16 @@ mutex_owner(kmutex_t *mp)
 void
 rw_init(krwlock_t *rwlp, char *name, int type, void *arg)
 {
+#ifdef __APPLE__
+	VERIFY(rwlock_init(&rwlp->rw_lock, USYNC_THREAD, NULL) == 0);
+#else
 	rwlock_init(&rwlp->rw_lock, USYNC_THREAD, NULL);
+#endif
 	rwlp->rw_owner = NULL;
+#ifdef __APPLE__
+	zmutex_init(&rwlp->mutex);
+	rwlp->reader_thr_count = 0;
+#endif
 	rwlp->initialized = B_TRUE;
 }
 
@@ -174,23 +191,48 @@ rw_destroy(krwlock_t *rwlp)
 {
 	rwlock_destroy(&rwlp->rw_lock);
 	rwlp->rw_owner = (void *)-1UL;
+#ifdef __APPLE__
+	zmutex_destroy(&rwlp->mutex);
+	rwlp->reader_thr_count = -2;
+#endif
 	rwlp->initialized = B_FALSE;
 }
 
 void
 rw_enter(krwlock_t *rwlp, krw_t rw)
 {
+#ifndef __APPLE__
 	ASSERT(!RW_LOCK_HELD(rwlp));
+#endif
 	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
 	ASSERT(rwlp->rw_owner != curthread);
 
+#ifdef __APPLE__
+	if (rw == RW_READER) {
+		VERIFY(rw_rdlock(&rwlp->rw_lock) == 0);
+		
+		mutex_enter(&rwlp->mutex);
+		ASSERT(rwlp->reader_thr_count >= 0);
+		rwlp->reader_thr_count++;
+		mutex_exit(&rwlp->mutex);
+		ASSERT(rwlp->rw_owner == NULL);
+	} else {
+		VERIFY(rw_wrlock(&rwlp->rw_lock) == 0);
+		
+		ASSERT(rwlp->rw_owner == NULL);
+		ASSERT(rwlp->reader_thr_count == 0);
+		rwlp->reader_thr_count = -1;
+		rwlp->rw_owner = curthread;
+	}
+#else
 	if (rw == RW_READER)
 		(void) rw_rdlock(&rwlp->rw_lock);
 	else
 		(void) rw_wrlock(&rwlp->rw_lock);
 
 	rwlp->rw_owner = curthread;
+#endif
 }
 
 void
@@ -199,7 +241,23 @@ rw_exit(krwlock_t *rwlp)
 	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
 
+#ifdef __APPLE__
+	if(rwlp->rw_owner == curthread) {
+		/* Write locked */
+		ASSERT(rwlp->reader_thr_count == -1);
+		rwlp->reader_thr_count = 0;
+		rwlp->rw_owner = NULL;
+	} else {
+		/* Read locked */
+		ASSERT(rwlp->rw_owner == NULL);
+		mutex_enter(&rwlp->mutex);
+		ASSERT(rwlp->reader_thr_count >= 1);
+		rwlp->reader_thr_count--;
+		mutex_exit(&rwlp->mutex);
+	}
+#else
 	rwlp->rw_owner = NULL;
+#endif
 	(void) rw_unlock(&rwlp->rw_lock);
 }
 
@@ -210,6 +268,9 @@ rw_tryenter(krwlock_t *rwlp, krw_t rw)
 
 	ASSERT(rwlp->initialized == B_TRUE);
 	ASSERT(rwlp->rw_owner != (void *)-1UL);
+#ifdef __APPLE__
+	ASSERT(rwlp->rw_owner != curthread);
+#endif
 
 	if (rw == RW_READER)
 		rv = rw_tryrdlock(&rwlp->rw_lock);
@@ -217,7 +278,22 @@ rw_tryenter(krwlock_t *rwlp, krw_t rw)
 		rv = rw_trywrlock(&rwlp->rw_lock);
 
 	if (rv == 0) {
+#ifdef __APPLE__
+		if(rw == RW_READER) {
+			mutex_enter(&rwlp->mutex);
+			ASSERT(rwlp->reader_thr_count >= 0);
+			rwlp->reader_thr_count++;
+			mutex_exit(&rwlp->mutex);
+			ASSERT(rwlp->rw_owner == NULL);
+		} else {
+			ASSERT(rwlp->rw_owner == NULL);
+			ASSERT(rwlp->reader_thr_count == 0);
+			rwlp->reader_thr_count = -1;
+			rwlp->rw_owner = curthread;
+		}
+#else
 		rwlp->rw_owner = curthread;
+#endif
 		return (1);
 	}
 
@@ -243,13 +319,21 @@ rw_tryupgrade(krwlock_t *rwlp)
 void
 cv_init(kcondvar_t *cv, char *name, int type, void *arg)
 {
+#ifdef __APPLE__
+	ASSERT(type == CV_DEFAULT);
+#endif
 	VERIFY(cond_init(cv, type, NULL) == 0);
 }
 
 void
 cv_destroy(kcondvar_t *cv)
 {
+#ifdef __APPLE__
+	int ret = cond_destroy(cv);
+	VERIFY(ret == 0 || ret == EINVAL); /* XXX/ztest: ok to ignore EINVAL? */
+#else
 	VERIFY(cond_destroy(cv) == 0);
+#endif
 }
 
 void
@@ -268,22 +352,50 @@ cv_timedwait(kcondvar_t *cv, kmutex_t *mp, clock_t abstime)
 	int error;
 	timestruc_t ts;
 	clock_t delta;
+#ifdef __APPLE__
+	struct timeval tv;
+	uint64_t dsec;
+#endif
 
 top:
 	delta = abstime - lbolt;
 	if (delta <= 0)
 		return (-1);
 
+#ifdef __APPLE__
+	VERIFY(gettimeofday(&tv, NULL) == 0);
+	
+	dsec = MAX(1, delta / hz);
+	ASSERT(dsec >= 1);
+	ts.tv_sec = tv.tv_sec + dsec;
+	ts.tv_nsec = tv.tv_usec * 1000 + (delta % hz) * (NANOSEC / hz);
+	ASSERT(ts.tv_nsec >= 0);
+	
+	if (ts.tv_nsec >= NANOSEC) {
+		ts.tv_sec++;
+		ts.tv_nsec -= NANOSEC;
+	}
+#else
 	ts.tv_sec = delta / hz;
 	ts.tv_nsec = (delta % hz) * (NANOSEC / hz);
+#endif
 
 	ASSERT(mutex_owner(mp) == curthread);
 	mp->m_owner = NULL;
+#ifdef __APPLE__
+	error = cond_timedwait(cv, &mp->m_lock, &ts);
+#else
 	error = cond_reltimedwait(cv, &mp->m_lock, &ts);
+#endif
 	mp->m_owner = curthread;
 
+#ifdef __APPLE__
+	if (error == ETIMEDOUT)
+		return (-1);
+#else
 	if (error == ETIME)
 		return (-1);
+#endif
 
 	if (error == EINTR)
 		goto top;
@@ -377,6 +489,20 @@ vn_open(char *path, int x1, int flags, int mode, vnode_t **vpp, int x2, int x3)
 		close(fd);
 		return (errno);
 	}
+
+/*
+ * OSX fstat on a block device will return an st_size of 0 instead of
+ * the actual size of the device.  So we need to ioctl directly to the disk
+ * instead in order to get its size
+ */
+#ifdef __APPLE__
+      if (S_ISBLK(st.st_mode)) {
+		  if ((st.st_size = get_disk_size(fd)) == -1) {
+			  st.st_size = 0;
+			  return (errno);
+		  }
+	  }
+#endif
 
 	(void) fcntl(fd, F_SETFD, FD_CLOEXEC);
 
@@ -545,8 +671,10 @@ __dprintf(const char *file, const char *func, int line, const char *fmt, ...)
 			(void) printf("%d ", getpid());
 		if (dprintf_find_string("tid"))
 			(void) printf("%u ", thr_self());
+		#ifndef __APPLE__
 		if (dprintf_find_string("cpu"))
 			(void) printf("%u ", getcpuid());
+		#endif
 		if (dprintf_find_string("time"))
 			(void) printf("%llu ", gethrtime());
 		if (dprintf_find_string("long"))
@@ -629,7 +757,11 @@ kobj_open_file(char *name)
 		return ((void *)-1UL);
 
 	file = umem_zalloc(sizeof (struct _buf), UMEM_NOFAIL);
+#ifdef __APPLE__
+	file->_fd = vp;
+#else
 	file->_fd = (intptr_t)vp;
+#endif
 	return (file);
 }
 
@@ -774,12 +906,28 @@ umem_out_of_memory(void)
 void
 kernel_init(int mode)
 {
+	pthread_mutex_init(&zfs_global_atomic_mutex, 0);
 	umem_nofail_callback(umem_out_of_memory);
 
+#ifdef __APPLE__
+	int mib[2] = {CTL_HW, HW_MEMSIZE};
+	u_int mib_array_size = sizeof(mib)/sizeof(mib[0]);
+	uint64_t memsize;
+	size_t len = sizeof(memsize);
+	
+	if (sysctl(mib, mib_array_size, &memsize, &len, NULL, 0) == 0) {
+		physmem = memsize / sysconf(_SC_PAGE_SIZE);	
+		dprintf("physmem = %llu pages (%.2f GB)\n", physmem,
+	    (double)memsize / (1ULL << 30));
+	} else {
+		dprintf("Couldn't determine the physical memory with sysctl\n");
+	}
+#else
 	physmem = sysconf(_SC_PHYS_PAGES);
 
 	dprintf("physmem = %llu pages (%.2f GB)\n", physmem,
 	    (double)physmem * sysconf(_SC_PAGE_SIZE) / (1ULL << 30));
+#endif
 
 	snprintf(hw_serial, sizeof (hw_serial), "%ld", gethostid());
 

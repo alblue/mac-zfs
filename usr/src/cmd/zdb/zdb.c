@@ -19,14 +19,19 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+ * Use is subject to license terms.
+ */
+/* Portions Copyright 2007-2008 Apple Inc. All rights reserved.
  * Use is subject to license terms.
  */
 
 #pragma ident	"%Z%%M%	%I%	%E% SMI"
 
 #include <stdio.h>
+#ifndef __APPLE__
 #include <stdio_ext.h>
+#endif
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/zfs_context.h>
@@ -66,6 +71,8 @@ int zopt_objects = 0;
 int zdb_advance = ADVANCE_PRE;
 zbookmark_t zdb_noread = { 0, 0, ZB_NO_LEVEL, 0 };
 libzfs_handle_t *g_zfs;
+boolean_t zdb_sig_user_data = B_TRUE;
+int zdb_sig_cksumalg = ZIO_CHECKSUM_SHA256;
 
 /*
  * These libumem hooks provide a reasonable set of defaults for the allocator's
@@ -110,7 +117,7 @@ usage(void)
 	(void) fprintf(stderr, "	-U use zpool.cache in /tmp\n");
 	(void) fprintf(stderr, "	-B objset:object:level:blkid -- "
 	    "simulate bad block\n");
-	(void) fprintf(stderr, "        -R read and display block from a"
+	(void) fprintf(stderr, "        -R read and display block from a "
 	    "device\n");
 	(void) fprintf(stderr, "        -e Pool is exported/destroyed\n");
 	(void) fprintf(stderr, "	-p <Path to vdev dir> (use with -e)\n");
@@ -1194,6 +1201,18 @@ dump_label(const char *dev)
 		exit(1);
 	}
 
+#ifdef __APPLE__
+	/* OS X: we can't use fstat to get the size of a block device */
+	if (S_ISBLK(statbuf.st_mode)) {
+		if ((statbuf.st_size = get_disk_size(fd)) == -1) {
+			statbuf.st_size = 0;
+			(void) printf("failed to stat '%s': %s\n", dev,
+				      strerror(errno));
+			exit(1);
+			
+		}
+	}
+#endif
 	psize = statbuf.st_size;
 	psize = P2ALIGN(psize, (uint64_t)sizeof (vdev_label_t));
 
@@ -2210,12 +2229,22 @@ main(int argc, char **argv)
 	int exported = 0;
 	char *vdev_dir = NULL;
 
+#ifdef __APPLE__
+	volatile int zdb_forever = 0;
+#endif
+
 	(void) setrlimit(RLIMIT_NOFILE, &rl);
 	(void) enable_extended_FILE_stdio(-1, -1);
 
 	dprintf_setup(&argc, argv);
 
-	while ((c = getopt(argc, argv, "udibcsvCLO:B:UlRep:")) != -1) {
+	while ((c = getopt(argc, argv,
+#ifdef __APPLE__
+					   "udibcsvCLO:B:UlRep:D"
+#else
+					   "udibcsvCLO:B:UlRep:"
+#endif
+					   )) != -1) {
 		switch (c) {
 		case 'u':
 		case 'd':
@@ -2284,6 +2313,11 @@ main(int argc, char **argv)
 		case 'p':
 			vdev_dir = optarg;
 			break;
+#ifdef __APPLE__
+		case 'D':
+			zdb_forever = 1;
+			break;
+#endif
 		default:
 			usage();
 			break;
@@ -2293,15 +2327,22 @@ main(int argc, char **argv)
 	if (vdev_dir != NULL && exported == 0)
 		(void) fatal("-p option requires use of -e\n");
 
+#ifdef __APPLE__
+	/* to attach gdb, run zdb with "-D" and say in gdb "set zdb_forever = 0" */
+	while (zdb_forever) {}
+#endif
+
 	kernel_init(FREAD);
 	g_zfs = libzfs_init();
 	ASSERT(g_zfs != NULL);
 
+#ifndef __APPLE__
 	/*
 	 * Disable vdev caching.  If we don't do this, live pool traversal
 	 * won't make progress because it will never see disk updates.
 	 */
 	zfs_vdev_cache_size = 0;
+#endif
 
 	for (c = 0; c < 256; c++) {
 		if (dump_all && c != 'L' && c != 'l' && c != 'R')
