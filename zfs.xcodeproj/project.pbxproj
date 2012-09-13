@@ -45,6 +45,14 @@
 		208E3B8515E4D6ED00DB8F8D /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8415E4D6ED00DB8F8D /* zprop_common.c */; };
 		208E3B8B15E4D78100DB8F8D /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8A15E4D78100DB8F8D /* zpool_prop.c */; };
 		208E3B8F15E4D7E800DB8F8D /* libzfs_sendrecv.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8E15E4D7E800DB8F8D /* libzfs_sendrecv.c */; };
+		209C8FF316026B190061F90E /* acl_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 209C8FF216026B190061F90E /* acl_common.c */; };
+		209C8FF516026B360061F90E /* string.c in Sources */ = {isa = PBXBuildFile; fileRef = 209C8FF416026B360061F90E /* string.c */; };
+		20B456211602667E00D00EF0 /* zpool_prop.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8A15E4D78100DB8F8D /* zpool_prop.c */; };
+		20B456311602671300D00EF0 /* rrwlock.c in Sources */ = {isa = PBXBuildFile; fileRef = 20B4562D1602671300D00EF0 /* rrwlock.c */; };
+		20B456321602671300D00EF0 /* zfs_fuid.c in Sources */ = {isa = PBXBuildFile; fileRef = 20B4562E1602671300D00EF0 /* zfs_fuid.c */; };
+		20B456361602676500D00EF0 /* u8_textprep.c in Sources */ = {isa = PBXBuildFile; fileRef = 20B456341602676500D00EF0 /* u8_textprep.c */; };
+		20B456371602676500D00EF0 /* uconv.c in Sources */ = {isa = PBXBuildFile; fileRef = 20B456351602676500D00EF0 /* uconv.c */; };
+		20B45638160267B100D00EF0 /* zprop_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 208E3B8415E4D6ED00DB8F8D /* zprop_common.c */; };
 		20FA076415DBB067007E2315 /* arc.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9375DB10A38E6300754C9E /* arc.c */; };
 		20FA076515DBB0AF007E2315 /* assfail.c in Sources */ = {isa = PBXBuildFile; fileRef = FA9656A811F1BFA3001E7C56 /* assfail.c */; };
 		20FA076615DBB111007E2315 /* avl.c in Sources */ = {isa = PBXBuildFile; fileRef = FA93765A10A38E6300754C9E /* avl.c */; };
@@ -514,6 +522,12 @@
 		208E3B8415E4D6ED00DB8F8D /* zprop_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zprop_common.c; sourceTree = "<group>"; };
 		208E3B8A15E4D78100DB8F8D /* zpool_prop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zpool_prop.c; sourceTree = "<group>"; };
 		208E3B8E15E4D7E800DB8F8D /* libzfs_sendrecv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libzfs_sendrecv.c; sourceTree = "<group>"; };
+		209C8FF216026B190061F90E /* acl_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = acl_common.c; path = acl/acl_common.c; sourceTree = "<group>"; };
+		209C8FF416026B360061F90E /* string.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = string.c; sourceTree = "<group>"; };
+		20B4562D1602671300D00EF0 /* rrwlock.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rrwlock.c; sourceTree = "<group>"; };
+		20B4562E1602671300D00EF0 /* zfs_fuid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = zfs_fuid.c; sourceTree = "<group>"; };
+		20B456341602676500D00EF0 /* u8_textprep.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = u8_textprep.c; sourceTree = "<group>"; };
+		20B456351602676500D00EF0 /* uconv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = uconv.c; sourceTree = "<group>"; };
 		20FA077C15DBB1DD007E2315 /* kernel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kernel.c; sourceTree = "<group>"; };
 		20FA077D15DBB1DD007E2315 /* llib-lzpool */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "llib-lzpool"; sourceTree = "<group>"; };
 		20FA077F15DBB1DD007E2315 /* zfs_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = zfs_context.h; sourceTree = "<group>"; };
@@ -936,6 +950,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		20B456331602676500D00EF0 /* unicode */ = {
+			isa = PBXGroup;
+			children = (
+				20B456341602676500D00EF0 /* u8_textprep.c */,
+				20B456351602676500D00EF0 /* uconv.c */,
+			);
+			path = unicode;
+			sourceTree = "<group>";
+		};
 		20FA077A15DBB1DD007E2315 /* libzpool */ = {
 			isa = PBXGroup;
 			children = (
@@ -1303,6 +1326,8 @@
 		FA9375CA10A38E6300754C9E /* zfs */ = {
 			isa = PBXGroup;
 			children = (
+				20B4562D1602671300D00EF0 /* rrwlock.c */,
+				20B4562E1602671300D00EF0 /* zfs_fuid.c */,
 				FA9375CB10A38E6300754C9E /* dmu_traverse.c */,
 				FA9375CC10A38E6300754C9E /* zfs_fm.c */,
 				FA9375CD10A38E6300754C9E /* dnode_sync.c */,
@@ -1456,6 +1481,8 @@
 		FA93764A10A38E6300754C9E /* common */ = {
 			isa = PBXGroup;
 			children = (
+				209C8FF216026B190061F90E /* acl_common.c */,
+				20B456331602676500D00EF0 /* unicode */,
 				FA93764B10A38E6300754C9E /* zfs */,
 				FA93765310A38E6300754C9E /* nvpair */,
 				FA93765610A38E6300754C9E /* util */,
@@ -1492,6 +1519,7 @@
 		FA93765610A38E6300754C9E /* util */ = {
 			isa = PBXGroup;
 			children = (
+				209C8FF416026B360061F90E /* string.c */,
 				FA93765710A38E6300754C9E /* qsort.c */,
 				FA93765810A38E6300754C9E /* qsort.h */,
 			);
@@ -2176,6 +2204,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				20B456211602667E00D00EF0 /* zpool_prop.c in Sources */,
+				20B45638160267B100D00EF0 /* zprop_common.c in Sources */,
 				FAA3738910A3A7E600B9ADAC /* arc.c in Sources */,
 				FAA3738A10A3A7E600B9ADAC /* bplist.c in Sources */,
 				FAA3738B10A3A7E600B9ADAC /* dbuf.c in Sources */,
@@ -2260,6 +2290,12 @@
 				FA9656AF11F1BFA3001E7C56 /* maczfs_kernel.c in Sources */,
 				FA9656B011F1BFA3001E7C56 /* zfs_context.c in Sources */,
 				FA965A1611F366D2001E7C56 /* zmod.c in Sources */,
+				20B456311602671300D00EF0 /* rrwlock.c in Sources */,
+				20B456321602671300D00EF0 /* zfs_fuid.c in Sources */,
+				20B456361602676500D00EF0 /* u8_textprep.c in Sources */,
+				20B456371602676500D00EF0 /* uconv.c in Sources */,
+				209C8FF316026B190061F90E /* acl_common.c in Sources */,
+				209C8FF516026B360061F90E /* string.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
